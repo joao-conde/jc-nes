@@ -1,0 +1,5 @@
+[package]
+name = "jc-nes"
+version = "0.1.0"
+authors = ["João Dias Conde Azevedo <joaodiasconde@gmail.com>"]
+edition = "2018"
