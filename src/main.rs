@@ -2,9 +2,8 @@ use jc_nes::bus::Bus;
 
 fn main() {
     println!("Booting up NES...");
-    let bus = Bus {};
+    let bus = Bus::new();
     bus.connect();
-    bus.read();
-    bus.write();
-    println!("{:?}", bus)
+    bus.read(0xFF);
+    bus.write(0xFF);
 }
