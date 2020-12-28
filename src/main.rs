@@ -1,3 +1,6 @@
+use jc_nes::bus::Bus;
+
 fn main() {
-    println!("Hello, world!");
+    println!("Booting up NES...");
+    let bus = Bus {};
 }
