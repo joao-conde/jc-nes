@@ -41,18 +41,31 @@ This folder contains summary information about the NES console compiled from the
 ## RAM
 
 - Random Access Memory
-- 0x0000 - 0x07FF
+- 0x0000 - 0x1FFF
 - 2kB
+- uses mirroring
+- 4 blocks of 2kB
 
-# Connected to PPU bus
+## Cartridge
 
-## Graphics (game tiles, part of the Cartridge)
+- ROM with program
+- 0x4020 - 0xFFFF
+- program rom 0x4020 - 0xFFFF
+- has pattern memory (CHR)
+- has program memory (PRG)
+- bank switching via mapper:
+  - mapper takes PPU and CPU wishes and translates into correct memory address
+
+## Pattern memory (game tiles, sprites)
 
 - 8kB (0x0000 - 0x1FFF)
 
-## VRAM
+# Connected to PPU bus
 
-- 2kB (0x2000 - 0x27FF)
+## Nametables
+
+- 0x2000 - 0x2FFF
+- stores 2-dim arrays with IDs of patterns to show
 
 ## Palettes
 
@@ -64,13 +77,27 @@ This folder contains summary information about the NES console compiled from the
 - location of sprites
 - transfer of data from CPU to OAM with DMA (direct memory access)
 
-## Cartridge
-
-- ROM with program
-- 0x4020 - 0xFFFF
-- contains a Mapper
-
 ## Mappers
 
 - responsible for bank switching (cpu configures mapper to switch banks/data ranges on the cartridge)
 - cpu/ppu still address the same range on cartridge but mapper points to different data/banks
+
+
+
+# SUMMARY
+
+CPU Bus gives the CPU access to:
+- RAM
+- APU,
+- Controls
+- Other stuff
+
+PPU Bus gives the PPU access to:
+- Nametable
+- Color palette
+
+Both CPU and PPU Buses give them access to:
+- Cartridge:
+  - Pattern memory (sprites, tiles)
+  - Program ROM 
+  - Mapper
