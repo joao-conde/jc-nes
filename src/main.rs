@@ -8,6 +8,8 @@ fn main() {
     let mut bus = Bus::new();
 
     let cpu = CPU::new(&bus);
+
+    
     let ram = RAM { mem: [0; 64 * 1024] };
 
     bus.connect(0x0000..=0xFFFF, ram);
