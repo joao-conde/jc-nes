@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::{RangeInclusive}};
+use std::{collections::HashMap, ops::RangeInclusive};
 
 pub struct Bus<'a> {
     pub addresses: HashMap<RangeInclusive<usize>, Box<dyn Device + 'a>>,

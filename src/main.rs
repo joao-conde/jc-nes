@@ -4,9 +4,9 @@ use jc_nes::cpu::CPU;
 fn main() {
     println!("Booting up NES...");
 
-    let cpu = CPU {};
+    let cpu = CPU::new();
     let mut bus = Bus::new();
-    
+
     bus.connect(0x00..=0xAA, cpu);
 
     let valid_read = bus.read(0x00);
