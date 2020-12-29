@@ -1,17 +1,19 @@
-use std::{collections::HashMap, ops::Range};
+use std::{collections::HashMap, ops::{RangeInclusive}};
 
-pub struct Bus {
-    pub addresses: HashMap<Range<usize>, Box<dyn Device>>,
+pub struct Bus<'a> {
+    pub addresses: HashMap<RangeInclusive<usize>, Box<dyn Device + 'a>>,
 }
 
-impl Bus {
-    pub fn new() -> Bus {
+impl<'a> Bus<'a> {
+    pub fn new() -> Bus<'a> {
         Bus {
             addresses: HashMap::new(),
         }
     }
 
-    pub fn connect(&self) {}
+    pub fn connect(&mut self, addressable_range: RangeInclusive<usize>, device: impl Device + 'a) {
+        self.addresses.insert(addressable_range, Box::new(device));
+    }
 
     pub fn read(&self, address: usize) -> Option<usize> {
         self.addresses
@@ -30,9 +32,7 @@ impl Bus {
     }
 }
 
-trait Device {
-    fn read(&self, address: usize) -> usize {
-        0
-    }
-    fn write(&self, address: usize) {}
+pub trait Device {
+    fn read(&self, address: usize) -> usize;
+    fn write(&self, address: usize);
 }
