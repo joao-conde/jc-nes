@@ -28,29 +28,36 @@ impl<'a> CPU<'a> {
     pub fn clock(&mut self) {
         if self.cycles_left == 0 {
             let opcode = self.bus.read(self.pc).expect("no byte to read at pc");
-            let (size, duration) = self.execute_opcode(opcode);
-            self.cycles_left = duration;
-            self.pc += size;
+            self.process(opcode);
         }
         self.cycles_left -= 1;
     }
 
-    fn execute_opcode(&mut self, opcode: u8) -> (u16, u8) {
+    fn process(&mut self, opcode: u8) {
         match opcode {
-            0xA9 => {
-                let data = self.bus.read(self.pc + 1).expect("no byte read at pc + 1");
-                let data = self.imm(data);
-                self.lda(data);
-                (2, 2)
+            0x00 => {
+                println!("BRK");
+                self.pc += 1;
+                self.cycles_left = 7;
             }
-            _ => unreachable!(),
+            0xA9 => {
+                let data = self
+                    .bus
+                    .read(self.pc + 1)
+                    .expect("no byte to read at pc + 1");
+                self.lda(data);
+                println!("{} {} {}", self.pc, self.bus.read(self.pc).unwrap(), data);
+                self.pc += 2;
+                self.cycles_left = 2;
+            }
+            _ => panic!("invalid opcode '{}'", opcode),
         }
     }
 
     // addressing modes
-    fn imm(&self, literal: u8) -> u8 {
-        literal
-    }
+    // fn imm(&self, literal: u8) -> u8 { // pointless, we are just emulating
+    //     literal
+    // }
 
     // opcodes
     fn lda(&mut self, val: u8) {
