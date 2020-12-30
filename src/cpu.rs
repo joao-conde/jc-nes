@@ -1,5 +1,3 @@
-use std::ops::Add;
-
 use super::bus::{Bus, Device};
 
 pub struct CPU<'a> {
@@ -29,26 +27,34 @@ impl<'a> CPU<'a> {
 
     pub fn clock(&mut self) {
         if self.cycles_left == 0 {
-            let opcode = self.bus.read(self.pc);
-            self.pc += 1;
+            let instruction = self.bus.read(self.pc).expect("no byte to read at pc");
+            // let instruction = Instruction::from(instruction);
+
+            let (size, duration) = match instruction {
+                0xA9 => {
+                    let data = self.bus.read(self.pc + 1).expect("no byte read at pc + 1");
+                    let data = self.imm(data);
+                    self.lda(data);
+                    (2, 2)
+                }
+                _ => unreachable!(),
+            };
+
+            self.cycles_left = duration;
+            self.pc += size;
         }
         self.cycles_left -= 1;
     }
 
-    pub fn instruction_from_byte(&self, byte: u8) -> Instruction {
-        match byte {
-            0xA9 => Instruction::new(CPU::lda, CPU::imm, 2, 2),
-            _ => unreachable!(),
-        }
-    }
-
     // addressing modes
-    pub fn imm(cpu: &CPU, literal: u8) -> u8 {
+    pub fn imm(&self, literal: u8) -> u8 {
         literal
     }
 
     // opcodes
-    pub fn lda(cpu: &CPU, val: u8) {}
+    pub fn lda(&mut self, val: u8) {
+        self.a = val
+    }
 }
 
 impl<'a> Device for CPU<'a> {
@@ -59,31 +65,5 @@ impl<'a> Device for CPU<'a> {
 
     fn write(&mut self, address: u16, data: u8) {
         println!("CPU writing val {:0x} to {:0x}", data, address)
-    }
-}
-
-type AddressModeFn = fn(&CPU, u8) -> u8;
-type OpcodeFn = fn(&CPU, u8);
-
-pub struct Instruction {
-    opcode_fn: OpcodeFn,
-    address_mode_fn: AddressModeFn,
-    size: u8,
-    duration: u8,
-}
-
-impl Instruction {
-    pub fn new(
-        opcode_fn: OpcodeFn,
-        address_mode_fn: AddressModeFn,
-        duration: u8,
-        size: u8,
-    ) -> Instruction {
-        Instruction {
-            opcode_fn,
-            address_mode_fn,
-            size,
-            duration,
-        }
     }
 }
