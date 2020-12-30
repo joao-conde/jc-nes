@@ -27,32 +27,33 @@ impl<'a> CPU<'a> {
 
     pub fn clock(&mut self) {
         if self.cycles_left == 0 {
-            let instruction = self.bus.read(self.pc).expect("no byte to read at pc");
-            // let instruction = Instruction::from(instruction);
-
-            let (size, duration) = match instruction {
-                0xA9 => {
-                    let data = self.bus.read(self.pc + 1).expect("no byte read at pc + 1");
-                    let data = self.imm(data);
-                    self.lda(data);
-                    (2, 2)
-                }
-                _ => unreachable!(),
-            };
-
+            let opcode = self.bus.read(self.pc).expect("no byte to read at pc");
+            let (size, duration) = self.execute_opcode(opcode);
             self.cycles_left = duration;
             self.pc += size;
         }
         self.cycles_left -= 1;
     }
 
+    fn execute_opcode(&mut self, opcode: u8) -> (u16, u8) {
+        match opcode {
+            0xA9 => {
+                let data = self.bus.read(self.pc + 1).expect("no byte read at pc + 1");
+                let data = self.imm(data);
+                self.lda(data);
+                (2, 2)
+            }
+            _ => unreachable!(),
+        }
+    }
+
     // addressing modes
-    pub fn imm(&self, literal: u8) -> u8 {
+    fn imm(&self, literal: u8) -> u8 {
         literal
     }
 
     // opcodes
-    pub fn lda(&mut self, val: u8) {
+    fn lda(&mut self, val: u8) {
         self.a = val
     }
 }
