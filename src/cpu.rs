@@ -50,6 +50,7 @@ impl<'a> CPU<'a> {
             "0x{:0x} 0x{:0x} A:0x{:0x} X:0x{:0x} Y:0x{:0x} SP:0x{:0x} CYC:{}",
             self.pc, opcode, self.a, self.x, self.y, self.sp, self.cycles_left
         );
+        // TODO dont forget additional clock cycles!
         match opcode {
             0x00 => {
                 self.brk();
@@ -61,7 +62,6 @@ impl<'a> CPU<'a> {
                 self.cycles_left += 6;
             }
             0x18 => {
-                // clc implied 1 2
                 self.clc();
                 self.cycles_left += 2;
             }
