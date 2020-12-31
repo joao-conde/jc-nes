@@ -46,7 +46,7 @@ impl<'a> CPU<'a> {
     }
 
     fn process(&mut self, opcode: u8) {
-        println!("executing opcode 0x{:0x}", opcode);
+        println!("executing opcode 0x{:0x} at 0x{:0x}", opcode, self.pc);
         match opcode {
             0x00 => {
                 //brk implied 1 7
@@ -57,6 +57,11 @@ impl<'a> CPU<'a> {
                 let data = self.idx_ind();
                 self.ora(data);
                 self.cycles_left += 6;
+            }
+            0x4c => {
+                let data = self.abs();
+                self.jmp(data);
+                self.cycles_left += 3;
             }
             0x4e => {
                 self.abs();
@@ -83,13 +88,12 @@ impl<'a> CPU<'a> {
         self.read(self.pc)
     }
 
-    fn abs(&mut self) -> u8 {
-        self.pc += 1;
-        let hi = self.read(self.pc);
+    fn abs(&mut self) -> u16 {
         self.pc += 1;
         let lo = self.read(self.pc);
-        let address = ((hi as u16) << 8) | lo as u16;
-        self.read(address)
+        self.pc += 1;
+        let hi = self.read(self.pc);
+        ((hi as u16) << 8) | lo as u16
     }
 
     fn idx_ind(&mut self) -> u8 {
@@ -107,6 +111,10 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
+    fn jmp(&mut self, operand: u16) {
+        self.pc = operand;
+    }
+    
     fn lda(&mut self, val: u8) {
         self.a = val;
 

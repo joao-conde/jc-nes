@@ -1,16 +1,16 @@
 use super::bus::Device;
 // TODO remove test RAM device
 pub struct RAM {
-    pub mem: [u8; 64 * 1024],
+    pub mem: Vec<u8>,
 }
 
 impl Device for RAM {
     fn read(&self, address: u16) -> u8 {
-        self.mem[address as usize % 10]
+        self.mem[address as usize]
     }
 
     fn write(&mut self, address: u16, data: u8) {
-        self.mem[address as usize % 10] = data;
+        self.mem[address as usize] = data;
     }
 
     fn print(&self) {
