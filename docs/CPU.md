@@ -35,6 +35,7 @@
 - first byte of the instruction specifies duration and size
 - different addressing modes
 - page 10 of http://archive.6502.org/datasheets/rockwell_r650x_r651x.pdf
+- https://gist.github.com/bit-hack/3be16a5333a50732d3eee85c962157a7
 
 1. read byte @ PC location
 2. opcode[byte] -> addressing mode, duration, size
