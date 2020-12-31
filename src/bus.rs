@@ -30,9 +30,14 @@ impl<'a> Bus<'a> {
             }
         }
     }
+
+    pub fn print_devices(&self) {
+        &self.addresses.values().for_each(|device| device.print());
+    }
 }
 
 pub trait Device {
     fn read(&self, address: u16) -> u8;
     fn write(&mut self, address: u16, data: u8);
+    fn print(&self);
 }

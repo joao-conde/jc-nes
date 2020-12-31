@@ -18,7 +18,7 @@ impl<'a> CPU<'a> {
             a: 0x00,
             x: 0x00,
             y: 0x00,
-            pc: 0x0000,
+            pc: 0xC000,
             sp: 0x00,
             sr: 0x00,
             cycles_left: 0,
@@ -35,6 +35,10 @@ impl<'a> CPU<'a> {
         self.cycles_left -= 1;
     }
 
+    pub fn terminated(&self) -> bool {
+        self.pc >= 0xFFFF
+    }
+
     fn read(&self, address: u16) -> u8 {
         self.bus
             .read(address)
@@ -46,6 +50,8 @@ impl<'a> CPU<'a> {
         match opcode {
             0x00 => {
                 //brk implied 1 7
+                self.brk();
+                self.cycles_left += 7;
             }
             0x01 => {
                 let data = self.idx_ind();
@@ -96,6 +102,11 @@ impl<'a> CPU<'a> {
     }
 
     // opcodes
+    fn brk(&mut self) {
+        self.flags.break_cmd = 1;
+        self.pc += 1;
+    }
+
     fn lda(&mut self, val: u8) {
         self.a = val;
 
@@ -141,6 +152,8 @@ impl<'a> Device for CPU<'a> {
     fn write(&mut self, address: u16, data: u8) {
         println!("CPU writing val {:0x} to {:0x}", data, address)
     }
+
+    fn print(&self) {}
 }
 
 #[derive(Default)]

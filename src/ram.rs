@@ -12,4 +12,11 @@ impl Device for RAM {
     fn write(&mut self, address: u16, data: u8) {
         self.mem[address as usize % 10] = data;
     }
+
+    fn print(&self) {
+        println!("---RAM---");
+        for (address, byte) in self.mem.iter().enumerate() {
+            println!("0x{:0x} 0x{:0x}", address, byte);
+        }
+    }
 }
