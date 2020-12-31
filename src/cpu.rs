@@ -9,6 +9,7 @@ pub struct CPU<'a> {
     sr: u8,
     cycles_left: u8,
     bus: &'a Bus<'a>,
+    flags: Flags,
 }
 
 impl<'a> CPU<'a> {
@@ -22,6 +23,7 @@ impl<'a> CPU<'a> {
             sr: 0x00,
             cycles_left: 0,
             bus: bus,
+            flags: Flags::default(),
         }
     }
 
@@ -96,11 +98,23 @@ impl<'a> CPU<'a> {
     // opcodes
     fn lda(&mut self, val: u8) {
         self.a = val;
+
+        self.flags.zero = if self.a == 0 { 1 } else { 0 };
+        self.flags.negative = (self.a & 0x80) >> 7;
+
         self.pc += 1;
     }
 
     fn lsr(&mut self) {
+        self.flags.carry = self.a & 0x01;
+
         self.a = self.a >> 1;
+
+        self.flags.zero = if self.a == 0 { 1 } else { 0 };
+        self.flags.negative = (self.a & 0x80) >> 7;
+
+        self.a = self.a & 0x7F;
+
         self.pc += 1;
     }
 
@@ -110,6 +124,10 @@ impl<'a> CPU<'a> {
 
     fn ora(&mut self, val: u8) {
         self.a = self.a | val;
+
+        self.flags.zero = if self.a == 0 { 1 } else { 0 };
+        self.flags.negative = (self.a & 0x80) >> 7;
+
         self.pc += 1;
     }
 }
@@ -123,4 +141,14 @@ impl<'a> Device for CPU<'a> {
     fn write(&mut self, address: u16, data: u8) {
         println!("CPU writing val {:0x} to {:0x}", data, address)
     }
+}
+
+#[derive(Default)]
+struct Flags {
+    pub carry: u8,
+    pub zero: u8,
+    pub interrupt: u8,
+    pub break_cmd: u8,
+    pub overflow: u8,
+    pub negative: u8,
 }
