@@ -46,7 +46,10 @@ impl<'a> CPU<'a> {
     }
 
     fn process(&mut self, opcode: u8) {
-        println!("0x{:0x} 0x{:0x} A:0x{:0x} X:0x{:0x} Y:0x{:0x} SP:0x{:0x} CYC:{}", self.pc, opcode, self.a, self.x, self.y, self.sp, self.cycles_left);
+        println!(
+            "0x{:0x} 0x{:0x} A:0x{:0x} X:0x{:0x} Y:0x{:0x} SP:0x{:0x} CYC:{}",
+            self.pc, opcode, self.a, self.x, self.y, self.sp, self.cycles_left
+        );
         match opcode {
             0x00 => {
                 self.brk();
@@ -57,13 +60,19 @@ impl<'a> CPU<'a> {
                 self.ora(operand);
                 self.cycles_left += 6;
             }
+            0x18 => {
+                // clc implied 1 2
+                self.clc();
+                self.cycles_left += 2;
+            }
             0x20 => {
                 let operand = self.abs();
                 self.jsr(operand);
                 self.cycles_left += 6;
             }
             0x38 => {
-                // sec imp 1 2
+                self.sec();
+                self.cycles_left += 2;
             }
             0x4C => {
                 let operand = self.abs();
@@ -90,12 +99,21 @@ impl<'a> CPU<'a> {
                 self.lda(operand);
                 self.cycles_left += 2;
             }
+            0xB0 => {
+                let operand = self.relative();
+                println!("relative jump is 0x{:0x}", operand);
+                self.bcs(operand);
+                self.cycles_left += 2;
+            }
             0xEA => {
                 println!("---NOP---");
                 self.nop();
-                self.cycles_left += 2; 
+                self.cycles_left += 2;
             }
-            _ => panic!(format!("invalid opcode 0x{:0x} at 0x{:0x}", opcode, self.pc))
+            _ => panic!(format!(
+                "invalid opcode 0x{:0x} at 0x{:0x}",
+                opcode, self.pc
+            )),
         }
     }
 
@@ -122,15 +140,32 @@ impl<'a> CPU<'a> {
         self.read(address)
     }
 
+    fn relative(&mut self) -> i8 {
+        self.pc += 1;
+        self.read(self.pc) as i8
+    }
+
     fn zp(&mut self) -> u16 {
         self.pc += 1;
         let lo = self.read(self.pc);
         0x0000 | lo as u16
     }
-    
+
     // opcodes
     fn brk(&mut self) {
         self.flags.break_cmd = 1;
+        self.pc += 1;
+    }
+
+    fn bcs(&mut self, operand: i8) {
+        match self.flags.carry {
+            1 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            _ => self.pc += 1,
+        }
+    }
+
+    fn clc(&mut self) {
+        self.flags.carry = 0;
         self.pc += 1;
     }
 
@@ -148,7 +183,7 @@ impl<'a> CPU<'a> {
         self.sp -= 1;
         self.pc = operand;
     }
-    
+
     fn lda(&mut self, operand: u8) {
         self.a = operand;
         self.flags.zero = if self.a == 0 { 1 } else { 0 };
@@ -162,7 +197,7 @@ impl<'a> CPU<'a> {
         self.flags.negative = (self.x & 0x80) >> 7;
         self.pc += 1;
     }
-    
+
     fn lsr(&mut self) {
         self.flags.carry = self.a & 0x01;
         self.a = self.a >> 1;
@@ -180,6 +215,11 @@ impl<'a> CPU<'a> {
         self.a = self.a | operand;
         self.flags.zero = if self.a == 0 { 1 } else { 0 };
         self.flags.negative = (self.a & 0x80) >> 7;
+        self.pc += 1;
+    }
+
+    fn sec(&mut self) {
+        self.flags.carry = 1;
         self.pc += 1;
     }
 

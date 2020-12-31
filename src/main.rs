@@ -13,12 +13,13 @@ fn main() {
     let mut buffer = [0u8; 64 * 1024];
     rom.read(&mut buffer).expect("buffer overflow");
 
-
     // make test rom address start at 0xC000
     // and discard 16-bit header
     let mut mem = Vec::new();
     (0..0xC000).for_each(|_| mem.push(0));
-    buffer[16..0x4F00].into_iter().for_each(|byte| mem.push(*byte));
+    buffer[16..0x4F00]
+        .into_iter()
+        .for_each(|byte| mem.push(*byte));
 
     // connect ram to the bus
     // give bus to CPU to read/write
@@ -28,6 +29,10 @@ fn main() {
     let mut cpu = CPU::new(&bus);
 
     // emulate clock cycle and wait user input
+    for _ in 0..24 {
+        cpu.clock()
+    }
+
     while !cpu.terminated() {
         cpu.clock();
         let mut s = String::new();
