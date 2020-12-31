@@ -6,7 +6,6 @@ pub struct CPU<'a> {
     y: u8,
     pc: u16,
     sp: u16,
-    sr: u8,
     cycles_left: u8,
     bus: &'a Bus<'a>,
     flags: Flags,
@@ -20,7 +19,6 @@ impl<'a> CPU<'a> {
             y: 0x00,
             pc: 0xC000,
             sp: 0xFD,
-            sr: 0x00,
             cycles_left: 0,
             bus: bus,
             flags: Flags::default(),
@@ -61,6 +59,11 @@ impl<'a> CPU<'a> {
                 self.ora(operand);
                 self.cycles_left += 6;
             }
+            0x10 => {
+                let operand = self.relative();
+                self.bpl(operand);
+                self.cycles_left += 2;
+            }
             0x18 => {
                 self.clc();
                 self.cycles_left += 2;
@@ -69,6 +72,11 @@ impl<'a> CPU<'a> {
                 let operand = self.abs();
                 self.jsr(operand);
                 self.cycles_left += 6;
+            }
+            0x24 => {
+                let operand = self.zp();
+                self.bit(operand);
+                self.cycles_left += 3;
             }
             0x38 => {
                 self.sec();
@@ -84,10 +92,30 @@ impl<'a> CPU<'a> {
                 self.lsr();
                 self.cycles_left += 6;
             }
+            0x50 => {
+                let operand = self.relative();
+                self.bvc(operand);
+                self.cycles_left += 2;
+            }
+            0x70 => {
+                let operand = self.relative();
+                self.bvs(operand);
+                self.cycles_left += 2;
+            }
+            0x85 => {
+                let operand = self.zp();
+                self.sta(operand);
+                self.cycles_left += 3;
+            }
             0x86 => {
                 let operand = self.zp();
                 self.stx(operand);
                 self.cycles_left += 3;
+            }
+            0x90 => {
+                let operand = self.relative();
+                self.bcc(operand);
+                self.cycles_left += 2;
             }
             0xA2 => {
                 let operand = self.imm();
@@ -103,6 +131,16 @@ impl<'a> CPU<'a> {
                 let operand = self.relative();
                 println!("relative jump is 0x{:0x}", operand);
                 self.bcs(operand);
+                self.cycles_left += 2;
+            }
+            0xD0 => {
+                let operand = self.relative();
+                self.bne(operand);
+                self.cycles_left += 2;
+            }
+            0xF0 => {
+                let operand = self.relative();
+                self.beq(operand);
                 self.cycles_left += 2;
             }
             0xEA => {
@@ -164,6 +202,56 @@ impl<'a> CPU<'a> {
         }
     }
 
+    fn bcc(&mut self, operand: i8) {
+        match self.flags.carry {
+            0 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            _ => self.pc += 1,
+        }
+    }
+
+    fn beq(&mut self, operand: i8) {
+        match self.flags.zero {
+            1 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            _ => self.pc += 1,
+        }
+    }
+
+    fn bit(&mut self, operand: u16) {
+        let data = self.read(operand);
+        self.flags.zero = if self.a & data == 0 { 1 } else { 0 };
+        self.flags.negative = data & 0x80;
+        self.flags.overflow = data & 0x40;
+        self.pc += 1;
+    }
+
+    fn bne(&mut self, operand: i8) {
+        match self.flags.zero {
+            0 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            _ => self.pc += 1,
+        }
+    }
+
+    fn bpl(&mut self, operand: i8) {
+        match self.flags.negative {
+            0 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            _ => self.pc += 1,
+        }
+    }
+
+    fn bvs(&mut self, operand: i8) {
+        match self.flags.overflow {
+            1 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            _ => self.pc += 1,
+        }
+    }
+
+    fn bvc(&mut self, operand: i8) {
+        match self.flags.overflow {
+            0 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            _ => self.pc += 1,
+        }
+    }
+
     fn clc(&mut self) {
         self.flags.carry = 0;
         self.pc += 1;
@@ -220,6 +308,11 @@ impl<'a> CPU<'a> {
 
     fn sec(&mut self) {
         self.flags.carry = 1;
+        self.pc += 1;
+    }
+
+    fn sta(&mut self, operand: u16) {
+        self.write(operand, self.a);
         self.pc += 1;
     }
 
