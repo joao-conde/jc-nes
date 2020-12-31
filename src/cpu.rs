@@ -5,7 +5,7 @@ pub struct CPU<'a> {
     x: u8,
     y: u8,
     pc: u16,
-    sp: u8,
+    sp: u16,
     sr: u8,
     cycles_left: u8,
     bus: &'a Bus<'a>,
@@ -19,7 +19,7 @@ impl<'a> CPU<'a> {
             x: 0x00,
             y: 0x00,
             pc: 0xC000,
-            sp: 0x00,
+            sp: 0xFD,
             sr: 0x00,
             cycles_left: 0,
             bus: bus,
@@ -46,48 +46,60 @@ impl<'a> CPU<'a> {
     }
 
     fn process(&mut self, opcode: u8) {
-        println!("executing opcode 0x{:0x} at 0x{:0x}", opcode, self.pc);
+        println!("0x{:0x} 0x{:0x} A:0x{:0x} X:0x{:0x} Y:0x{:0x} SP:0x{:0x} CYC:{}", self.pc, opcode, self.a, self.x, self.y, self.sp, self.cycles_left);
         match opcode {
             0x00 => {
-                //brk implied 1 7
                 self.brk();
                 self.cycles_left += 7;
             }
             0x01 => {
-                let data = self.idx_ind();
-                self.ora(data);
+                let operand = self.indx();
+                self.ora(operand);
                 self.cycles_left += 6;
             }
-            0x4c => {
-                let data = self.abs();
-                self.jmp(data);
+            0x20 => {
+                let operand = self.abs();
+                self.jsr(operand);
+                self.cycles_left += 6;
+            }
+            0x38 => {
+                // sec imp 1 2
+            }
+            0x4C => {
+                let operand = self.abs();
+                self.jmp(operand);
                 self.cycles_left += 3;
             }
-            0x4e => {
+            0x4E => {
                 self.abs();
                 self.lsr();
                 self.cycles_left += 6;
             }
+            0x86 => {
+                let operand = self.zp();
+                self.stx(operand);
+                self.cycles_left += 3;
+            }
+            0xA2 => {
+                let operand = self.imm();
+                self.ldx(operand);
+                self.cycles_left += 2;
+            }
             0xA9 => {
-                let data = self.imm();
-                self.lda(data);
+                let operand = self.imm();
+                self.lda(operand);
                 self.cycles_left += 2;
             }
-            _ => {
-                println!("invalid opcode '0x{:0x}'", opcode);
-                self.imm();
+            0xEA => {
+                println!("---NOP---");
                 self.nop();
-                self.cycles_left += 2;
+                self.cycles_left += 2; 
             }
+            _ => panic!(format!("invalid opcode 0x{:0x} at 0x{:0x}", opcode, self.pc))
         }
     }
 
     // addressing modes
-    fn imm(&mut self) -> u8 {
-        self.pc += 1;
-        self.read(self.pc)
-    }
-
     fn abs(&mut self) -> u16 {
         self.pc += 1;
         let lo = self.read(self.pc);
@@ -96,7 +108,12 @@ impl<'a> CPU<'a> {
         ((hi as u16) << 8) | lo as u16
     }
 
-    fn idx_ind(&mut self) -> u8 {
+    fn imm(&mut self) -> u8 {
+        self.pc += 1;
+        self.read(self.pc)
+    }
+
+    fn indx(&mut self) -> u8 {
         self.pc += 1;
         let address = self.read(self.pc) as u16;
         let hi = self.read((address + self.x as u16) & 0x00FF);
@@ -105,6 +122,12 @@ impl<'a> CPU<'a> {
         self.read(address)
     }
 
+    fn zp(&mut self) -> u16 {
+        self.pc += 1;
+        let lo = self.read(self.pc);
+        0x0000 | lo as u16
+    }
+    
     // opcodes
     fn brk(&mut self) {
         self.flags.break_cmd = 1;
@@ -114,26 +137,38 @@ impl<'a> CPU<'a> {
     fn jmp(&mut self, operand: u16) {
         self.pc = operand;
     }
-    
-    fn lda(&mut self, val: u8) {
-        self.a = val;
 
+    fn jsr(&mut self, operand: u16) {
+        let return_address = self.pc - 1;
+        let pcl = (return_address & 0xFF) as u8;
+        let pch = (return_address >> 8) as u8;
+        self.write(self.sp, pcl);
+        self.sp -= 1;
+        self.write(self.sp, pch);
+        self.sp -= 1;
+        self.pc = operand;
+    }
+    
+    fn lda(&mut self, operand: u8) {
+        self.a = operand;
         self.flags.zero = if self.a == 0 { 1 } else { 0 };
         self.flags.negative = (self.a & 0x80) >> 7;
-
         self.pc += 1;
     }
 
+    fn ldx(&mut self, operand: u8) {
+        self.x = operand;
+        self.flags.zero = if self.x == 0 { 1 } else { 0 };
+        self.flags.negative = (self.x & 0x80) >> 7;
+        self.pc += 1;
+    }
+    
     fn lsr(&mut self) {
         self.flags.carry = self.a & 0x01;
-
         self.a = self.a >> 1;
-
         self.flags.zero = if self.a == 0 { 1 } else { 0 };
         self.flags.negative = (self.a & 0x80) >> 7;
-
         self.a = self.a & 0x7F;
-
         self.pc += 1;
     }
 
@@ -141,12 +176,15 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn ora(&mut self, val: u8) {
-        self.a = self.a | val;
-
+    fn ora(&mut self, operand: u8) {
+        self.a = self.a | operand;
         self.flags.zero = if self.a == 0 { 1 } else { 0 };
         self.flags.negative = (self.a & 0x80) >> 7;
+        self.pc += 1;
+    }
 
+    fn stx(&mut self, operand: u16) {
+        self.write(operand, self.x);
         self.pc += 1;
     }
 }
@@ -160,8 +198,6 @@ impl<'a> Device for CPU<'a> {
     fn write(&mut self, address: u16, data: u8) {
         println!("CPU writing val {:0x} to {:0x}", data, address)
     }
-
-    fn print(&self) {}
 }
 
 #[derive(Default)]

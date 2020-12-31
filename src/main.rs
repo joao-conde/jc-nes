@@ -8,37 +8,29 @@ use std::io::Read;
 fn main() {
     println!("Booting up NES...");
 
+    // read test rom
     let mut rom = File::open("roms/nestest.nes").unwrap();
     let mut buffer = [0u8; 64 * 1024];
     rom.read(&mut buffer).expect("buffer overflow");
 
+
+    // make test rom address start at 0xC000
+    // and discard 16-bit header
     let mut mem = Vec::new();
-
     (0..0xC000).for_each(|_| mem.push(0));
+    buffer[16..0x4F00].into_iter().for_each(|byte| mem.push(*byte));
 
-    for byte in buffer[16..0x4F00].into_iter() {
-        mem.push(*byte);
-    }
-    
+    // connect ram to the bus
+    // give bus to CPU to read/write
     let ram = RAM { mem };
-    
     let mut bus = Bus::new();
     bus.connect(0x0000..=0xFFFF, ram);
-
     let mut cpu = CPU::new(&bus);
 
+    // emulate clock cycle and wait user input
     while !cpu.terminated() {
         cpu.clock();
         let mut s = String::new();
         stdin().read_line(&mut s).unwrap();
     }
-    
-    // loop {
-    //     let mut s = String::new();
-    //     stdin().read_line(&mut s).unwrap();
-    //     println!("Clocked...");
-    //     cpu.clock();
-    // }
-
-    // bus.print_devices();
 }
