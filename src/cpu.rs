@@ -11,6 +11,16 @@ pub struct CPU<'a> {
     flags: Flags,
 }
 
+#[derive(Default)]
+struct Flags {
+    pub carry: u8,
+    pub zero: u8,
+    pub interrupt: u8,
+    pub break_cmd: u8,
+    pub overflow: u8,
+    pub negative: u8,
+}
+
 impl<'a> CPU<'a> {
     pub fn new(bus: &'a Bus<'a>) -> CPU<'a> {
         CPU {
@@ -154,42 +164,10 @@ impl<'a> CPU<'a> {
             )),
         }
     }
+}
 
-    // addressing modes
-    fn abs(&mut self) -> u16 {
-        self.pc += 1;
-        let lo = self.read(self.pc);
-        self.pc += 1;
-        let hi = self.read(self.pc);
-        ((hi as u16) << 8) | lo as u16
-    }
-
-    fn imm(&mut self) -> u8 {
-        self.pc += 1;
-        self.read(self.pc)
-    }
-
-    fn indx(&mut self) -> u8 {
-        self.pc += 1;
-        let address = self.read(self.pc) as u16;
-        let hi = self.read((address + self.x as u16) & 0x00FF);
-        let lo = self.read((address + 1 + self.x as u16) & 0x00FF);
-        let address = ((hi as u16) << 8) | lo as u16;
-        self.read(address)
-    }
-
-    fn relative(&mut self) -> i8 {
-        self.pc += 1;
-        self.read(self.pc) as i8
-    }
-
-    fn zp(&mut self) -> u16 {
-        self.pc += 1;
-        let lo = self.read(self.pc);
-        0x0000 | lo as u16
-    }
-
-    // opcodes
+// opcodes
+impl<'a> CPU<'a> {
     fn brk(&mut self) {
         self.flags.break_cmd = 1;
         self.pc += 1;
@@ -322,6 +300,42 @@ impl<'a> CPU<'a> {
     }
 }
 
+// addressing modes
+impl<'a> CPU<'a> {
+    fn abs(&mut self) -> u16 {
+        self.pc += 1;
+        let lo = self.read(self.pc);
+        self.pc += 1;
+        let hi = self.read(self.pc);
+        ((hi as u16) << 8) | lo as u16
+    }
+
+    fn imm(&mut self) -> u8 {
+        self.pc += 1;
+        self.read(self.pc)
+    }
+
+    fn indx(&mut self) -> u8 {
+        self.pc += 1;
+        let address = self.read(self.pc) as u16;
+        let hi = self.read((address + self.x as u16) & 0x00FF);
+        let lo = self.read((address + 1 + self.x as u16) & 0x00FF);
+        let address = ((hi as u16) << 8) | lo as u16;
+        self.read(address)
+    }
+
+    fn relative(&mut self) -> i8 {
+        self.pc += 1;
+        self.read(self.pc) as i8
+    }
+
+    fn zp(&mut self) -> u16 {
+        self.pc += 1;
+        let lo = self.read(self.pc);
+        0x0000 | lo as u16
+    }
+}
+
 impl<'a> Device for CPU<'a> {
     fn read(&self, address: u16) -> u8 {
         println!("CPU reading from {:0x}!", address);
@@ -331,14 +345,4 @@ impl<'a> Device for CPU<'a> {
     fn write(&mut self, address: u16, data: u8) {
         println!("CPU writing val {:0x} to {:0x}", data, address)
     }
-}
-
-#[derive(Default)]
-struct Flags {
-    pub carry: u8,
-    pub zero: u8,
-    pub interrupt: u8,
-    pub break_cmd: u8,
-    pub overflow: u8,
-    pub negative: u8,
 }
