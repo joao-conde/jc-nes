@@ -18,7 +18,7 @@ enum Flag {
     Decimal,
     Interrupt,
     Zero,
-    Carry
+    Carry,
 }
 
 impl<'a> CPU<'a> {
@@ -59,33 +59,41 @@ impl<'a> CPU<'a> {
     }
 
     fn set(&mut self, flag: Flag) {
-        let shift = flag as u8;
-        self.flags |= 1 << shift;
+        self.flags |= 1 << flag as u8
     }
 
     fn unset(&mut self, flag: Flag) {
-        let shift = flag as u8;
-        self.flags &= !(1 << shift);
+        self.flags &= !(1 << flag as u8)
+    }
+
+    fn set_if(&mut self, flag: Flag, condition: bool) {
+        if condition {
+            self.set(flag)
+        }
+    }
+
+    fn unset_if(&mut self, flag: Flag, condition: bool) {
+        if condition {
+            self.unset(flag)
+        }
     }
 
     fn is_set(&mut self, flag: Flag) -> bool {
-        let shift = flag as u8;
-        (self.flags >> shift) & 1 == 1
+        (self.flags >> flag as u8) & 1 == 1
     }
 
-    fn set_or_unset(&mut self, flag: Flag, set_condition: bool) {
-        // this is going to bite me in the ass isnt it?
-        // because the condition may be to set but if false, leave flag as it is
-        match set_condition {
-            true => self.set(flag),
-            false => self.unset(flag),
+    fn change_to(&mut self, flag: Flag, to: u8) {
+        match to {
+            1 => self.set(flag),
+            0 => self.unset(flag),
+            _ => panic!(format!("0b{:b}", to)),
         }
     }
 
     fn process(&mut self, opcode: u8) {
         println!(
-            "0x{:0x} 0x{:0x} A:0x{:0x} X:0x{:0x} Y:0x{:0x} SP:0x{:0x} CYC:{}",
-            self.pc, opcode, self.a, self.x, self.y, self.sp, self.cycles_left
+            "0x{:0x} 0x{:0x} A:0x{:0x} X:0x{:0x} Y:0x{:0x} SP:0x{:0x} Flags:0x{:0x} CYC:{}",
+            self.pc, opcode, self.a, self.x, self.y, self.sp, self.flags, self.cycles_left
         );
         // TODO dont forget additional clock cycles!
         match opcode {
@@ -229,18 +237,18 @@ impl<'a> CPU<'a> {
 impl<'a> CPU<'a> {
     fn and(&mut self, operand: u8) {
         self.a &= operand;
-        self.set_or_unset(Flag::Zero, self.a == 0);
-        self.set_or_unset(Flag::Negative, self.a & 0x80 == 1);
+        self.set_if(Flag::Zero, self.a == 0);
+        self.set_if(Flag::Negative, self.a & 0x80 == 1);
         self.pc += 1;
     }
-    
+
     fn cmp(&mut self, operand: u8) {
-        self.set_or_unset(Flag::Carry, self.a >= operand);
-        self.set_or_unset(Flag::Zero, self.a == operand);
-        self.set_or_unset(Flag::Negative, self.a >= operand);
+        self.set_if(Flag::Carry, self.a >= operand);
+        self.set_if(Flag::Zero, self.a == operand);
+        self.set_if(Flag::Negative, self.a >= operand); // TODO isnt it the same?
         self.pc += 1;
     }
-    
+
     fn brk(&mut self) {
         self.set(Flag::Break);
         self.pc += 1;
@@ -269,9 +277,9 @@ impl<'a> CPU<'a> {
 
     fn bit(&mut self, operand: u16) {
         let data = self.read(operand);
-        self.set_or_unset(Flag::Zero, self.a & data == 0);
-        self.set_or_unset(Flag::Negative, data & 0x80 == 1);
-        self.set_or_unset(Flag::Overflow, data & 0x40 == 1);
+        self.set_if(Flag::Zero, self.a & data == 0);
+        self.change_to(Flag::Negative, (data & 0x80) >> 7);
+        self.change_to(Flag::Overflow, (data & 0x40) >> 6);
         self.pc += 1;
     }
 
@@ -322,23 +330,23 @@ impl<'a> CPU<'a> {
 
     fn lda(&mut self, operand: u8) {
         self.a = operand;
-        self.set_or_unset(Flag::Zero, self.a == 0);
-        self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_if(Flag::Zero, self.a == 0);
+        self.set_if(Flag::Negative, self.a & 0x80 == 1);
         self.pc += 1;
     }
 
     fn ldx(&mut self, operand: u8) {
         self.x = operand;
-        self.set_or_unset(Flag::Zero, self.x == 0);
-        self.set_or_unset(Flag::Negative, (self.x & 0x80) >> 7 == 1);
+        self.set_if(Flag::Zero, self.x == 0);
+        self.set_if(Flag::Negative, self.x & 0x80 == 1);
         self.pc += 1;
     }
 
     fn lsr(&mut self) {
-        self.set_or_unset(Flag::Carry, self.a & 0x01 == 1);
+        self.change_to(Flag::Carry, self.a & 0x01);
         self.a = self.a >> 1;
-        self.set_or_unset(Flag::Zero, self.a == 0);
-        self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_if(Flag::Zero, self.a == 0);
+        self.set_if(Flag::Negative, self.a & 0x80 == 1);
         self.a = self.a & 0x7F;
         self.pc += 1;
     }
@@ -349,8 +357,8 @@ impl<'a> CPU<'a> {
 
     fn ora(&mut self, operand: u8) {
         self.a = self.a | operand;
-        self.set_or_unset(Flag::Zero, self.a == 0);
-        self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_if(Flag::Zero, self.a == 0);
+        self.set_if(Flag::Negative, self.a & 0x80 == 1);
         self.pc += 1;
     }
 
@@ -361,11 +369,11 @@ impl<'a> CPU<'a> {
 
     fn pla(&mut self) {
         self.a = self.pop_stack();
-        self.set_or_unset(Flag::Zero, self.a == 0);
-        self.set_or_unset(Flag::Negative, self.a & 0x80 == 1);
+        self.set_if(Flag::Zero, self.a == 0);
+        self.set_if(Flag::Negative, self.a & 0x80 == 1);
         self.pc += 1;
     }
-    
+
     fn rts(&mut self) {
         let pch = self.pop_stack();
         let pcl = self.pop_stack();
