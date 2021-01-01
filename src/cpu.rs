@@ -11,14 +11,14 @@ pub struct CPU<'a> {
     bus: Bus<'a>,
 }
 
-pub enum Flag {
-    Carry = 6,
-    Zero = 5,
-    Interrupt = 4,
-    Decimal = 3,
-    Break = 2,
-    Overflow = 1,
-    Negative = 0,
+enum Flag {
+    Negative,
+    Overflow,
+    Break,
+    Decimal,
+    Interrupt,
+    Zero,
+    Carry
 }
 
 impl<'a> CPU<'a> {
@@ -74,6 +74,8 @@ impl<'a> CPU<'a> {
     }
 
     fn set_or_unset(&mut self, flag: Flag, set_condition: bool) {
+        // this is going to bite me in the ass isnt it?
+        // because the condition may be to set but if false, leave flag as it is
         match set_condition {
             true => self.set(flag),
             false => self.unset(flag),
@@ -120,6 +122,11 @@ impl<'a> CPU<'a> {
                 self.bit(operand);
                 self.cycles_left += 3;
             }
+            0x29 => {
+                let operand = self.imm();
+                self.and(operand);
+                self.cycles_left += 2;
+            }
             0x38 => {
                 self.sec();
                 self.cycles_left += 2;
@@ -142,6 +149,10 @@ impl<'a> CPU<'a> {
             0x60 => {
                 self.rts();
                 self.cycles_left += 6;
+            }
+            0x68 => {
+                self.pla();
+                self.cycles_left += 4;
             }
             0x70 => {
                 let operand = self.relative();
@@ -182,6 +193,11 @@ impl<'a> CPU<'a> {
                 self.bcs(operand);
                 self.cycles_left += 2;
             }
+            0xC9 => {
+                let operand = self.imm();
+                self.cmp(operand);
+                self.cycles_left += 2;
+            }
             0xD0 => {
                 let operand = self.relative();
                 self.bne(operand);
@@ -193,7 +209,6 @@ impl<'a> CPU<'a> {
                 self.cycles_left += 2;
             }
             0xF8 => {
-                // sed imp 1 2
                 self.sed();
                 self.cycles_left += 2;
             }
@@ -212,6 +227,20 @@ impl<'a> CPU<'a> {
 
 // opcodes
 impl<'a> CPU<'a> {
+    fn and(&mut self, operand: u8) {
+        self.a &= operand;
+        self.set_or_unset(Flag::Zero, self.a == 0);
+        self.set_or_unset(Flag::Negative, self.a & 0x80 == 1);
+        self.pc += 1;
+    }
+    
+    fn cmp(&mut self, operand: u8) {
+        self.set_or_unset(Flag::Carry, self.a >= operand);
+        self.set_or_unset(Flag::Zero, self.a == operand);
+        self.set_or_unset(Flag::Negative, self.a >= operand);
+        self.pc += 1;
+    }
+    
     fn brk(&mut self) {
         self.set(Flag::Break);
         self.pc += 1;
@@ -222,7 +251,6 @@ impl<'a> CPU<'a> {
             true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             false => self.pc += 1,
         }
-        self.pc += 1;
     }
 
     fn bcc(&mut self, operand: i8) {
@@ -230,7 +258,6 @@ impl<'a> CPU<'a> {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
-        self.pc += 1;
     }
 
     fn beq(&mut self, operand: i8) {
@@ -238,7 +265,6 @@ impl<'a> CPU<'a> {
             true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             false => self.pc += 1,
         }
-        self.pc += 1;
     }
 
     fn bit(&mut self, operand: u16) {
@@ -254,7 +280,6 @@ impl<'a> CPU<'a> {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
-        self.pc += 1;
     }
 
     fn bpl(&mut self, operand: i8) {
@@ -262,7 +287,6 @@ impl<'a> CPU<'a> {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
-        self.pc += 1;
     }
 
     fn bvs(&mut self, operand: i8) {
@@ -270,7 +294,6 @@ impl<'a> CPU<'a> {
             true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             false => self.pc += 1,
         }
-        self.pc += 1;
     }
 
     fn bvc(&mut self, operand: i8) {
@@ -278,7 +301,6 @@ impl<'a> CPU<'a> {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
-        self.pc += 1;
     }
 
     fn clc(&mut self) {
@@ -333,9 +355,17 @@ impl<'a> CPU<'a> {
     }
 
     fn php(&mut self) {
+        self.push_stack(self.flags);
         self.pc += 1;
     }
 
+    fn pla(&mut self) {
+        self.a = self.pop_stack();
+        self.set_or_unset(Flag::Zero, self.a == 0);
+        self.set_or_unset(Flag::Negative, self.a & 0x80 == 1);
+        self.pc += 1;
+    }
+    
     fn rts(&mut self) {
         let pch = self.pop_stack();
         let pcl = self.pop_stack();
