@@ -8,6 +8,7 @@ How to:
     - https://github.com/christopherpow/nes-test-roms/blob/master/other/nestest.nes
 
 
+- page 28 https://eater.net/datasheets/w65c02s.pdf
 - https://github.com/skilldrick/6502js
 - http://archive.6502.org/datasheets/rockwell_r650x_r651x.pdf
 - https://skilldrick.github.io/easy6502/
