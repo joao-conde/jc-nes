@@ -120,6 +120,11 @@ impl<'a> CPU<'a> {
                 self.php();
                 self.cycles_left += 3;
             }
+            0x09 => {
+                let operand = self.imm();
+                self.ora(operand);
+                self.cycles_left += 2;
+            }
             0x10 => {
                 let operand = self.relative();
                 self.bpl(operand);
@@ -162,6 +167,12 @@ impl<'a> CPU<'a> {
                 self.pha();
                 self.cycles_left += 3;
             }
+            0x49 => {
+                // eor imm 2 2
+                let operand = self.imm();
+                self.eor(operand);
+                self.cycles_left += 2;
+            }
             0x4C => {
                 let operand = self.abs();
                 self.jmp(operand);
@@ -184,6 +195,11 @@ impl<'a> CPU<'a> {
             0x68 => {
                 self.pla();
                 self.cycles_left += 4;
+            }
+            0x69 => {
+                let operand = self.imm();
+                self.adc(operand);
+                self.cycles_left += 2;
             }
             0x70 => {
                 let operand = self.relative();
@@ -209,6 +225,11 @@ impl<'a> CPU<'a> {
                 self.bcc(operand);
                 self.cycles_left += 2;
             }
+            0xA0 => {
+                let operand = self.imm();
+                self.ldy(operand);
+                self.cycles_left += 2;
+            }
             0xA2 => {
                 let operand = self.imm();
                 self.ldx(operand);
@@ -222,6 +243,15 @@ impl<'a> CPU<'a> {
             0xB0 => {
                 let operand = self.relative();
                 self.bcs(operand);
+                self.cycles_left += 2;
+            }
+            0xB8 => {
+                self.clv();
+                self.cycles_left += 2;
+            }
+            0xC0 => {
+                let operand = self.imm();
+                self.cpy(operand);
                 self.cycles_left += 2;
             }
             0xC9 => {
@@ -262,6 +292,23 @@ impl<'a> CPU<'a> {
 
 // opcodes
 impl<'a> CPU<'a> {
+    fn adc(&mut self, operand: u8) {
+        let overflow = self
+            .a
+            .checked_add(operand)
+            .and_then(|sum| sum.checked_add(self.is_set(Flag::Carry) as u8));
+        self.a = self
+            .a
+            .wrapping_add(operand)
+            .wrapping_add(self.is_set(Flag::Carry) as u8);
+
+        // TODO revisit
+        self.set_or_unset(Flag::Zero, self.a == 0);
+        self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_or_unset(Flag::Overflow, overflow.is_some());
+        self.pc += 1;
+    }
+
     fn and(&mut self, operand: u8) {
         self.a &= operand;
         self.set_or_unset(Flag::Zero, self.a == 0);
@@ -269,16 +316,11 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn cmp(&mut self, operand: u8) {
-        self.set_or_unset(Flag::Carry, self.a >= operand);
-        self.set_or_unset(Flag::Zero, self.a == operand);
-        self.set_or_unset(Flag::Negative, self.a > operand);
-        self.pc += 1;
-    }
-
     fn brk(&mut self) {
-        self.set(Flag::Bit4);
-        self.pc += 1;
+        unreachable!();
+        // self.set(Flag::Bit4);
+        // self.set(Flag::Bit5);
+        // self.pc += 1;
     }
 
     fn bcs(&mut self, operand: i8) {
@@ -355,6 +397,32 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
+    fn clv(&mut self) {
+        self.unset(Flag::Overflow);
+        self.pc += 1;
+    }
+
+    fn cmp(&mut self, operand: u8) {
+        self.set_or_unset(Flag::Carry, self.a >= operand);
+        self.set_or_unset(Flag::Zero, self.a == operand);
+        self.set_or_unset(Flag::Negative, self.a > operand);
+        self.pc += 1;
+    }
+
+    fn cpy(&mut self, operand: u8) {
+        self.set_or_unset(Flag::Carry, self.y >= operand);
+        self.set_or_unset(Flag::Zero, self.y == operand);
+        self.set_or_unset(Flag::Negative, self.y > operand);
+        self.pc += 1;
+    }
+
+    fn eor(&mut self, operand: u8) {
+        self.a ^= operand;
+        self.set_or_unset(Flag::Zero, self.a == 0);
+        self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.pc += 1;
+    }
+
     fn jmp(&mut self, operand: u16) {
         self.pc = operand;
     }
@@ -378,6 +446,13 @@ impl<'a> CPU<'a> {
         self.x = operand;
         self.set_or_unset(Flag::Zero, self.x == 0);
         self.set_or_unset(Flag::Negative, self.x & 0x80 == 1);
+        self.pc += 1;
+    }
+
+    fn ldy(&mut self, operand: u8) {
+        self.y = operand;
+        self.set_or_unset(Flag::Zero, self.y == 0);
+        self.set_or_unset(Flag::Negative, self.y & 0x80 == 1);
         self.pc += 1;
     }
 
@@ -407,7 +482,7 @@ impl<'a> CPU<'a> {
     }
 
     fn php(&mut self) {
-        self.push_stack(self.flags | 0x10);
+        self.push_stack(self.flags | 0x30);
         self.pc += 1;
     }
 
