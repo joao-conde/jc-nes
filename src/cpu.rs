@@ -268,6 +268,16 @@ impl<'a> CPU<'a> {
                 self.cld();
                 self.cycles_left += 2;
             }
+            0xE0 => {
+                let operand = self.imm();
+                self.cpx(operand);
+                self.cycles_left += 2;
+            }
+            0xE9 => {
+                let operand = self.imm();
+                self.sbc(operand);
+                self.cycles_left += 2;
+            }
             0xF0 => {
                 let operand = self.relative();
                 self.beq(operand);
@@ -277,6 +287,7 @@ impl<'a> CPU<'a> {
                 self.sed();
                 self.cycles_left += 2;
             }
+            
             0xEA => {
                 println!("---NOP---");
                 self.nop();
@@ -315,7 +326,7 @@ impl<'a> CPU<'a> {
         self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
-
+    
     fn brk(&mut self) {
         unreachable!();
         // self.set(Flag::Bit4);
@@ -409,6 +420,13 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
+    fn cpx(&mut self, operand: u8) {
+        self.set_or_unset(Flag::Carry, self.x >= operand);
+        self.set_or_unset(Flag::Zero, self.x == operand);
+        self.set_or_unset(Flag::Negative, self.x > operand);
+        self.pc += 1;
+    }
+    
     fn cpy(&mut self, operand: u8) {
         self.set_or_unset(Flag::Carry, self.y >= operand);
         self.set_or_unset(Flag::Zero, self.y == operand);
@@ -505,6 +523,11 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
+    fn sbc(&mut self, operand: u8) {
+        //TODO just like ADC
+        self.pc += 1;
+    }
+    
     fn sec(&mut self) {
         self.set(Flag::Carry);
         self.pc += 1;
