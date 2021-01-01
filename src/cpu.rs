@@ -121,6 +121,10 @@ impl<'a> CPU<'a> {
                 self.bvs(operand);
                 self.cycles_left += 2;
             }
+            0x78 => {
+                self.sei();
+                self.cycles_left += 2;
+            }
             0x85 => {
                 let operand = self.zp();
                 self.sta(operand);
@@ -301,6 +305,10 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
+    fn sei(&mut self) {
+        self.flags.interrupt = 1;
+    }
+    
     fn sta(&mut self, operand: u16) {
         self.write(operand, self.a);
         self.pc += 1;
