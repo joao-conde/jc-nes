@@ -6,19 +6,19 @@ pub struct CPU<'a> {
     y: u8,
     pc: u16,
     sp: u16,
+    flags: u8,
     cycles_left: u8,
-    bus: Bus<'a>,
-    flags: Flags,
+    bus: Bus<'a>
 }
 
-#[derive(Default)]
-struct Flags {
-    pub carry: u8,
-    pub zero: u8,
-    pub interrupt: u8,
-    pub break_cmd: u8,
-    pub overflow: u8,
-    pub negative: u8,
+enum Flag {
+    Carry = 6,
+    Zero = 5,
+    Interrupt = 4,
+    Decimal = 3,
+    Break = 2,
+    Overflow = 1,
+    Negative = 0,
 }
 
 impl<'a> CPU<'a> {
@@ -31,7 +31,7 @@ impl<'a> CPU<'a> {
             sp: 0xFD,
             cycles_left: 0,
             bus: bus,
-            flags: Flags::default(),
+            flags: 0x00,
         }
     }
 
@@ -58,6 +58,20 @@ impl<'a> CPU<'a> {
         data
     }
     
+    fn set_flag(&mut self, flag: Flag) {
+        let pos = flag as u8;
+        let mask = 1 << pos;
+        self.flags |= mask;
+        println!("\n\nset flag {} {}", mask, self.flags);
+    }
+
+    // fn unset_flag(&mut self, flag: Flag) {
+    //     let pos = flag as u8;
+    //     let mask = 0 << pos;
+    //     self.flags |= mask;
+    //     println!("\n\nset flag {} {}", mask, self.flags);
+    // }
+    
     fn process(&mut self, opcode: u8) {
         println!(
             "0x{:0x} 0x{:0x} A:0x{:0x} X:0x{:0x} Y:0x{:0x} SP:0x{:0x} CYC:{}",
@@ -73,6 +87,11 @@ impl<'a> CPU<'a> {
                 let operand = self.indx();
                 self.ora(operand);
                 self.cycles_left += 6;
+            }
+            0x08 => {
+                // php implied 1 3 TODO
+                self.php();
+                self.cycles_left += 3;
             }
             0x10 => {
                 let operand = self.relative();
@@ -165,6 +184,11 @@ impl<'a> CPU<'a> {
                 self.beq(operand);
                 self.cycles_left += 2;
             }
+            0xF8 => {
+                // sed imp 1 2
+                self.sed();
+                self.cycles_left += 2;
+            }
             0xEA => {
                 println!("---NOP---");
                 self.nop();
@@ -181,69 +205,84 @@ impl<'a> CPU<'a> {
 // opcodes
 impl<'a> CPU<'a> {
     fn brk(&mut self) {
-        self.flags.break_cmd = 1;
+        self.set_flag(Flag::Break);
+        // self.flags.break_cmd = 1;
         self.pc += 1;
     }
 
     fn bcs(&mut self, operand: i8) {
-        match self.flags.carry {
-            1 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
-            _ => self.pc += 1,
-        }
+        // match self.flags.carry {
+        //     1 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+        //     _ => self.pc += 1,
+        // }
+        self.pc += 1;
     }
 
     fn bcc(&mut self, operand: i8) {
-        match self.flags.carry {
-            0 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
-            _ => self.pc += 1,
-        }
+        // match self.flags.carry {
+        //     0 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+        //     _ => self.pc += 1,
+        // }
+        self.pc += 1;
+
     }
 
     fn beq(&mut self, operand: i8) {
-        match self.flags.zero {
-            1 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
-            _ => self.pc += 1,
-        }
+        // match self.flags.zero {
+        //     1 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+        //     _ => self.pc += 1,
+        // }
+        self.pc += 1;
+
     }
 
     fn bit(&mut self, operand: u16) {
         let data = self.read(operand);
-        self.flags.zero = if self.a & data == 0 { 1 } else { 0 };
-        self.flags.negative = data & 0x80;
-        self.flags.overflow = data & 0x40;
+        // self.flags.zero = if self.a & data == 0 { 1 } else { 0 };
+        // self.flags.negative = data & 0x80;
+        // self.flags.overflow = data & 0x40;
         self.pc += 1;
     }
 
     fn bne(&mut self, operand: i8) {
-        match self.flags.zero {
-            0 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
-            _ => self.pc += 1,
-        }
+        // match self.flags.zero {
+        //     0 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+        //     _ => self.pc += 1,
+        // }
+        self.pc += 1;
+
     }
 
     fn bpl(&mut self, operand: i8) {
-        match self.flags.negative {
-            0 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
-            _ => self.pc += 1,
-        }
+        // match self.flags.negative {
+        //     0 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+        //     _ => self.pc += 1,
+        // }
+        self.pc += 1;
+
     }
 
     fn bvs(&mut self, operand: i8) {
-        match self.flags.overflow {
-            1 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
-            _ => self.pc += 1,
-        }
+        // match self.flags.overflow {
+        //     1 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+        //     _ => self.pc += 1,
+        // }
+        self.pc += 1;
+
     }
 
     fn bvc(&mut self, operand: i8) {
-        match self.flags.overflow {
-            0 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
-            _ => self.pc += 1,
-        }
+        // match self.flags.overflow {
+        //     0 => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+        //     _ => self.pc += 1,
+        // }
+        self.pc += 1;
+
     }
 
     fn clc(&mut self) {
-        self.flags.carry = 0;
+        // self.flags.carry = 0;
+
         self.pc += 1;
     }
 
@@ -261,23 +300,23 @@ impl<'a> CPU<'a> {
 
     fn lda(&mut self, operand: u8) {
         self.a = operand;
-        self.flags.zero = if self.a == 0 { 1 } else { 0 };
-        self.flags.negative = (self.a & 0x80) >> 7;
+        // self.flags.zero = if self.a == 0 { 1 } else { 0 };
+        // self.flags.negative = (self.a & 0x80) >> 7;
         self.pc += 1;
     }
 
     fn ldx(&mut self, operand: u8) {
         self.x = operand;
-        self.flags.zero = if self.x == 0 { 1 } else { 0 };
-        self.flags.negative = (self.x & 0x80) >> 7;
+        // self.flags.zero = if self.x == 0 { 1 } else { 0 };
+        // self.flags.negative = (self.x & 0x80) >> 7;
         self.pc += 1;
     }
 
     fn lsr(&mut self) {
-        self.flags.carry = self.a & 0x01;
+        // self.flags.carry = self.a & 0x01;
         self.a = self.a >> 1;
-        self.flags.zero = if self.a == 0 { 1 } else { 0 };
-        self.flags.negative = (self.a & 0x80) >> 7;
+        // self.flags.zero = if self.a == 0 { 1 } else { 0 };
+        // self.flags.negative = (self.a & 0x80) >> 7;
         self.a = self.a & 0x7F;
         self.pc += 1;
     }
@@ -288,11 +327,16 @@ impl<'a> CPU<'a> {
 
     fn ora(&mut self, operand: u8) {
         self.a = self.a | operand;
-        self.flags.zero = if self.a == 0 { 1 } else { 0 };
-        self.flags.negative = (self.a & 0x80) >> 7;
+        // self.flags.zero = if self.a == 0 { 1 } else { 0 };
+        // self.flags.negative = (self.a & 0x80) >> 7;
         self.pc += 1;
     }
 
+    fn php(&mut self) {
+
+        self.pc += 1;
+    }
+    
     fn rts(&mut self) {
         let pch = self.pop_stack();
         let pcl = self.pop_stack(); 
@@ -301,12 +345,18 @@ impl<'a> CPU<'a> {
     }
     
     fn sec(&mut self) {
-        self.flags.carry = 1;
+        // self.flags.carry = 1;
         self.pc += 1;
     }
-
+    
+    fn sed(&mut self) {
+        // no decimal mode
+        self.pc += 1;
+    }
+    
     fn sei(&mut self) {
-        self.flags.interrupt = 1;
+        // self.flags.interrupt = 1;
+        self.pc += 1;
     }
     
     fn sta(&mut self, operand: u16) {
