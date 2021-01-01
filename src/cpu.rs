@@ -7,7 +7,7 @@ pub struct CPU<'a> {
     pc: u16,
     sp: u16,
     cycles_left: u8,
-    bus: &'a Bus<'a>,
+    bus: Bus<'a>,
     flags: Flags,
 }
 
@@ -22,7 +22,7 @@ struct Flags {
 }
 
 impl<'a> CPU<'a> {
-    pub fn new(bus: &'a Bus<'a>) -> CPU<'a> {
+    pub fn new(bus: Bus<'a>) -> CPU<'a> {
         CPU {
             a: 0x00,
             x: 0x00,
@@ -47,12 +47,17 @@ impl<'a> CPU<'a> {
         self.pc >= 0xFFFF
     }
 
-    fn read(&self, address: u16) -> u8 {
-        self.bus
-            .read(address)
-            .expect(&format!("no byte to be read at address 0x{:0x}", address))
+    fn push_stack(&mut self, val: u8) {
+        self.write(self.sp, val);
+        self.sp -= 1;
     }
 
+    fn pop_stack(&mut self) -> u8 {
+        self.sp += 1;
+        let data = self.read(self.sp);
+        data
+    }
+    
     fn process(&mut self, opcode: u8) {
         println!(
             "0x{:0x} 0x{:0x} A:0x{:0x} X:0x{:0x} Y:0x{:0x} SP:0x{:0x} CYC:{}",
@@ -107,6 +112,10 @@ impl<'a> CPU<'a> {
                 self.bvc(operand);
                 self.cycles_left += 2;
             }
+            0x60 => {
+                self.rts();
+                self.cycles_left += 6;
+            }
             0x70 => {
                 let operand = self.relative();
                 self.bvs(operand);
@@ -139,7 +148,6 @@ impl<'a> CPU<'a> {
             }
             0xB0 => {
                 let operand = self.relative();
-                println!("relative jump is 0x{:0x}", operand);
                 self.bcs(operand);
                 self.cycles_left += 2;
             }
@@ -240,13 +248,10 @@ impl<'a> CPU<'a> {
     }
 
     fn jsr(&mut self, operand: u16) {
-        let return_address = self.pc - 1;
-        let pcl = (return_address & 0xFF) as u8;
-        let pch = (return_address >> 8) as u8;
-        self.write(self.sp, pcl);
-        self.sp -= 1;
-        self.write(self.sp, pch);
-        self.sp -= 1;
+        let pcl = (self.pc & 0xFF) as u8;
+        let pch = (self.pc >> 8) as u8;
+        self.push_stack(pcl);
+        self.push_stack(pch);
         self.pc = operand;
     }
 
@@ -284,6 +289,13 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
+    fn rts(&mut self) {
+        let pch = self.pop_stack();
+        let pcl = self.pop_stack(); 
+        self.pc = ((pch as u16) << 8) | pcl as u16;
+        self.pc += 1;
+    }
+    
     fn sec(&mut self) {
         self.flags.carry = 1;
         self.pc += 1;
@@ -338,11 +350,12 @@ impl<'a> CPU<'a> {
 
 impl<'a> Device for CPU<'a> {
     fn read(&self, address: u16) -> u8 {
-        println!("CPU reading from {:0x}!", address);
-        self.a
+        self.bus
+            .read(address)
+            .expect(&format!("no byte to be read at address 0x{:0x}", address))
     }
 
     fn write(&mut self, address: u16, data: u8) {
-        println!("CPU writing val {:0x} to {:0x}", data, address)
+        self.bus.write(address, data);
     }
 }

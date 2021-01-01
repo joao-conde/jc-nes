@@ -26,18 +26,9 @@ fn main() {
     let ram = RAM { mem };
     let mut bus = Bus::new();
     bus.connect(0x0000..=0xFFFF, ram);
-    let mut cpu = CPU::new(&bus);
+    let mut cpu = CPU::new(bus);
 
-    // emulate clock cycle and wait user input
-    // for _ in 0..35 {
-    //     cpu.clock()
-    // }
-
-    // while !cpu.terminated() {
-    //     cpu.clock();
-    //     let mut s = String::new();
-    //     stdin().read_line(&mut s).unwrap();
-    // }
+    // emulate clock cycle
     while !cpu.terminated() {
         cpu.clock();
     }
