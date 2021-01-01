@@ -12,13 +12,14 @@ pub struct CPU<'a> {
 }
 
 enum Flag {
-    Negative,
-    Overflow,
-    Break,
-    Decimal,
-    Interrupt,
-    Zero,
-    Carry,
+    Carry = 0,
+    Zero = 1,
+    Interrupt = 2,
+    Decimal = 3,
+    B1 = 4,
+    B2 = 5,
+    Overflow = 6,
+    Negative = 7
 }
 
 impl<'a> CPU<'a> {
@@ -90,10 +91,17 @@ impl<'a> CPU<'a> {
         }
     }
 
+    fn set_or_unset(&mut self, flag: Flag, set_condition: bool) {
+        match set_condition {
+            true => self.set(flag),
+            false => self.unset(flag)
+        }
+    }
+
     fn process(&mut self, opcode: u8) {
         println!(
-            "0x{:0x} 0x{:0x} A:0x{:0x} X:0x{:0x} Y:0x{:0x} SP:0x{:0x} Flags:0x{:0x} CYC:{}",
-            self.pc, opcode, self.a, self.x, self.y, self.sp, self.flags, self.cycles_left
+            "{:0x} {:0x} A:{:0x} X:{:0x} Y:{:0x} P:{:0x} SP:{:0x}",
+            self.pc, opcode, self.a, self.x, self.y, self.flags, self.sp
         );
         // TODO dont forget additional clock cycles!
         match opcode {
@@ -211,6 +219,10 @@ impl<'a> CPU<'a> {
                 self.bne(operand);
                 self.cycles_left += 2;
             }
+            0xD8 => {
+                self.cld();
+                self.cycles_left += 2;
+            }
             0xF0 => {
                 let operand = self.relative();
                 self.beq(operand);
@@ -244,13 +256,13 @@ impl<'a> CPU<'a> {
 
     fn cmp(&mut self, operand: u8) {
         self.set_if(Flag::Carry, self.a >= operand);
-        self.set_if(Flag::Zero, self.a == operand);
+        self.set_or_unset(Flag::Zero, self.a == operand);
         self.set_if(Flag::Negative, self.a >= operand); // TODO isnt it the same?
         self.pc += 1;
     }
 
     fn brk(&mut self) {
-        self.set(Flag::Break);
+        self.set(Flag::B1);
         self.pc += 1;
     }
 
@@ -316,6 +328,11 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
+    fn cld(&mut self) {
+        self.unset(Flag::Decimal);
+        self.pc += 1;
+    }
+    
     fn jmp(&mut self, operand: u16) {
         self.pc = operand;
     }
@@ -330,8 +347,8 @@ impl<'a> CPU<'a> {
 
     fn lda(&mut self, operand: u8) {
         self.a = operand;
-        self.set_if(Flag::Zero, self.a == 0);
-        self.set_if(Flag::Negative, self.a & 0x80 == 1);
+        self.set_or_unset(Flag::Zero, self.a == 0);
+        self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
@@ -363,6 +380,8 @@ impl<'a> CPU<'a> {
     }
 
     fn php(&mut self) {
+        self.set(Flag::B1);
+        self.set(Flag::B2);
         self.push_stack(self.flags);
         self.pc += 1;
     }

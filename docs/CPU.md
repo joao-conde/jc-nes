@@ -50,6 +50,8 @@ How to:
 3. execute
 4. wait, count cycles, complete
 
+LOL:
+https://stackoverflow.com/questions/52017657/6502-emulator-testing-nestest
 
 Thoughts:
 
