@@ -201,8 +201,17 @@ impl<'a> CPU<'a> {
             0x9A => self.execute_instruction(CPU::imp, CPU::txs, 2),
             0x9D => self.execute_instruction(CPU::absx, CPU::sta, 5),
             0xA0 => self.execute_instruction(CPU::imm, CPU::ldy, 2),
+            0xA1 => self.execute_instruction(CPU::indx, CPU::lda, 6),
             0xA2 => self.execute_instruction(CPU::imm, CPU::ldx, 2),
+            0xA4 => self.execute_instruction(CPU::zp, CPU::ldy, 3),
+            0xA5 => self.execute_instruction(CPU::zp, CPU::lda, 3),
+            0xA6 => self.execute_instruction(CPU::zp, CPU::ldx, 3),
+            0xA8 => self.execute_instruction(CPU::imp, CPU::tay, 2),
             0xA9 => self.execute_instruction(CPU::imm, CPU::lda, 2),
+            0xAA => self.execute_instruction(CPU::imp, CPU::tax, 2),
+            0xAC => self.execute_instruction(CPU::abs, CPU::ldy, 4),
+            0xAD => self.execute_instruction(CPU::abs, CPU::lda, 4),
+            0xAE => self.execute_instruction(CPU::abs, CPU::ldx, 4),
             0xB0 => self.execute_instruction(CPU::relative, CPU::bcs, 2),
             0xB8 => self.execute_instruction(CPU::imp, CPU::clv, 2),
             0xC0 => self.execute_instruction(CPU::imm, CPU::cpy, 2),
@@ -539,6 +548,20 @@ impl<'a> CPU<'a> {
 
     fn sty(&mut self, operand: u16) {
         self.write(operand, self.y);
+        self.pc += 1;
+    }
+
+    fn tax(&mut self, _imp: ()) {
+        self.x = self.a;
+        self.set_or_unset_flag(Flag::Zero, self.x == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.x & 0x80) >> 7 == 1);
+        self.pc += 1;
+    }
+
+    fn tay(&mut self, _imp: ()) {
+        self.y = self.a;
+        self.set_or_unset_flag(Flag::Zero, self.y == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.y & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
