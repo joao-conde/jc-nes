@@ -45,7 +45,7 @@ impl<'a> CPU<'a> {
     }
 
     pub fn terminated(&self) -> bool {
-        self.pc >= 0xFFFF
+        self.pc >= 0xFFFF || self.pc == 0xC83A // TODO remove
     }
 
     fn push_stack(&mut self, val: u8) {
@@ -79,6 +79,8 @@ impl<'a> CPU<'a> {
         }
     }
 
+    // TODO simply change to set_flag without condition, just 0 or 1
+    // then i can delete setflag,unsetflag,changeflagto
     fn set_or_unset_flag(&mut self, flag: Flag, set_condition: bool) {
         match set_condition {
             true => self.set_flag(flag),
@@ -92,22 +94,31 @@ impl<'a> CPU<'a> {
         opcode_fn: fn(&mut CPU<'a>, T),
         cycles: u8,
     ) {
-        let operand = address_mode_fn(self);
-        opcode_fn(self, operand);
+        let address = address_mode_fn(self);
+        opcode_fn(self, address);
         self.cycles_left += cycles;
     }
 
     fn process_opcode(&mut self, opcode: u8) {
+        // println!(
+        //     "{:0x} {:0x} A:{:0x} X:{:0x} Y:{:0x} P:{:0x} SP:{:0x}",
+        //     self.pc, opcode, self.a, self.x, self.y, self.flags, self.sp
+        // );
         println!(
-            "{:0x} {:0x} A:{:0x} X:{:0x} Y:{:0x} P:{:0x} SP:{:0x}",
-            self.pc, opcode, self.a, self.x, self.y, self.flags, self.sp
+            "{:0x} {:0x} A:{:0x} P:{:0x} SP:{:0x}",
+            self.pc, opcode, self.a, self.flags, self.sp
         );
         // TODO dont forget additional clock cycles!
         match opcode {
             0x00 => self.execute_opcode(CPU::imp, CPU::brk, 7),
             0x01 => self.execute_opcode(CPU::indx, CPU::ora, 6),
+            0x05 => self.execute_opcode(CPU::zp, CPU::ora, 3),
+            0x06 => self.execute_opcode(CPU::zp, CPU::asl_mem, 5),
             0x08 => self.execute_opcode(CPU::imp, CPU::php, 3),
             0x09 => self.execute_opcode(CPU::imm, CPU::ora, 2),
+            0x0A => self.execute_opcode(CPU::acc, CPU::asl_accum, 2),
+            0x0D => self.execute_opcode(CPU::abs, CPU::ora, 4),
+            0x0E => self.execute_opcode(CPU::abs, CPU::asl_mem, 6),
             0x10 => self.execute_opcode(CPU::relative, CPU::bpl, 2),
             0x18 => self.execute_opcode(CPU::imp, CPU::clc, 2),
             0x20 => self.execute_opcode(CPU::abs, CPU::jsr, 6),
@@ -153,7 +164,8 @@ impl<'a> CPU<'a> {
 
 // opcodes
 impl<'a> CPU<'a> {
-    fn adc(&mut self, operand: u8) {
+    fn adc(&mut self, address: u16) {
+        let operand = self.read(address);
         let overflow = self
             .a
             .checked_add(operand)
@@ -170,14 +182,31 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn and(&mut self, operand: u8) {
+    fn and(&mut self, address: u16) {
+        let operand = self.read(address);
         self.a &= operand;
         self.set_or_unset_flag(Flag::Zero, self.a == 0);
         self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
-    fn brk(&mut self, _: ()) {
+    fn asl_accum(&mut self, _acc: ()) {
+        self.set_or_unset_flag(Flag::Carry, (self.a & 0x80) >> 7 == 1);
+        self.a = self.a << 1 & 0xFF; 
+        self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_or_unset_flag(Flag::Zero, self.a == 0);
+    }
+
+    fn asl_mem(&mut self, address: u16) {
+        let operand = self.read(address);
+        self.set_or_unset_flag(Flag::Carry, (operand & 0x80) >> 7 == 1);
+        let operand = (operand << 1) & 0xFF;
+        self.set_or_unset_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
+        self.set_or_unset_flag(Flag::Zero, operand == 0);
+        self.write(address, operand);
+    }
+    
+    fn brk(&mut self, _imp: ()) {
         unreachable!();
         // self.set(Flag::B1);
         // self.set(Flag::B2);
@@ -205,11 +234,11 @@ impl<'a> CPU<'a> {
         }
     }
 
-    fn bit(&mut self, operand: u16) {
-        let data = self.read(operand);
-        self.set_or_unset_flag(Flag::Zero, self.a & data == 0);
-        self.change_flag_to(Flag::Negative, (data & 0x80) >> 7);
-        self.change_flag_to(Flag::Overflow, (data & 0x40) >> 6);
+    fn bit(&mut self, address: u16) {
+        let operand = self.read(address);
+        self.set_or_unset_flag(Flag::Zero, self.a & operand == 0);
+        self.change_flag_to(Flag::Negative, (operand & 0x80) >> 7);
+        self.change_flag_to(Flag::Overflow, (operand & 0x40) >> 6);
         self.pc += 1;
     }
 
@@ -248,43 +277,47 @@ impl<'a> CPU<'a> {
         }
     }
 
-    fn clc(&mut self, _: ()) {
+    fn clc(&mut self, _imp: ()) {
         self.unset_flag(Flag::Carry);
         self.pc += 1;
     }
 
-    fn cld(&mut self, _: ()) {
+    fn cld(&mut self, _imp: ()) {
         self.unset_flag(Flag::Decimal);
         self.pc += 1;
     }
 
-    fn clv(&mut self, _: ()) {
+    fn clv(&mut self, _imp: ()) {
         self.unset_flag(Flag::Overflow);
         self.pc += 1;
     }
 
-    fn cmp(&mut self, operand: u8) {
+    fn cmp(&mut self, address: u16) {
+        let operand = self.read(address);
         self.set_or_unset_flag(Flag::Carry, self.a >= operand);
         self.set_or_unset_flag(Flag::Zero, self.a == operand);
         self.set_or_unset_flag(Flag::Negative, self.a > operand);
         self.pc += 1;
     }
 
-    fn cpx(&mut self, operand: u8) {
+    fn cpx(&mut self, address: u16) {
+        let operand = self.read(address);
         self.set_or_unset_flag(Flag::Carry, self.x >= operand);
         self.set_or_unset_flag(Flag::Zero, self.x == operand);
         self.set_or_unset_flag(Flag::Negative, self.x > operand);
         self.pc += 1;
     }
 
-    fn cpy(&mut self, operand: u8) {
+    fn cpy(&mut self, address: u16) {
+        let operand = self.read(address);
         self.set_or_unset_flag(Flag::Carry, self.y >= operand);
         self.set_or_unset_flag(Flag::Zero, self.y == operand);
         self.set_or_unset_flag(Flag::Negative, self.y > operand);
         self.pc += 1;
     }
 
-    fn eor(&mut self, operand: u8) {
+    fn eor(&mut self, address: u16) {
+        let operand = self.read(address);
         self.a ^= operand;
         self.set_or_unset_flag(Flag::Zero, self.a == 0);
         self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
@@ -303,21 +336,24 @@ impl<'a> CPU<'a> {
         self.pc = operand;
     }
 
-    fn lda(&mut self, operand: u8) {
+    fn lda(&mut self, address: u16) {
+        let operand = self.read(address);
         self.a = operand;
         self.set_or_unset_flag(Flag::Zero, self.a == 0);
         self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
-    fn ldx(&mut self, operand: u8) {
+    fn ldx(&mut self, address: u16) {
+        let operand = self.read(address);
         self.x = operand;
         self.set_or_unset_flag(Flag::Zero, self.x == 0);
         self.set_or_unset_flag(Flag::Negative, self.x & 0x80 == 1);
         self.pc += 1;
     }
 
-    fn ldy(&mut self, operand: u8) {
+    fn ldy(&mut self, address: u16) {
+        let operand = self.read(address);
         self.y = operand;
         self.set_or_unset_flag(Flag::Zero, self.y == 0);
         self.set_or_unset_flag(Flag::Negative, self.y & 0x80 == 1);
@@ -333,63 +369,67 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn nop(&mut self, _: ()) {
+    fn nop(&mut self, _imp: ()) {
         println!("---NOP---");
         self.pc += 1;
     }
 
-    fn ora(&mut self, operand: u8) {
+    fn ora(&mut self, address: u16) {
+        let operand = self.read(address);
         self.a = self.a | operand;
         self.set_or_unset_flag(Flag::Zero, self.a == 0);
         self.set_or_unset_flag(Flag::Negative, self.a & 0x80 == 1);
         self.pc += 1;
     }
 
-    fn pha(&mut self, _: ()) {
+    fn pha(&mut self, _imp: ()) {
         self.push_stack(self.a);
         self.pc += 1;
     }
 
-    fn php(&mut self, _: ()) {
+    fn php(&mut self, _imp: ()) {
+        self.set_flag(Flag::B1);
         self.push_stack(self.flags | 0x30);
         self.pc += 1;
     }
 
-    fn pla(&mut self, _: ()) {
+    fn pla(&mut self, _imp: ()) {
         self.a = self.pop_stack();
         self.set_or_unset_flag(Flag::Zero, self.a == 0);
         self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
-    fn plp(&mut self, _: ()) {
+    fn plp(&mut self, _imp: ()) {
         self.flags = self.pop_stack();
+        self.set_flag(Flag::B2);
         self.pc += 1;
     }
 
-    fn rts(&mut self, _: ()) {
+    fn rts(&mut self, _imp: ()) {
         let pch = self.pop_stack();
         let pcl = self.pop_stack();
         self.pc = ((pch as u16) << 8) | pcl as u16;
         self.pc += 1;
     }
 
-    fn sbc(&mut self, operand: u8) {
+    fn sbc(&mut self, address: u16) {
+        let operand = self.read(address);
         //TODO just like ADC
         self.pc += 1;
     }
 
-    fn sec(&mut self, _: ()) {
+    fn sec(&mut self, _imp: ()) {
         self.set_flag(Flag::Carry);
         self.pc += 1;
     }
 
-    fn sed(&mut self, _: ()) {
+    fn sed(&mut self, _imp: ()) {
         self.set_flag(Flag::Decimal);
         self.pc += 1;
     }
 
-    fn sei(&mut self, _: ()) {
+    fn sei(&mut self, _imp: ()) {
         self.set_flag(Flag::Interrupt);
         self.pc += 1;
     }
@@ -406,7 +446,7 @@ impl<'a> CPU<'a> {
 }
 
 // addressing modes
-impl<'a> CPU<'a> {
+impl<'a> CPU<'a> {    
     fn abs(&mut self) -> u16 {
         self.pc += 1;
         let lo = self.read(self.pc);
@@ -415,22 +455,25 @@ impl<'a> CPU<'a> {
         ((hi as u16) << 8) | lo as u16
     }
 
-    fn imm(&mut self) -> u8 {
+    fn acc(&mut self) {
+        ()
+    }
+
+    fn imm(&mut self) -> u16 {
         self.pc += 1;
-        self.read(self.pc)
+        self.pc
     }
 
     fn imp(&mut self) {
         ()
     }
 
-    fn indx(&mut self) -> u8 {
+    fn indx(&mut self) -> u16 {
         self.pc += 1;
         let address = self.read(self.pc) as u16;
         let hi = self.read((address + self.x as u16) & 0x00FF);
         let lo = self.read((address + 1 + self.x as u16) & 0x00FF);
-        let address = ((hi as u16) << 8) | lo as u16;
-        self.read(address)
+        ((hi as u16) << 8) | lo as u16
     }
 
     fn relative(&mut self) -> i8 {
@@ -440,8 +483,7 @@ impl<'a> CPU<'a> {
 
     fn zp(&mut self) -> u16 {
         self.pc += 1;
-        let lo = self.read(self.pc);
-        0x0000 | lo as u16
+        self.read(self.pc) as u16
     }
 }
 
