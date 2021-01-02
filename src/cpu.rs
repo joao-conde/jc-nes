@@ -108,7 +108,7 @@ impl<'a> CPU<'a> {
             "{:0x} {:0x} A:{:0x} P:{:0x} SP:{:0x}",
             self.pc, opcode, self.a, self.flags, self.sp
         );
-        // TODO dont forget additional clock cycles! (but do i need to lol)
+        // TODO dont forget additional clock cycles!
         match opcode {
             0x00 => self.execute_instruction(CPU::imp, CPU::brk, 7),
             0x01 => self.execute_instruction(CPU::indx, CPU::ora, 6),
