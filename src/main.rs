@@ -2,7 +2,6 @@ use jc_nes::bus::Bus;
 use jc_nes::cpu::CPU;
 use jc_nes::ram::RAM;
 use std::fs::File;
-use std::io::stdin;
 use std::io::Read;
 
 fn main() {
@@ -31,6 +30,7 @@ fn main() {
     // emulate clock cycle
     while !cpu.terminated() {
         cpu.clock();
+        // use std::io::stdin;
         // let mut s = String::new();
         // stdin().read_line(&mut s).unwrap();
     }

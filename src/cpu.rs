@@ -16,8 +16,8 @@ enum Flag {
     Zero = 1,
     Interrupt = 2,
     Decimal = 3,
-    Bit4 = 4,
-    Bit5 = 5,
+    B1 = 4,
+    B2 = 5,
     Overflow = 6,
     Negative = 7,
 }
@@ -39,7 +39,7 @@ impl<'a> CPU<'a> {
     pub fn clock(&mut self) {
         if self.cycles_left == 0 {
             let opcode = self.read(self.pc);
-            self.process(opcode);
+            self.process_opcode(opcode);
         }
         self.cycles_left -= 1;
     }
@@ -59,87 +59,34 @@ impl<'a> CPU<'a> {
         data
     }
 
-    fn set(&mut self, flag: Flag) {
+    fn set_flag(&mut self, flag: Flag) {
         self.flags |= 1 << flag as u8
     }
 
-    fn unset(&mut self, flag: Flag) {
+    fn unset_flag(&mut self, flag: Flag) {
         self.flags &= !(1 << flag as u8)
     }
 
-    fn is_set(&mut self, flag: Flag) -> bool {
+    fn is_flag_set(&mut self, flag: Flag) -> bool {
         (self.flags >> flag as u8) & 1 == 1
     }
 
-    fn change_to(&mut self, flag: Flag, to: u8) {
+    fn change_flag_to(&mut self, flag: Flag, to: u8) {
         match to {
-            1 => self.set(flag),
-            0 => self.unset(flag),
+            1 => self.set_flag(flag),
+            0 => self.unset_flag(flag),
             _ => panic!(format!("can't set flag to {:b} (only 0 or 1)", to)),
         }
     }
 
-    fn set_or_unset(&mut self, flag: Flag, set_condition: bool) {
+    fn set_or_unset_flag(&mut self, flag: Flag, set_condition: bool) {
         match set_condition {
-            true => self.set(flag),
-            false => self.unset(flag),
+            true => self.set_flag(flag),
+            false => self.unset_flag(flag),
         }
     }
 
-    fn process(&mut self, opcode: u8) {
-        println!(
-            "{:0x} {:0x} A:{:0x} X:{:0x} Y:{:0x} P:{:0x} SP:{:0x}",
-            self.pc, opcode, self.a, self.x, self.y, self.flags, self.sp
-        );
-        // TODO dont forget additional clock cycles!
-        match opcode {
-            0x00 => self.execute(CPU::imp, CPU::brk, 7),
-            0x01 => self.execute(CPU::indx, CPU::ora, 6),
-            0x08 => self.execute(CPU::imp, CPU::php, 3),
-            0x09 => self.execute(CPU::imm, CPU::ora, 2),
-            0x10 => self.execute(CPU::relative, CPU::bpl, 2),
-            0x18 => self.execute(CPU::imp, CPU::clc, 2),
-            0x20 => self.execute(CPU::abs, CPU::jsr, 6),
-            0x24 => self.execute(CPU::zp, CPU::bit, 3),
-            0x28 => self.execute(CPU::imp, CPU::plp, 4),
-            0x29 => self.execute(CPU::imm, CPU::and, 2),
-            0x30 => self.execute(CPU::relative, CPU::bmi, 2),
-            0x38 => self.execute(CPU::imp, CPU::sec, 2),
-            0x48 => self.execute(CPU::imp, CPU::pha, 3),
-            0x49 => self.execute(CPU::imm, CPU::eor, 2),
-            0x4C => self.execute(CPU::abs, CPU::jmp, 3),
-            0x4E => self.execute(CPU::abs, CPU::lsr, 6),
-            0x50 => self.execute(CPU::relative, CPU::bvc, 2),
-            0x60 => self.execute(CPU::imp, CPU::rts, 6),
-            0x68 => self.execute(CPU::imp, CPU::pla, 4),
-            0x69 => self.execute(CPU::imm, CPU::adc, 2),
-            0x70 => self.execute(CPU::relative, CPU::bvs, 2),
-            0x78 => self.execute(CPU::imp, CPU::sei, 2),
-            0x85 => self.execute(CPU::zp, CPU::sta, 3),
-            0x86 => self.execute(CPU::zp, CPU::stx, 3),
-            0x90 => self.execute(CPU::relative, CPU::bcc, 2),
-            0xA0 => self.execute(CPU::imm, CPU::ldy, 2),
-            0xA2 => self.execute(CPU::imm, CPU::ldx, 2),
-            0xA9 => self.execute(CPU::imm, CPU::lda, 2),
-            0xB0 => self.execute(CPU::relative, CPU::bcs, 2),
-            0xB8 => self.execute(CPU::imp, CPU::clv, 2),
-            0xC0 => self.execute(CPU::imm, CPU::cpy, 2),
-            0xC9 => self.execute(CPU::imm, CPU::cmp, 2),
-            0xD0 => self.execute(CPU::relative, CPU::bne, 2),
-            0xD8 => self.execute(CPU::imp, CPU::cld, 2),
-            0xE0 => self.execute(CPU::imm, CPU::cpx, 2),
-            0xE9 => self.execute(CPU::imm, CPU::sbc, 2),
-            0xF0 => self.execute(CPU::relative, CPU::beq, 2),
-            0xF8 => self.execute(CPU::imp, CPU::sed, 2),
-            0xEA => self.execute(CPU::imp, CPU::nop, 2),
-            _ => panic!(format!(
-                "invalid opcode 0x{:0x} at 0x{:0x}",
-                opcode, self.pc
-            )),
-        }
-    }
-
-    fn execute<T>(
+    fn execute_opcode<T>(
         &mut self,
         address_mode_fn: fn(&mut CPU<'a>) -> T,
         opcode_fn: fn(&mut CPU<'a>, T),
@@ -149,6 +96,59 @@ impl<'a> CPU<'a> {
         opcode_fn(self, operand);
         self.cycles_left += cycles;
     }
+
+    fn process_opcode(&mut self, opcode: u8) {
+        println!(
+            "{:0x} {:0x} A:{:0x} X:{:0x} Y:{:0x} P:{:0x} SP:{:0x}",
+            self.pc, opcode, self.a, self.x, self.y, self.flags, self.sp
+        );
+        // TODO dont forget additional clock cycles!
+        match opcode {
+            0x00 => self.execute_opcode(CPU::imp, CPU::brk, 7),
+            0x01 => self.execute_opcode(CPU::indx, CPU::ora, 6),
+            0x08 => self.execute_opcode(CPU::imp, CPU::php, 3),
+            0x09 => self.execute_opcode(CPU::imm, CPU::ora, 2),
+            0x10 => self.execute_opcode(CPU::relative, CPU::bpl, 2),
+            0x18 => self.execute_opcode(CPU::imp, CPU::clc, 2),
+            0x20 => self.execute_opcode(CPU::abs, CPU::jsr, 6),
+            0x24 => self.execute_opcode(CPU::zp, CPU::bit, 3),
+            0x28 => self.execute_opcode(CPU::imp, CPU::plp, 4),
+            0x29 => self.execute_opcode(CPU::imm, CPU::and, 2),
+            0x30 => self.execute_opcode(CPU::relative, CPU::bmi, 2),
+            0x38 => self.execute_opcode(CPU::imp, CPU::sec, 2),
+            0x48 => self.execute_opcode(CPU::imp, CPU::pha, 3),
+            0x49 => self.execute_opcode(CPU::imm, CPU::eor, 2),
+            0x4C => self.execute_opcode(CPU::abs, CPU::jmp, 3),
+            0x4E => self.execute_opcode(CPU::abs, CPU::lsr, 6),
+            0x50 => self.execute_opcode(CPU::relative, CPU::bvc, 2),
+            0x60 => self.execute_opcode(CPU::imp, CPU::rts, 6),
+            0x68 => self.execute_opcode(CPU::imp, CPU::pla, 4),
+            0x69 => self.execute_opcode(CPU::imm, CPU::adc, 2),
+            0x70 => self.execute_opcode(CPU::relative, CPU::bvs, 2),
+            0x78 => self.execute_opcode(CPU::imp, CPU::sei, 2),
+            0x85 => self.execute_opcode(CPU::zp, CPU::sta, 3),
+            0x86 => self.execute_opcode(CPU::zp, CPU::stx, 3),
+            0x90 => self.execute_opcode(CPU::relative, CPU::bcc, 2),
+            0xA0 => self.execute_opcode(CPU::imm, CPU::ldy, 2),
+            0xA2 => self.execute_opcode(CPU::imm, CPU::ldx, 2),
+            0xA9 => self.execute_opcode(CPU::imm, CPU::lda, 2),
+            0xB0 => self.execute_opcode(CPU::relative, CPU::bcs, 2),
+            0xB8 => self.execute_opcode(CPU::imp, CPU::clv, 2),
+            0xC0 => self.execute_opcode(CPU::imm, CPU::cpy, 2),
+            0xC9 => self.execute_opcode(CPU::imm, CPU::cmp, 2),
+            0xD0 => self.execute_opcode(CPU::relative, CPU::bne, 2),
+            0xD8 => self.execute_opcode(CPU::imp, CPU::cld, 2),
+            0xE0 => self.execute_opcode(CPU::imm, CPU::cpx, 2),
+            0xE9 => self.execute_opcode(CPU::imm, CPU::sbc, 2),
+            0xF0 => self.execute_opcode(CPU::relative, CPU::beq, 2),
+            0xF8 => self.execute_opcode(CPU::imp, CPU::sed, 2),
+            0xEA => self.execute_opcode(CPU::imp, CPU::nop, 2),
+            _ => panic!(format!(
+                "invalid opcode 0x{:0x} at 0x{:0x}",
+                opcode, self.pc
+            )),
+        }
+    }
 }
 
 // opcodes
@@ -157,49 +157,49 @@ impl<'a> CPU<'a> {
         let overflow = self
             .a
             .checked_add(operand)
-            .and_then(|sum| sum.checked_add(self.is_set(Flag::Carry) as u8));
+            .and_then(|sum| sum.checked_add(self.is_flag_set(Flag::Carry) as u8));
         self.a = self
             .a
             .wrapping_add(operand)
-            .wrapping_add(self.is_set(Flag::Carry) as u8);
+            .wrapping_add(self.is_flag_set(Flag::Carry) as u8);
 
         // TODO revisit
-        self.set_or_unset(Flag::Zero, self.a == 0);
-        self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
-        self.set_or_unset(Flag::Overflow, overflow.is_some());
+        self.set_or_unset_flag(Flag::Zero, self.a == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_or_unset_flag(Flag::Overflow, overflow.is_some());
         self.pc += 1;
     }
 
     fn and(&mut self, operand: u8) {
         self.a &= operand;
-        self.set_or_unset(Flag::Zero, self.a == 0);
-        self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_or_unset_flag(Flag::Zero, self.a == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn brk(&mut self, _: ()) {
         unreachable!();
-        // self.set(Flag::Bit4);
-        // self.set(Flag::Bit5);
+        // self.set(Flag::B1);
+        // self.set(Flag::B2);
         // self.pc += 1;
     }
 
     fn bcs(&mut self, operand: i8) {
-        match self.is_set(Flag::Carry) {
+        match self.is_flag_set(Flag::Carry) {
             true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             false => self.pc += 1,
         }
     }
 
     fn bcc(&mut self, operand: i8) {
-        match self.is_set(Flag::Carry) {
+        match self.is_flag_set(Flag::Carry) {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
     }
 
     fn beq(&mut self, operand: i8) {
-        match self.is_set(Flag::Zero) {
+        match self.is_flag_set(Flag::Zero) {
             true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             false => self.pc += 1,
         }
@@ -207,87 +207,87 @@ impl<'a> CPU<'a> {
 
     fn bit(&mut self, operand: u16) {
         let data = self.read(operand);
-        self.set_or_unset(Flag::Zero, self.a & data == 0);
-        self.change_to(Flag::Negative, (data & 0x80) >> 7);
-        self.change_to(Flag::Overflow, (data & 0x40) >> 6);
+        self.set_or_unset_flag(Flag::Zero, self.a & data == 0);
+        self.change_flag_to(Flag::Negative, (data & 0x80) >> 7);
+        self.change_flag_to(Flag::Overflow, (data & 0x40) >> 6);
         self.pc += 1;
     }
 
     fn bmi(&mut self, operand: i8) {
-        match self.is_set(Flag::Negative) {
+        match self.is_flag_set(Flag::Negative) {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
     }
 
     fn bne(&mut self, operand: i8) {
-        match self.is_set(Flag::Zero) {
+        match self.is_flag_set(Flag::Zero) {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
     }
 
     fn bpl(&mut self, operand: i8) {
-        match self.is_set(Flag::Negative) {
+        match self.is_flag_set(Flag::Negative) {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
     }
 
     fn bvs(&mut self, operand: i8) {
-        match self.is_set(Flag::Overflow) {
+        match self.is_flag_set(Flag::Overflow) {
             true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             false => self.pc += 1,
         }
     }
 
     fn bvc(&mut self, operand: i8) {
-        match self.is_set(Flag::Overflow) {
+        match self.is_flag_set(Flag::Overflow) {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
     }
 
     fn clc(&mut self, _: ()) {
-        self.unset(Flag::Carry);
+        self.unset_flag(Flag::Carry);
         self.pc += 1;
     }
 
     fn cld(&mut self, _: ()) {
-        self.unset(Flag::Decimal);
+        self.unset_flag(Flag::Decimal);
         self.pc += 1;
     }
 
     fn clv(&mut self, _: ()) {
-        self.unset(Flag::Overflow);
+        self.unset_flag(Flag::Overflow);
         self.pc += 1;
     }
 
     fn cmp(&mut self, operand: u8) {
-        self.set_or_unset(Flag::Carry, self.a >= operand);
-        self.set_or_unset(Flag::Zero, self.a == operand);
-        self.set_or_unset(Flag::Negative, self.a > operand);
+        self.set_or_unset_flag(Flag::Carry, self.a >= operand);
+        self.set_or_unset_flag(Flag::Zero, self.a == operand);
+        self.set_or_unset_flag(Flag::Negative, self.a > operand);
         self.pc += 1;
     }
 
     fn cpx(&mut self, operand: u8) {
-        self.set_or_unset(Flag::Carry, self.x >= operand);
-        self.set_or_unset(Flag::Zero, self.x == operand);
-        self.set_or_unset(Flag::Negative, self.x > operand);
+        self.set_or_unset_flag(Flag::Carry, self.x >= operand);
+        self.set_or_unset_flag(Flag::Zero, self.x == operand);
+        self.set_or_unset_flag(Flag::Negative, self.x > operand);
         self.pc += 1;
     }
 
     fn cpy(&mut self, operand: u8) {
-        self.set_or_unset(Flag::Carry, self.y >= operand);
-        self.set_or_unset(Flag::Zero, self.y == operand);
-        self.set_or_unset(Flag::Negative, self.y > operand);
+        self.set_or_unset_flag(Flag::Carry, self.y >= operand);
+        self.set_or_unset_flag(Flag::Zero, self.y == operand);
+        self.set_or_unset_flag(Flag::Negative, self.y > operand);
         self.pc += 1;
     }
 
     fn eor(&mut self, operand: u8) {
         self.a ^= operand;
-        self.set_or_unset(Flag::Zero, self.a == 0);
-        self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_or_unset_flag(Flag::Zero, self.a == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
@@ -305,30 +305,30 @@ impl<'a> CPU<'a> {
 
     fn lda(&mut self, operand: u8) {
         self.a = operand;
-        self.set_or_unset(Flag::Zero, self.a == 0);
-        self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_or_unset_flag(Flag::Zero, self.a == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn ldx(&mut self, operand: u8) {
         self.x = operand;
-        self.set_or_unset(Flag::Zero, self.x == 0);
-        self.set_or_unset(Flag::Negative, self.x & 0x80 == 1);
+        self.set_or_unset_flag(Flag::Zero, self.x == 0);
+        self.set_or_unset_flag(Flag::Negative, self.x & 0x80 == 1);
         self.pc += 1;
     }
 
     fn ldy(&mut self, operand: u8) {
         self.y = operand;
-        self.set_or_unset(Flag::Zero, self.y == 0);
-        self.set_or_unset(Flag::Negative, self.y & 0x80 == 1);
+        self.set_or_unset_flag(Flag::Zero, self.y == 0);
+        self.set_or_unset_flag(Flag::Negative, self.y & 0x80 == 1);
         self.pc += 1;
     }
 
     fn lsr(&mut self, operand: u16) {
-        self.change_to(Flag::Carry, self.a & 0x01);
+        self.change_flag_to(Flag::Carry, self.a & 0x01);
         self.a = self.a >> 1;
-        self.set_or_unset(Flag::Zero, self.a == 0);
-        self.set_or_unset(Flag::Negative, self.a & 0x80 == 1);
+        self.set_or_unset_flag(Flag::Zero, self.a == 0);
+        self.set_or_unset_flag(Flag::Negative, self.a & 0x80 == 1);
         self.a = self.a & 0x7F;
         self.pc += 1;
     }
@@ -340,8 +340,8 @@ impl<'a> CPU<'a> {
 
     fn ora(&mut self, operand: u8) {
         self.a = self.a | operand;
-        self.set_or_unset(Flag::Zero, self.a == 0);
-        self.set_or_unset(Flag::Negative, self.a & 0x80 == 1);
+        self.set_or_unset_flag(Flag::Zero, self.a == 0);
+        self.set_or_unset_flag(Flag::Negative, self.a & 0x80 == 1);
         self.pc += 1;
     }
 
@@ -357,8 +357,8 @@ impl<'a> CPU<'a> {
 
     fn pla(&mut self, _: ()) {
         self.a = self.pop_stack();
-        self.set_or_unset(Flag::Zero, self.a == 0);
-        self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_or_unset_flag(Flag::Zero, self.a == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
@@ -380,17 +380,17 @@ impl<'a> CPU<'a> {
     }
 
     fn sec(&mut self, _: ()) {
-        self.set(Flag::Carry);
+        self.set_flag(Flag::Carry);
         self.pc += 1;
     }
 
     fn sed(&mut self, _: ()) {
-        self.set(Flag::Decimal);
+        self.set_flag(Flag::Decimal);
         self.pc += 1;
     }
 
     fn sei(&mut self, _: ()) {
-        self.set(Flag::Interrupt);
+        self.set_flag(Flag::Interrupt);
         self.pc += 1;
     }
 
