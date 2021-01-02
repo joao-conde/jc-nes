@@ -67,18 +67,6 @@ impl<'a> CPU<'a> {
         self.flags &= !(1 << flag as u8)
     }
 
-    fn set_if(&mut self, flag: Flag, condition: bool) {
-        if condition {
-            self.set(flag)
-        }
-    }
-
-    fn unset_if(&mut self, flag: Flag, condition: bool) {
-        if condition {
-            self.unset(flag)
-        }
-    }
-
     fn is_set(&mut self, flag: Flag) -> bool {
         (self.flags >> flag as u8) & 1 == 1
     }
@@ -99,11 +87,10 @@ impl<'a> CPU<'a> {
     }
 
     fn process(&mut self, opcode: u8) {
-        // println!(
-        //     "{:0x} {:0x} A:{:0x} X:{:0x} Y:{:0x} P:{:0x} SP:{:0x}",
-        //     self.pc, opcode, self.a, self.x, self.y, self.flags, self.sp
-        // );
-        println!("{:0x} {:0x} P:{:0x}", self.pc, opcode, self.flags);
+        println!(
+            "{:0x} {:0x} A:{:0x} X:{:0x} Y:{:0x} P:{:0x} SP:{:0x}",
+            self.pc, opcode, self.a, self.x, self.y, self.flags, self.sp
+        );
         // TODO dont forget additional clock cycles!
         match opcode {
             0x00 => {
@@ -196,88 +183,32 @@ impl<'a> CPU<'a> {
                 self.pla();
                 self.cycles_left += 4;
             }
-            0x69 => {
-                let operand = self.imm();
-                self.adc(operand);
-                self.cycles_left += 2;
-            }
-            0x70 => {
-                let operand = self.relative();
-                self.bvs(operand);
-                self.cycles_left += 2;
-            }
+            0x69 => self.execute(CPU::imm, CPU::adc, 2),
+            0x70 => self.execute(CPU::relative, CPU::bvs, 2),
             0x78 => {
                 self.sei();
                 self.cycles_left += 2;
             }
-            0x85 => {
-                let operand = self.zp();
-                self.sta(operand);
-                self.cycles_left += 3;
-            }
-            0x86 => {
-                let operand = self.zp();
-                self.stx(operand);
-                self.cycles_left += 3;
-            }
-            0x90 => {
-                let operand = self.relative();
-                self.bcc(operand);
-                self.cycles_left += 2;
-            }
-            0xA0 => {
-                let operand = self.imm();
-                self.ldy(operand);
-                self.cycles_left += 2;
-            }
-            0xA2 => {
-                let operand = self.imm();
-                self.ldx(operand);
-                self.cycles_left += 2;
-            }
-            0xA9 => {
-                let operand = self.imm();
-                self.lda(operand);
-                self.cycles_left += 2;
-            }
-            0xB0 => {
-                let operand = self.relative();
-                self.bcs(operand);
-                self.cycles_left += 2;
-            }
+            0x85 => self.execute(CPU::zp, CPU::sta, 3),
+            0x86 => self.execute(CPU::zp, CPU::stx, 3),
+            0x90 => self.execute(CPU::relative, CPU::bcc, 2),
+            0xA0 => self.execute(CPU::imm, CPU::ldy, 2),
+            0xA2 => self.execute(CPU::imm, CPU::ldx, 2),
+            0xA9 => self.execute(CPU::imm, CPU::lda, 2),
+            0xB0 => self.execute(CPU::relative, CPU::bcs, 2),
             0xB8 => {
                 self.clv();
                 self.cycles_left += 2;
             }
-            0xC0 => {
-                let operand = self.imm();
-                self.cpy(operand);
-                self.cycles_left += 2;
-            }
-            0xC9 => {
-                let operand = self.imm();
-                self.cmp(operand);
-                self.cycles_left += 2;
-            }
-            0xD0 => {
-                let operand = self.relative();
-                self.bne(operand);
-                self.cycles_left += 2;
-            }
+            0xC0 => self.execute(CPU::imm, CPU::cpy, 2),
+            0xC9 => self.execute(CPU::imm, CPU::cmp, 2),
+            0xD0 => self.execute(CPU::relative, CPU::bne, 2),
             0xD8 => {
                 self.cld();
                 self.cycles_left += 2;
             }
-            0xE0 => {
-                let operand = self.imm();
-                self.cpx(operand);
-                self.cycles_left += 2;
-            }
-            0xE9 => {
-                let operand = self.imm();
-                self.sbc(operand);
-                self.cycles_left += 2;
-            }
+            0xE0 => self.execute(CPU::imm, CPU::cpx, 2),
+            0xE9 => self.execute(CPU::imm, CPU::sbc, 2),
             0xF0 => {
                 let operand = self.relative();
                 self.beq(operand);
@@ -287,17 +218,24 @@ impl<'a> CPU<'a> {
                 self.sed();
                 self.cycles_left += 2;
             }
-            
-            0xEA => {
-                println!("---NOP---");
-                self.nop();
-                self.cycles_left += 2;
-            }
+
+            0xEA => self.execute(CPU::imp, CPU::nop, 2),
             _ => panic!(format!(
                 "invalid opcode 0x{:0x} at 0x{:0x}",
                 opcode, self.pc
             )),
         }
+    }
+
+    fn execute<T>(
+        &mut self,
+        address_mode_fn: fn(&mut CPU<'a>) -> T,
+        opcode_fn: fn(&mut CPU<'a>, T),
+        cycles: u8,
+    ) {
+        let operand = address_mode_fn(self);
+        opcode_fn(self, operand);
+        self.cycles_left += cycles;
     }
 }
 
@@ -326,7 +264,7 @@ impl<'a> CPU<'a> {
         self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
-    
+
     fn brk(&mut self) {
         unreachable!();
         // self.set(Flag::Bit4);
@@ -426,7 +364,7 @@ impl<'a> CPU<'a> {
         self.set_or_unset(Flag::Negative, self.x > operand);
         self.pc += 1;
     }
-    
+
     fn cpy(&mut self, operand: u8) {
         self.set_or_unset(Flag::Carry, self.y >= operand);
         self.set_or_unset(Flag::Zero, self.y == operand);
@@ -483,7 +421,8 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn nop(&mut self) {
+    fn nop(&mut self, _: ()) {
+        println!("---NOP---");
         self.pc += 1;
     }
 
@@ -527,7 +466,7 @@ impl<'a> CPU<'a> {
         //TODO just like ADC
         self.pc += 1;
     }
-    
+
     fn sec(&mut self) {
         self.set(Flag::Carry);
         self.pc += 1;
@@ -567,6 +506,10 @@ impl<'a> CPU<'a> {
     fn imm(&mut self) -> u8 {
         self.pc += 1;
         self.read(self.pc)
+    }
+
+    fn imp(&mut self) {
+        ()
     }
 
     fn indx(&mut self) -> u8 {
