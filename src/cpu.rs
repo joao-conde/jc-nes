@@ -116,7 +116,7 @@ impl<'a> CPU<'a> {
             0x06 => self.execute_opcode(CPU::zp, CPU::asl_mem, 5),
             0x08 => self.execute_opcode(CPU::imp, CPU::php, 3),
             0x09 => self.execute_opcode(CPU::imm, CPU::ora, 2),
-            0x0A => self.execute_opcode(CPU::acc, CPU::asl_accum, 2),
+            0x0A => self.execute_opcode(CPU::acc, CPU::asl_acc, 2),
             0x0D => self.execute_opcode(CPU::abs, CPU::ora, 4),
             0x0E => self.execute_opcode(CPU::abs, CPU::asl_mem, 6),
             0x10 => self.execute_opcode(CPU::relative, CPU::bpl, 2),
@@ -128,15 +128,34 @@ impl<'a> CPU<'a> {
             0x1D => self.execute_opcode(CPU::absx, CPU::ora, 4),
             0x1E => self.execute_opcode(CPU::absx, CPU::asl_mem, 7),
             0x20 => self.execute_opcode(CPU::abs, CPU::jsr, 6),
+            0x21 => self.execute_opcode(CPU::indx, CPU::and, 6),
             0x24 => self.execute_opcode(CPU::zp, CPU::bit, 3),
+            0x25 => self.execute_opcode(CPU::zp, CPU::and, 3),
+            0x26 => unreachable!(),
             0x28 => self.execute_opcode(CPU::imp, CPU::plp, 4),
             0x29 => self.execute_opcode(CPU::imm, CPU::and, 2),
+            0x2A => unreachable!(),
+            0x2C => self.execute_opcode(CPU::abs, CPU::bit, 4),
+            0x2D => self.execute_opcode(CPU::abs, CPU::and, 4),
+            0x2E => unreachable!(),
             0x30 => self.execute_opcode(CPU::relative, CPU::bmi, 2),
+            0x31 => self.execute_opcode(CPU::indy, CPU::and, 5),
+            0x35 => self.execute_opcode(CPU::zpx, CPU::and, 4),
+            0x36 => unreachable!(),
             0x38 => self.execute_opcode(CPU::imp, CPU::sec, 2),
+            0x39 => self.execute_opcode(CPU::absy, CPU::and, 4),
+            0x3D => self.execute_opcode(CPU::absx, CPU::and, 4),
+            0x3E => unreachable!(),
+            0x40 => self.execute_opcode(CPU::imp, CPU::rti, 6),
+            0x41 => self.execute_opcode(CPU::indx, CPU::eor, 6),
+            0x45 => self.execute_opcode(CPU::zp, CPU::eor, 3),
+            0x46 => self.execute_opcode(CPU::zp, CPU::lsr_mem, 5),
             0x48 => self.execute_opcode(CPU::imp, CPU::pha, 3),
             0x49 => self.execute_opcode(CPU::imm, CPU::eor, 2),
+            0x4A => self.execute_opcode(CPU::acc, CPU::lsr_acc, 2),
             0x4C => self.execute_opcode(CPU::abs, CPU::jmp, 3),
-            0x4E => self.execute_opcode(CPU::abs, CPU::lsr, 6),
+            0x4D => self.execute_opcode(CPU::abs, CPU::eor, 4),
+            0x4E => self.execute_opcode(CPU::abs, CPU::lsr_mem, 6),
             0x50 => self.execute_opcode(CPU::relative, CPU::bvc, 2),
             0x60 => self.execute_opcode(CPU::imp, CPU::rts, 6),
             0x68 => self.execute_opcode(CPU::imp, CPU::pla, 4),
@@ -196,7 +215,7 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn asl_accum(&mut self, _acc: ()) {
+    fn asl_acc(&mut self, _acc: ()) {
         self.set_or_unset_flag(Flag::Carry, (self.a & 0x80) >> 7 == 1);
         self.a = self.a << 1;
         self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
@@ -374,13 +393,20 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn lsr(&mut self, operand: u16) {
-        self.change_flag_to(Flag::Carry, self.a & 0x01);
-        self.a = self.a >> 1;
-        self.set_or_unset_flag(Flag::Zero, self.a == 0);
-        self.set_or_unset_flag(Flag::Negative, self.a & 0x80 == 1);
-        self.a = self.a & 0x7F;
+    fn lsr_mem(&mut self, address: u16) {
+        let operand = self.read(address);
+        self.change_flag_to(Flag::Carry, operand & 0x01);
+        let operand = operand >> 1;
+        self.set_or_unset_flag(Flag::Zero, operand == 0);
+        self.set_or_unset_flag(Flag::Negative, operand & 0x80 == 1);
         self.pc += 1;
+    }
+
+    fn lsr_acc(&mut self, _acc: ()) {
+        self.set_or_unset_flag(Flag::Carry, (self.a & 0x80) >> 7 == 1);
+        self.a = self.a << 1;
+        self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_or_unset_flag(Flag::Zero, self.a == 0);
     }
 
     fn nop(&mut self, _imp: ()) {
@@ -420,6 +446,13 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
+    fn rti(&mut self, _imp: ()) {        
+        self.flags = self.pop_stack();
+        let pch = self.pop_stack();
+        let pcl = self.pop_stack();
+        self.pc = ((pch as u16) << 8) | pcl as u16;
+    }
+    
     fn rts(&mut self, _imp: ()) {
         let pch = self.pop_stack();
         let pcl = self.pop_stack();
