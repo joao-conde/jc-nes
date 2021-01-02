@@ -213,7 +213,16 @@ impl<'a> CPU<'a> {
             0xAD => self.execute_instruction(CPU::abs, CPU::lda, 4),
             0xAE => self.execute_instruction(CPU::abs, CPU::ldx, 4),
             0xB0 => self.execute_instruction(CPU::relative, CPU::bcs, 2),
+            0xB1 => self.execute_instruction(CPU::indy, CPU::lda, 5),
+            0xB4 => self.execute_instruction(CPU::zpx, CPU::ldy, 4),
+            0xB5 => self.execute_instruction(CPU::zpx, CPU::lda, 4),
+            0xB6 => self.execute_instruction(CPU::zpy, CPU::ldx, 4),
             0xB8 => self.execute_instruction(CPU::imp, CPU::clv, 2),
+            0xB9 => self.execute_instruction(CPU::absy, CPU::lda, 4),
+            0xBA => self.execute_instruction(CPU::imp, CPU::tsx, 2),
+            0xBC => self.execute_instruction(CPU::absx, CPU::ldy, 4),
+            0xBD => self.execute_instruction(CPU::absx, CPU::lda, 4),
+            0xBE => self.execute_instruction(CPU::absy, CPU::ldx, 4),
             0xC0 => self.execute_instruction(CPU::imm, CPU::cpy, 2),
             0xC9 => self.execute_instruction(CPU::imm, CPU::cmp, 2),
             0xD0 => self.execute_instruction(CPU::relative, CPU::bne, 2),
@@ -562,6 +571,13 @@ impl<'a> CPU<'a> {
         self.y = self.a;
         self.set_or_unset_flag(Flag::Zero, self.y == 0);
         self.set_or_unset_flag(Flag::Negative, (self.y & 0x80) >> 7 == 1);
+        self.pc += 1;
+    }
+
+    fn tsx(&mut self, _imp: ()) {
+        self.x = self.sp as u8;
+        self.set_or_unset_flag(Flag::Zero, self.x == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.x & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
