@@ -75,7 +75,7 @@ impl<'a> CPU<'a> {
         match to {
             1 => self.set(flag),
             0 => self.unset(flag),
-            _ => panic!(format!("0b{:b}", to)),
+            _ => panic!(format!("can't set flag to {:b} (only 0 or 1)", to)),
         }
     }
 
@@ -93,102 +93,28 @@ impl<'a> CPU<'a> {
         );
         // TODO dont forget additional clock cycles!
         match opcode {
-            0x00 => {
-                self.brk();
-                self.cycles_left += 7;
-            }
-            0x01 => {
-                let operand = self.indx();
-                self.ora(operand);
-                self.cycles_left += 6;
-            }
-            0x08 => {
-                // php implied 1 3 TODO
-                self.php();
-                self.cycles_left += 3;
-            }
-            0x09 => {
-                let operand = self.imm();
-                self.ora(operand);
-                self.cycles_left += 2;
-            }
-            0x10 => {
-                let operand = self.relative();
-                self.bpl(operand);
-                self.cycles_left += 2;
-            }
-            0x18 => {
-                self.clc();
-                self.cycles_left += 2;
-            }
-            0x20 => {
-                let operand = self.abs();
-                self.jsr(operand);
-                self.cycles_left += 6;
-            }
-            0x24 => {
-                let operand = self.zp();
-                self.bit(operand);
-                self.cycles_left += 3;
-            }
-            0x28 => {
-                self.plp();
-                self.cycles_left += 4;
-            }
-            0x29 => {
-                let operand = self.imm();
-                self.and(operand);
-                self.cycles_left += 2;
-            }
-            0x30 => {
-                // bmi relative 2 2
-                let operand = self.relative();
-                self.bmi(operand);
-                self.cycles_left += 2;
-            }
-            0x38 => {
-                self.sec();
-                self.cycles_left += 2;
-            }
-            0x48 => {
-                self.pha();
-                self.cycles_left += 3;
-            }
-            0x49 => {
-                // eor imm 2 2
-                let operand = self.imm();
-                self.eor(operand);
-                self.cycles_left += 2;
-            }
-            0x4C => {
-                let operand = self.abs();
-                self.jmp(operand);
-                self.cycles_left += 3;
-            }
-            0x4E => {
-                self.abs();
-                self.lsr();
-                self.cycles_left += 6;
-            }
-            0x50 => {
-                let operand = self.relative();
-                self.bvc(operand);
-                self.cycles_left += 2;
-            }
-            0x60 => {
-                self.rts();
-                self.cycles_left += 6;
-            }
-            0x68 => {
-                self.pla();
-                self.cycles_left += 4;
-            }
+            0x00 => self.execute(CPU::imp, CPU::brk, 7),
+            0x01 => self.execute(CPU::indx, CPU::ora, 6),
+            0x08 => self.execute(CPU::imp, CPU::php, 3),
+            0x09 => self.execute(CPU::imm, CPU::ora, 2),
+            0x10 => self.execute(CPU::relative, CPU::bpl, 2),
+            0x18 => self.execute(CPU::imp, CPU::clc, 2),
+            0x20 => self.execute(CPU::abs, CPU::jsr, 6),
+            0x24 => self.execute(CPU::zp, CPU::bit, 3),
+            0x28 => self.execute(CPU::imp, CPU::plp, 4),
+            0x29 => self.execute(CPU::imm, CPU::and, 2),
+            0x30 => self.execute(CPU::relative, CPU::bmi, 2),
+            0x38 => self.execute(CPU::imp, CPU::sec, 2),
+            0x48 => self.execute(CPU::imp, CPU::pha, 3),
+            0x49 => self.execute(CPU::imm, CPU::eor, 2),
+            0x4C => self.execute(CPU::abs, CPU::jmp, 3),
+            0x4E => self.execute(CPU::abs, CPU::lsr, 6),
+            0x50 => self.execute(CPU::relative, CPU::bvc, 2),
+            0x60 => self.execute(CPU::imp, CPU::rts, 6),
+            0x68 => self.execute(CPU::imp, CPU::pla, 4),
             0x69 => self.execute(CPU::imm, CPU::adc, 2),
             0x70 => self.execute(CPU::relative, CPU::bvs, 2),
-            0x78 => {
-                self.sei();
-                self.cycles_left += 2;
-            }
+            0x78 => self.execute(CPU::imp, CPU::sei, 2),
             0x85 => self.execute(CPU::zp, CPU::sta, 3),
             0x86 => self.execute(CPU::zp, CPU::stx, 3),
             0x90 => self.execute(CPU::relative, CPU::bcc, 2),
@@ -196,29 +122,15 @@ impl<'a> CPU<'a> {
             0xA2 => self.execute(CPU::imm, CPU::ldx, 2),
             0xA9 => self.execute(CPU::imm, CPU::lda, 2),
             0xB0 => self.execute(CPU::relative, CPU::bcs, 2),
-            0xB8 => {
-                self.clv();
-                self.cycles_left += 2;
-            }
+            0xB8 => self.execute(CPU::imp, CPU::clv, 2),
             0xC0 => self.execute(CPU::imm, CPU::cpy, 2),
             0xC9 => self.execute(CPU::imm, CPU::cmp, 2),
             0xD0 => self.execute(CPU::relative, CPU::bne, 2),
-            0xD8 => {
-                self.cld();
-                self.cycles_left += 2;
-            }
+            0xD8 => self.execute(CPU::imp, CPU::cld, 2),
             0xE0 => self.execute(CPU::imm, CPU::cpx, 2),
             0xE9 => self.execute(CPU::imm, CPU::sbc, 2),
-            0xF0 => {
-                let operand = self.relative();
-                self.beq(operand);
-                self.cycles_left += 2;
-            }
-            0xF8 => {
-                self.sed();
-                self.cycles_left += 2;
-            }
-
+            0xF0 => self.execute(CPU::relative, CPU::beq, 2),
+            0xF8 => self.execute(CPU::imp, CPU::sed, 2),
             0xEA => self.execute(CPU::imp, CPU::nop, 2),
             _ => panic!(format!(
                 "invalid opcode 0x{:0x} at 0x{:0x}",
@@ -265,7 +177,7 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn brk(&mut self) {
+    fn brk(&mut self, _: ()) {
         unreachable!();
         // self.set(Flag::Bit4);
         // self.set(Flag::Bit5);
@@ -336,17 +248,17 @@ impl<'a> CPU<'a> {
         }
     }
 
-    fn clc(&mut self) {
+    fn clc(&mut self, _: ()) {
         self.unset(Flag::Carry);
         self.pc += 1;
     }
 
-    fn cld(&mut self) {
+    fn cld(&mut self, _: ()) {
         self.unset(Flag::Decimal);
         self.pc += 1;
     }
 
-    fn clv(&mut self) {
+    fn clv(&mut self, _: ()) {
         self.unset(Flag::Overflow);
         self.pc += 1;
     }
@@ -412,7 +324,7 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn lsr(&mut self) {
+    fn lsr(&mut self, operand: u16) {
         self.change_to(Flag::Carry, self.a & 0x01);
         self.a = self.a >> 1;
         self.set_or_unset(Flag::Zero, self.a == 0);
@@ -433,29 +345,29 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn pha(&mut self) {
+    fn pha(&mut self, _: ()) {
         self.push_stack(self.a);
         self.pc += 1;
     }
 
-    fn php(&mut self) {
+    fn php(&mut self, _: ()) {
         self.push_stack(self.flags | 0x30);
         self.pc += 1;
     }
 
-    fn pla(&mut self) {
+    fn pla(&mut self, _: ()) {
         self.a = self.pop_stack();
         self.set_or_unset(Flag::Zero, self.a == 0);
         self.set_or_unset(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
-    fn plp(&mut self) {
+    fn plp(&mut self, _: ()) {
         self.flags = self.pop_stack();
         self.pc += 1;
     }
 
-    fn rts(&mut self) {
+    fn rts(&mut self, _: ()) {
         let pch = self.pop_stack();
         let pcl = self.pop_stack();
         self.pc = ((pch as u16) << 8) | pcl as u16;
@@ -467,17 +379,17 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn sec(&mut self) {
+    fn sec(&mut self, _: ()) {
         self.set(Flag::Carry);
         self.pc += 1;
     }
 
-    fn sed(&mut self) {
+    fn sed(&mut self, _: ()) {
         self.set(Flag::Decimal);
         self.pc += 1;
     }
 
-    fn sei(&mut self) {
+    fn sei(&mut self, _: ()) {
         self.set(Flag::Interrupt);
         self.pc += 1;
     }
