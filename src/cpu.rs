@@ -131,21 +131,21 @@ impl<'a> CPU<'a> {
             0x21 => self.execute_opcode(CPU::indx, CPU::and, 6),
             0x24 => self.execute_opcode(CPU::zp, CPU::bit, 3),
             0x25 => self.execute_opcode(CPU::zp, CPU::and, 3),
-            0x26 => unreachable!(),
+            0x26 => unimplemented!(),
             0x28 => self.execute_opcode(CPU::imp, CPU::plp, 4),
             0x29 => self.execute_opcode(CPU::imm, CPU::and, 2),
-            0x2A => unreachable!(),
+            0x2A => unimplemented!(),
             0x2C => self.execute_opcode(CPU::abs, CPU::bit, 4),
             0x2D => self.execute_opcode(CPU::abs, CPU::and, 4),
-            0x2E => unreachable!(),
+            0x2E => unimplemented!(),
             0x30 => self.execute_opcode(CPU::relative, CPU::bmi, 2),
             0x31 => self.execute_opcode(CPU::indy, CPU::and, 5),
             0x35 => self.execute_opcode(CPU::zpx, CPU::and, 4),
-            0x36 => unreachable!(),
+            0x36 => unimplemented!(),
             0x38 => self.execute_opcode(CPU::imp, CPU::sec, 2),
             0x39 => self.execute_opcode(CPU::absy, CPU::and, 4),
             0x3D => self.execute_opcode(CPU::absx, CPU::and, 4),
-            0x3E => unreachable!(),
+            0x3E => unimplemented!(),
             0x40 => self.execute_opcode(CPU::imp, CPU::rti, 6),
             0x41 => self.execute_opcode(CPU::indx, CPU::eor, 6),
             0x45 => self.execute_opcode(CPU::zp, CPU::eor, 3),
@@ -157,13 +157,40 @@ impl<'a> CPU<'a> {
             0x4D => self.execute_opcode(CPU::abs, CPU::eor, 4),
             0x4E => self.execute_opcode(CPU::abs, CPU::lsr_mem, 6),
             0x50 => self.execute_opcode(CPU::relative, CPU::bvc, 2),
+            0x51 => self.execute_opcode(CPU::indy, CPU::eor, 5),
+            0x55 => self.execute_opcode(CPU::zpx, CPU::eor, 4),
+            0x56 => self.execute_opcode(CPU::zpx, CPU::lsr_mem, 6),
+            0x58 => self.execute_opcode(CPU::imp, CPU::cli, 2),
+            0x59 => self.execute_opcode(CPU::absy, CPU::eor, 4),
+            0x5D => self.execute_opcode(CPU::absx, CPU::eor, 4),
+            0x5E => self.execute_opcode(CPU::absx, CPU::lsr_mem, 7),
             0x60 => self.execute_opcode(CPU::imp, CPU::rts, 6),
+            0x61 => self.execute_opcode(CPU::indx, CPU::adc, 6),
+            0x65 => self.execute_opcode(CPU::zp, CPU::adc, 3),
+            0x66 => unimplemented!(),
             0x68 => self.execute_opcode(CPU::imp, CPU::pla, 4),
             0x69 => self.execute_opcode(CPU::imm, CPU::adc, 2),
+            0x6A => unimplemented!(),
+            0x6C => self.execute_opcode(CPU::ind, CPU::jmp, 5),
+            0x6D => self.execute_opcode(CPU::abs, CPU::adc, 4),
+            0x6E => unimplemented!(),
             0x70 => self.execute_opcode(CPU::relative, CPU::bvs, 2),
+            0x71 => self.execute_opcode(CPU::indy, CPU::adc, 5),
+            0x75 => self.execute_opcode(CPU::zpx, CPU::adc, 4),
+            0x76 => unimplemented!(),
             0x78 => self.execute_opcode(CPU::imp, CPU::sei, 2),
+            0x79 => self.execute_opcode(CPU::absy, CPU::adc, 4),
+            0x7D => self.execute_opcode(CPU::absx, CPU::adc, 4),
+            0x7E => unimplemented!(),
+            0x81 => self.execute_opcode(CPU::indx, CPU::sta, 6),
+            0x84 => self.execute_opcode(CPU::zp, CPU::sty, 3),
             0x85 => self.execute_opcode(CPU::zp, CPU::sta, 3),
             0x86 => self.execute_opcode(CPU::zp, CPU::stx, 3),
+            0x88 => self.execute_opcode(CPU::imp, CPU::dey, 2),
+            0x8A => self.execute_opcode(CPU::imp, CPU::txa, 2),
+            0x8C => self.execute_opcode(CPU::abs, CPU::sty, 4),
+            0x8D => self.execute_opcode(CPU::abs, CPU::sta, 4),
+            0x8E => self.execute_opcode(CPU::abs, CPU::stx, 4),
             0x90 => self.execute_opcode(CPU::relative, CPU::bcc, 2),
             0xA0 => self.execute_opcode(CPU::imm, CPU::ldy, 2),
             0xA2 => self.execute_opcode(CPU::imm, CPU::ldx, 2),
@@ -232,7 +259,7 @@ impl<'a> CPU<'a> {
     }
 
     fn brk(&mut self, _imp: ()) {
-        unreachable!();
+        unimplemented!();
         // self.set(Flag::B1);
         // self.set(Flag::B2);
         // self.pc += 1;
@@ -320,6 +347,11 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
+    fn cli(&mut self, _imp: ()) {
+        self.unset_flag(Flag::Interrupt);
+        self.pc += 1;
+    }
+
     fn clv(&mut self, _imp: ()) {
         self.unset_flag(Flag::Overflow);
         self.pc += 1;
@@ -349,6 +381,12 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
+    fn dey(&mut self, _imp: ()) {
+        self.y -= 1;
+        self.set_or_unset_flag(Flag::Zero, self.y == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.y & 0x80) >> 7 == 1);
+    }
+    
     fn eor(&mut self, address: u16) {
         let operand = self.read(address);
         self.a ^= operand;
@@ -490,6 +528,18 @@ impl<'a> CPU<'a> {
         self.write(operand, self.x);
         self.pc += 1;
     }
+
+    fn sty(&mut self, operand: u16) {
+        self.write(operand, self.y);
+        self.pc += 1;
+    }
+
+    fn txa(&mut self, _imp: ()) {
+        self.a = self.x;
+        self.set_or_unset_flag(Flag::Zero, self.a == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.pc += 1;
+    }
 }
 
 // addressing modes
@@ -523,6 +573,14 @@ impl<'a> CPU<'a> {
         ()
     }
 
+    fn ind(&mut self) -> u16 {
+        self.pc += 1;
+        let lo = self.read(self.pc);
+        self.pc += 1;
+        let hi = self.read(self.pc);
+        ((hi as u16) << 8) + lo as u16
+    }
+    
     fn indx(&mut self) -> u16 {
         self.pc += 1;
         let address = self.read(self.pc) as u16;
