@@ -108,7 +108,7 @@ impl<'a> CPU<'a> {
             "{:0x} {:0x} A:{:0x} P:{:0x} SP:{:0x}",
             self.pc, opcode, self.a, self.flags, self.sp
         );
-        // TODO dont forget additional clock cycles!
+        // TODO dont forget additional clock cycles! (but do i need to lol)
         match opcode {
             0x00 => self.execute_instruction(CPU::imp, CPU::brk, 7),
             0x01 => self.execute_instruction(CPU::indx, CPU::ora, 6),
@@ -224,7 +224,16 @@ impl<'a> CPU<'a> {
             0xBD => self.execute_instruction(CPU::absx, CPU::lda, 4),
             0xBE => self.execute_instruction(CPU::absy, CPU::ldx, 4),
             0xC0 => self.execute_instruction(CPU::imm, CPU::cpy, 2),
+            0xC1 => self.execute_instruction(CPU::indx, CPU::cmp, 6),
+            0xC4 => self.execute_instruction(CPU::zp, CPU::cpy, 3),
+            0xC5 => self.execute_instruction(CPU::zp, CPU::cmp, 3),
+            0xC6 => self.execute_instruction(CPU::zp, CPU::dec, 5),
+            0xC8 => self.execute_instruction(CPU::imp, CPU::iny, 2),
             0xC9 => self.execute_instruction(CPU::imm, CPU::cmp, 2),
+            0xCA => self.execute_instruction(CPU::imp, CPU::dex, 2),
+            0xCC => self.execute_instruction(CPU::abs, CPU::cpy, 4),
+            0xCD => self.execute_instruction(CPU::abs, CPU::cmp, 4),
+            0xCE => self.execute_instruction(CPU::abs, CPU::dec, 6),
             0xD0 => self.execute_instruction(CPU::relative, CPU::bne, 2),
             0xD8 => self.execute_instruction(CPU::imp, CPU::cld, 2),
             0xE0 => self.execute_instruction(CPU::imm, CPU::cpx, 2),
@@ -407,6 +416,20 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
+    fn dec(&mut self, address: u16) {
+        let operand = self.read(address);
+        let operand = operand - 1;
+        self.write(address, operand);
+        self.set_or_unset_flag(Flag::Zero, operand == 0);
+        self.set_or_unset_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
+    }
+
+    fn dex(&mut self, _imp: ()) {
+        self.x -= 1;
+        self.set_or_unset_flag(Flag::Zero, self.x == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.x & 0x80) >> 7 == 1);
+    }
+
     fn dey(&mut self, _imp: ()) {
         self.y -= 1;
         self.set_or_unset_flag(Flag::Zero, self.y == 0);
@@ -419,6 +442,12 @@ impl<'a> CPU<'a> {
         self.set_or_unset_flag(Flag::Zero, self.a == 0);
         self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
+    }
+
+    fn iny(&mut self, _imp: ()) {
+        self.y += 1;
+        self.set_or_unset_flag(Flag::Zero, self.y == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.y & 0x80) >> 7 == 1);
     }
 
     fn jmp(&mut self, operand: u16) {
