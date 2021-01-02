@@ -88,7 +88,7 @@ impl<'a> CPU<'a> {
         }
     }
 
-    fn execute_opcode<T>(
+    fn execute_instruction<T>(
         &mut self,
         address_mode_fn: fn(&mut CPU<'a>) -> T,
         opcode_fn: fn(&mut CPU<'a>, T),
@@ -110,102 +110,110 @@ impl<'a> CPU<'a> {
         );
         // TODO dont forget additional clock cycles!
         match opcode {
-            0x00 => self.execute_opcode(CPU::imp, CPU::brk, 7),
-            0x01 => self.execute_opcode(CPU::indx, CPU::ora, 6),
-            0x05 => self.execute_opcode(CPU::zp, CPU::ora, 3),
-            0x06 => self.execute_opcode(CPU::zp, CPU::asl_mem, 5),
-            0x08 => self.execute_opcode(CPU::imp, CPU::php, 3),
-            0x09 => self.execute_opcode(CPU::imm, CPU::ora, 2),
-            0x0A => self.execute_opcode(CPU::acc, CPU::asl_acc, 2),
-            0x0D => self.execute_opcode(CPU::abs, CPU::ora, 4),
-            0x0E => self.execute_opcode(CPU::abs, CPU::asl_mem, 6),
-            0x10 => self.execute_opcode(CPU::relative, CPU::bpl, 2),
-            0x11 => self.execute_opcode(CPU::indy, CPU::ora, 5),
-            0x15 => self.execute_opcode(CPU::zpx, CPU::ora, 4),
-            0x16 => self.execute_opcode(CPU::zpx, CPU::asl_mem, 6),
-            0x18 => self.execute_opcode(CPU::imp, CPU::clc, 2),
-            0x19 => self.execute_opcode(CPU::absy, CPU::ora, 4),
-            0x1D => self.execute_opcode(CPU::absx, CPU::ora, 4),
-            0x1E => self.execute_opcode(CPU::absx, CPU::asl_mem, 7),
-            0x20 => self.execute_opcode(CPU::abs, CPU::jsr, 6),
-            0x21 => self.execute_opcode(CPU::indx, CPU::and, 6),
-            0x24 => self.execute_opcode(CPU::zp, CPU::bit, 3),
-            0x25 => self.execute_opcode(CPU::zp, CPU::and, 3),
+            0x00 => self.execute_instruction(CPU::imp, CPU::brk, 7),
+            0x01 => self.execute_instruction(CPU::indx, CPU::ora, 6),
+            0x05 => self.execute_instruction(CPU::zp, CPU::ora, 3),
+            0x06 => self.execute_instruction(CPU::zp, CPU::asl_mem, 5),
+            0x08 => self.execute_instruction(CPU::imp, CPU::php, 3),
+            0x09 => self.execute_instruction(CPU::imm, CPU::ora, 2),
+            0x0A => self.execute_instruction(CPU::acc, CPU::asl_acc, 2),
+            0x0D => self.execute_instruction(CPU::abs, CPU::ora, 4),
+            0x0E => self.execute_instruction(CPU::abs, CPU::asl_mem, 6),
+            0x10 => self.execute_instruction(CPU::relative, CPU::bpl, 2),
+            0x11 => self.execute_instruction(CPU::indy, CPU::ora, 5),
+            0x15 => self.execute_instruction(CPU::zpx, CPU::ora, 4),
+            0x16 => self.execute_instruction(CPU::zpx, CPU::asl_mem, 6),
+            0x18 => self.execute_instruction(CPU::imp, CPU::clc, 2),
+            0x19 => self.execute_instruction(CPU::absy, CPU::ora, 4),
+            0x1D => self.execute_instruction(CPU::absx, CPU::ora, 4),
+            0x1E => self.execute_instruction(CPU::absx, CPU::asl_mem, 7),
+            0x20 => self.execute_instruction(CPU::abs, CPU::jsr, 6),
+            0x21 => self.execute_instruction(CPU::indx, CPU::and, 6),
+            0x24 => self.execute_instruction(CPU::zp, CPU::bit, 3),
+            0x25 => self.execute_instruction(CPU::zp, CPU::and, 3),
             0x26 => unimplemented!(),
-            0x28 => self.execute_opcode(CPU::imp, CPU::plp, 4),
-            0x29 => self.execute_opcode(CPU::imm, CPU::and, 2),
+            0x28 => self.execute_instruction(CPU::imp, CPU::plp, 4),
+            0x29 => self.execute_instruction(CPU::imm, CPU::and, 2),
             0x2A => unimplemented!(),
-            0x2C => self.execute_opcode(CPU::abs, CPU::bit, 4),
-            0x2D => self.execute_opcode(CPU::abs, CPU::and, 4),
+            0x2C => self.execute_instruction(CPU::abs, CPU::bit, 4),
+            0x2D => self.execute_instruction(CPU::abs, CPU::and, 4),
             0x2E => unimplemented!(),
-            0x30 => self.execute_opcode(CPU::relative, CPU::bmi, 2),
-            0x31 => self.execute_opcode(CPU::indy, CPU::and, 5),
-            0x35 => self.execute_opcode(CPU::zpx, CPU::and, 4),
+            0x30 => self.execute_instruction(CPU::relative, CPU::bmi, 2),
+            0x31 => self.execute_instruction(CPU::indy, CPU::and, 5),
+            0x35 => self.execute_instruction(CPU::zpx, CPU::and, 4),
             0x36 => unimplemented!(),
-            0x38 => self.execute_opcode(CPU::imp, CPU::sec, 2),
-            0x39 => self.execute_opcode(CPU::absy, CPU::and, 4),
-            0x3D => self.execute_opcode(CPU::absx, CPU::and, 4),
+            0x38 => self.execute_instruction(CPU::imp, CPU::sec, 2),
+            0x39 => self.execute_instruction(CPU::absy, CPU::and, 4),
+            0x3D => self.execute_instruction(CPU::absx, CPU::and, 4),
             0x3E => unimplemented!(),
-            0x40 => self.execute_opcode(CPU::imp, CPU::rti, 6),
-            0x41 => self.execute_opcode(CPU::indx, CPU::eor, 6),
-            0x45 => self.execute_opcode(CPU::zp, CPU::eor, 3),
-            0x46 => self.execute_opcode(CPU::zp, CPU::lsr_mem, 5),
-            0x48 => self.execute_opcode(CPU::imp, CPU::pha, 3),
-            0x49 => self.execute_opcode(CPU::imm, CPU::eor, 2),
-            0x4A => self.execute_opcode(CPU::acc, CPU::lsr_acc, 2),
-            0x4C => self.execute_opcode(CPU::abs, CPU::jmp, 3),
-            0x4D => self.execute_opcode(CPU::abs, CPU::eor, 4),
-            0x4E => self.execute_opcode(CPU::abs, CPU::lsr_mem, 6),
-            0x50 => self.execute_opcode(CPU::relative, CPU::bvc, 2),
-            0x51 => self.execute_opcode(CPU::indy, CPU::eor, 5),
-            0x55 => self.execute_opcode(CPU::zpx, CPU::eor, 4),
-            0x56 => self.execute_opcode(CPU::zpx, CPU::lsr_mem, 6),
-            0x58 => self.execute_opcode(CPU::imp, CPU::cli, 2),
-            0x59 => self.execute_opcode(CPU::absy, CPU::eor, 4),
-            0x5D => self.execute_opcode(CPU::absx, CPU::eor, 4),
-            0x5E => self.execute_opcode(CPU::absx, CPU::lsr_mem, 7),
-            0x60 => self.execute_opcode(CPU::imp, CPU::rts, 6),
-            0x61 => self.execute_opcode(CPU::indx, CPU::adc, 6),
-            0x65 => self.execute_opcode(CPU::zp, CPU::adc, 3),
+            0x40 => self.execute_instruction(CPU::imp, CPU::rti, 6),
+            0x41 => self.execute_instruction(CPU::indx, CPU::eor, 6),
+            0x45 => self.execute_instruction(CPU::zp, CPU::eor, 3),
+            0x46 => self.execute_instruction(CPU::zp, CPU::lsr_mem, 5),
+            0x48 => self.execute_instruction(CPU::imp, CPU::pha, 3),
+            0x49 => self.execute_instruction(CPU::imm, CPU::eor, 2),
+            0x4A => self.execute_instruction(CPU::acc, CPU::lsr_acc, 2),
+            0x4C => self.execute_instruction(CPU::abs, CPU::jmp, 3),
+            0x4D => self.execute_instruction(CPU::abs, CPU::eor, 4),
+            0x4E => self.execute_instruction(CPU::abs, CPU::lsr_mem, 6),
+            0x50 => self.execute_instruction(CPU::relative, CPU::bvc, 2),
+            0x51 => self.execute_instruction(CPU::indy, CPU::eor, 5),
+            0x55 => self.execute_instruction(CPU::zpx, CPU::eor, 4),
+            0x56 => self.execute_instruction(CPU::zpx, CPU::lsr_mem, 6),
+            0x58 => self.execute_instruction(CPU::imp, CPU::cli, 2),
+            0x59 => self.execute_instruction(CPU::absy, CPU::eor, 4),
+            0x5D => self.execute_instruction(CPU::absx, CPU::eor, 4),
+            0x5E => self.execute_instruction(CPU::absx, CPU::lsr_mem, 7),
+            0x60 => self.execute_instruction(CPU::imp, CPU::rts, 6),
+            0x61 => self.execute_instruction(CPU::indx, CPU::adc, 6),
+            0x65 => self.execute_instruction(CPU::zp, CPU::adc, 3),
             0x66 => unimplemented!(),
-            0x68 => self.execute_opcode(CPU::imp, CPU::pla, 4),
-            0x69 => self.execute_opcode(CPU::imm, CPU::adc, 2),
+            0x68 => self.execute_instruction(CPU::imp, CPU::pla, 4),
+            0x69 => self.execute_instruction(CPU::imm, CPU::adc, 2),
             0x6A => unimplemented!(),
-            0x6C => self.execute_opcode(CPU::ind, CPU::jmp, 5),
-            0x6D => self.execute_opcode(CPU::abs, CPU::adc, 4),
+            0x6C => self.execute_instruction(CPU::ind, CPU::jmp, 5),
+            0x6D => self.execute_instruction(CPU::abs, CPU::adc, 4),
             0x6E => unimplemented!(),
-            0x70 => self.execute_opcode(CPU::relative, CPU::bvs, 2),
-            0x71 => self.execute_opcode(CPU::indy, CPU::adc, 5),
-            0x75 => self.execute_opcode(CPU::zpx, CPU::adc, 4),
+            0x70 => self.execute_instruction(CPU::relative, CPU::bvs, 2),
+            0x71 => self.execute_instruction(CPU::indy, CPU::adc, 5),
+            0x75 => self.execute_instruction(CPU::zpx, CPU::adc, 4),
             0x76 => unimplemented!(),
-            0x78 => self.execute_opcode(CPU::imp, CPU::sei, 2),
-            0x79 => self.execute_opcode(CPU::absy, CPU::adc, 4),
-            0x7D => self.execute_opcode(CPU::absx, CPU::adc, 4),
+            0x78 => self.execute_instruction(CPU::imp, CPU::sei, 2),
+            0x79 => self.execute_instruction(CPU::absy, CPU::adc, 4),
+            0x7D => self.execute_instruction(CPU::absx, CPU::adc, 4),
             0x7E => unimplemented!(),
-            0x81 => self.execute_opcode(CPU::indx, CPU::sta, 6),
-            0x84 => self.execute_opcode(CPU::zp, CPU::sty, 3),
-            0x85 => self.execute_opcode(CPU::zp, CPU::sta, 3),
-            0x86 => self.execute_opcode(CPU::zp, CPU::stx, 3),
-            0x88 => self.execute_opcode(CPU::imp, CPU::dey, 2),
-            0x8A => self.execute_opcode(CPU::imp, CPU::txa, 2),
-            0x8C => self.execute_opcode(CPU::abs, CPU::sty, 4),
-            0x8D => self.execute_opcode(CPU::abs, CPU::sta, 4),
-            0x8E => self.execute_opcode(CPU::abs, CPU::stx, 4),
-            0x90 => self.execute_opcode(CPU::relative, CPU::bcc, 2),
-            0xA0 => self.execute_opcode(CPU::imm, CPU::ldy, 2),
-            0xA2 => self.execute_opcode(CPU::imm, CPU::ldx, 2),
-            0xA9 => self.execute_opcode(CPU::imm, CPU::lda, 2),
-            0xB0 => self.execute_opcode(CPU::relative, CPU::bcs, 2),
-            0xB8 => self.execute_opcode(CPU::imp, CPU::clv, 2),
-            0xC0 => self.execute_opcode(CPU::imm, CPU::cpy, 2),
-            0xC9 => self.execute_opcode(CPU::imm, CPU::cmp, 2),
-            0xD0 => self.execute_opcode(CPU::relative, CPU::bne, 2),
-            0xD8 => self.execute_opcode(CPU::imp, CPU::cld, 2),
-            0xE0 => self.execute_opcode(CPU::imm, CPU::cpx, 2),
-            0xE9 => self.execute_opcode(CPU::imm, CPU::sbc, 2),
-            0xF0 => self.execute_opcode(CPU::relative, CPU::beq, 2),
-            0xF8 => self.execute_opcode(CPU::imp, CPU::sed, 2),
-            0xEA => self.execute_opcode(CPU::imp, CPU::nop, 2),
+            0x81 => self.execute_instruction(CPU::indx, CPU::sta, 6),
+            0x84 => self.execute_instruction(CPU::zp, CPU::sty, 3),
+            0x85 => self.execute_instruction(CPU::zp, CPU::sta, 3),
+            0x86 => self.execute_instruction(CPU::zp, CPU::stx, 3),
+            0x88 => self.execute_instruction(CPU::imp, CPU::dey, 2),
+            0x8A => self.execute_instruction(CPU::imp, CPU::txa, 2),
+            0x8C => self.execute_instruction(CPU::abs, CPU::sty, 4),
+            0x8D => self.execute_instruction(CPU::abs, CPU::sta, 4),
+            0x8E => self.execute_instruction(CPU::abs, CPU::stx, 4),
+            0x90 => self.execute_instruction(CPU::relative, CPU::bcc, 2),
+            0x91 => self.execute_instruction(CPU::indy, CPU::sta, 6),
+            0x94 => self.execute_instruction(CPU::zpx, CPU::sty, 4),
+            0x95 => self.execute_instruction(CPU::zpx, CPU::sta, 4),
+            0x96 => self.execute_instruction(CPU::zpy, CPU::stx, 4),
+            0x98 => self.execute_instruction(CPU::imp, CPU::tya, 2),
+            0x99 => self.execute_instruction(CPU::absy, CPU::sta, 5),
+            0x9A => self.execute_instruction(CPU::imp, CPU::txs, 2),
+            0x9D => self.execute_instruction(CPU::absx, CPU::sta, 5),
+            0xA0 => self.execute_instruction(CPU::imm, CPU::ldy, 2),
+            0xA2 => self.execute_instruction(CPU::imm, CPU::ldx, 2),
+            0xA9 => self.execute_instruction(CPU::imm, CPU::lda, 2),
+            0xB0 => self.execute_instruction(CPU::relative, CPU::bcs, 2),
+            0xB8 => self.execute_instruction(CPU::imp, CPU::clv, 2),
+            0xC0 => self.execute_instruction(CPU::imm, CPU::cpy, 2),
+            0xC9 => self.execute_instruction(CPU::imm, CPU::cmp, 2),
+            0xD0 => self.execute_instruction(CPU::relative, CPU::bne, 2),
+            0xD8 => self.execute_instruction(CPU::imp, CPU::cld, 2),
+            0xE0 => self.execute_instruction(CPU::imm, CPU::cpx, 2),
+            0xE9 => self.execute_instruction(CPU::imm, CPU::sbc, 2),
+            0xF0 => self.execute_instruction(CPU::relative, CPU::beq, 2),
+            0xF8 => self.execute_instruction(CPU::imp, CPU::sed, 2),
+            0xEA => self.execute_instruction(CPU::imp, CPU::nop, 2),
             _ => panic!(format!(
                 "invalid opcode 0x{:0x} at 0x{:0x}",
                 opcode, self.pc
@@ -214,7 +222,7 @@ impl<'a> CPU<'a> {
     }
 }
 
-// opcodes
+// instructions
 impl<'a> CPU<'a> {
     fn adc(&mut self, address: u16) {
         let operand = self.read(address);
@@ -386,7 +394,7 @@ impl<'a> CPU<'a> {
         self.set_or_unset_flag(Flag::Zero, self.y == 0);
         self.set_or_unset_flag(Flag::Negative, (self.y & 0x80) >> 7 == 1);
     }
-    
+
     fn eor(&mut self, address: u16) {
         let operand = self.read(address);
         self.a ^= operand;
@@ -484,13 +492,13 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn rti(&mut self, _imp: ()) {        
+    fn rti(&mut self, _imp: ()) {
         self.flags = self.pop_stack();
         let pch = self.pop_stack();
         let pcl = self.pop_stack();
         self.pc = ((pch as u16) << 8) | pcl as u16;
     }
-    
+
     fn rts(&mut self, _imp: ()) {
         let pch = self.pop_stack();
         let pcl = self.pop_stack();
@@ -540,6 +548,18 @@ impl<'a> CPU<'a> {
         self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
+
+    fn txs(&mut self, _imp: ()) {
+        self.sp = self.x as u16;
+        self.pc += 1;
+    }
+
+    fn tya(&mut self, _imp: ()) {
+        self.a = self.y;
+        self.set_or_unset_flag(Flag::Zero, self.a == 0);
+        self.set_or_unset_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.pc += 1;
+    }
 }
 
 // addressing modes
@@ -580,7 +600,7 @@ impl<'a> CPU<'a> {
         let hi = self.read(self.pc);
         ((hi as u16) << 8) + lo as u16
     }
-    
+
     fn indx(&mut self) -> u16 {
         self.pc += 1;
         let address = self.read(self.pc) as u16;
@@ -610,6 +630,10 @@ impl<'a> CPU<'a> {
 
     fn zpx(&mut self) -> u16 {
         self.zp() + self.x as u16
+    }
+
+    fn zpy(&mut self) -> u16 {
+        self.zp() + self.y as u16
     }
 }
 
