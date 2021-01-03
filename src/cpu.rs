@@ -10,7 +10,7 @@ pub struct CPU<'a> {
     cycles_left: u8,
     bus: Bus<'a>,
 
-    tmp_total_cyc: usize,
+    tmp_total_cyc: usize, // TODO remove
 }
 
 enum StatusFlag {
@@ -19,7 +19,7 @@ enum StatusFlag {
     Interrupt = 2,
     Decimal = 3,
     B1 = 4,
-    B2 = 5,
+    B2 = 5, //TODO remove
     Overflow = 6,
     Negative = 7,
 }
@@ -28,7 +28,7 @@ impl<'a> Device for CPU<'a> {
     fn read(&self, address: u16) -> u8 {
         self.bus
             .read(address)
-            .expect(&format!("no byte to be read at address 0x{:0x}", address))
+            .unwrap_or_else(|| panic!("no byte to be read at address 0x{:0x}", address))
     }
 
     fn write(&mut self, address: u16, data: u8) {
@@ -36,7 +36,6 @@ impl<'a> Device for CPU<'a> {
     }
 }
 
-/// Public API
 impl<'a> CPU<'a> {
     pub fn new(bus: Bus<'a>) -> CPU<'a> {
         CPU {
@@ -73,8 +72,7 @@ impl<'a> CPU<'a> {
 
     fn pop_stack(&mut self) -> u8 {
         self.sp += 1;
-        let data = self.read(self.sp);
-        data
+        self.read(self.sp)
     }
 
     fn is_flag_set(&mut self, flag: StatusFlag) -> bool {
@@ -371,7 +369,7 @@ impl<'a> CPU<'a> {
 
     fn asl_acc(&mut self, _acc: ()) {
         self.set_flag(StatusFlag::Carry, (self.a & 0x80) >> 7 == 1);
-        self.a = self.a << 1;
+        self.a <<= 1;
         self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
         self.set_flag(StatusFlag::Zero, self.a == 0);
     }
@@ -584,7 +582,7 @@ impl<'a> CPU<'a> {
         let operand = self.read(address);
         self.x = operand;
         self.set_flag(StatusFlag::Zero, self.x == 0);
-        self.set_flag(StatusFlag::Negative, self.x & 0x80 == 1);
+        self.set_flag(StatusFlag::Negative, (self.x & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
@@ -592,7 +590,7 @@ impl<'a> CPU<'a> {
         let operand = self.read(address);
         self.y = operand;
         self.set_flag(StatusFlag::Zero, self.y == 0);
-        self.set_flag(StatusFlag::Negative, self.y & 0x80 == 1);
+        self.set_flag(StatusFlag::Negative, (self.y & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
@@ -601,13 +599,13 @@ impl<'a> CPU<'a> {
         self.set_flag(StatusFlag::Carry, operand & 0x01 == 1);
         let operand = operand >> 1;
         self.set_flag(StatusFlag::Zero, operand == 0);
-        self.set_flag(StatusFlag::Negative, operand & 0x80 == 1);
+        self.set_flag(StatusFlag::Negative, (operand & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn lsr_acc(&mut self, _acc: ()) {
         self.set_flag(StatusFlag::Carry, (self.a & 0x80) >> 7 == 1);
-        self.a = self.a << 1;
+        self.a <<= 1;
         self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
         self.set_flag(StatusFlag::Zero, self.a == 0);
     }
@@ -619,9 +617,9 @@ impl<'a> CPU<'a> {
 
     fn ora(&mut self, address: u16) {
         let operand = self.read(address);
-        self.a = self.a | operand;
+        self.a |= operand;
         self.set_flag(StatusFlag::Zero, self.a == 0);
-        self.set_flag(StatusFlag::Negative, self.a & 0x80 == 1);
+        self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 

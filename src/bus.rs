@@ -1,16 +1,11 @@
 use std::{collections::HashMap, ops::RangeInclusive};
 
+#[derive(Default)]
 pub struct Bus<'a> {
     pub addresses: HashMap<RangeInclusive<u16>, Box<dyn Device + 'a>>,
 }
 
 impl<'a> Bus<'a> {
-    pub fn new() -> Bus<'a> {
-        Bus {
-            addresses: HashMap::new(),
-        }
-    }
-
     pub fn connect(&mut self, addressable_range: RangeInclusive<u16>, device: impl Device + 'a) {
         self.addresses.insert(addressable_range, Box::new(device));
     }

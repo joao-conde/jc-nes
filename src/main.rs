@@ -23,7 +23,7 @@ fn main() {
     // connect ram to the bus
     // give bus to CPU to read/write
     let ram = RAM { mem };
-    let mut bus = Bus::new();
+    let mut bus = Bus::default();
     bus.connect(0x0000..=0xFFFF, ram);
     let mut cpu = CPU::new(bus);
 
