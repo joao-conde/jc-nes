@@ -5,7 +5,7 @@ pub struct CPU<'a> {
     x: u8,
     y: u8,
     pc: u16,
-    sp: u16,
+    sp: u8,
     status: u8,
     cycles_left: u8,
     bus: Bus<'a>,
@@ -60,19 +60,19 @@ impl<'a> CPU<'a> {
     }
 
     pub fn terminated(&mut self) -> bool {
-        self.pc >= 0xFFFF || self.pc == 0xCE51 // TODO remove
+        self.pc >= 0xFFFF //|| self.pc == 0xCE51 // TODO remove
     }
 }
 
 impl<'a> CPU<'a> {
     fn push_stack(&mut self, val: u8) {
-        self.write(self.sp, val);
+        self.write(0x0100 + self.sp as u16, val);
         self.sp -= 1;
     }
 
     fn pop_stack(&mut self) -> u8 {
         self.sp += 1;
-        self.read(self.sp)
+        self.read(0x0100 + self.sp as u16)
     }
 
     fn is_flag_set(&mut self, flag: Flag) -> bool {
@@ -499,7 +499,10 @@ impl<'a> CPU<'a> {
         let operand = self.read(address);
         self.set_flag(Flag::Carry, self.a >= operand);
         self.set_flag(Flag::Zero, self.a == operand);
-        self.set_flag(Flag::Negative, (self.a.wrapping_sub(operand) & 0x80) >> 7 == 1);
+        self.set_flag(
+            Flag::Negative,
+            (self.a.wrapping_sub(operand) & 0x80) >> 7 == 1,
+        );
         self.pc += 1;
     }
 
@@ -507,7 +510,10 @@ impl<'a> CPU<'a> {
         let operand = self.read(address);
         self.set_flag(Flag::Carry, self.x >= operand);
         self.set_flag(Flag::Zero, self.x == operand);
-        self.set_flag(Flag::Negative, (self.x.wrapping_sub(operand) & 0x80) >> 7 == 1);
+        self.set_flag(
+            Flag::Negative,
+            (self.x.wrapping_sub(operand) & 0x80) >> 7 == 1,
+        );
         self.pc += 1;
     }
 
@@ -515,7 +521,10 @@ impl<'a> CPU<'a> {
         let operand = self.read(address);
         self.set_flag(Flag::Carry, self.y >= operand);
         self.set_flag(Flag::Zero, self.y == operand);
-        self.set_flag(Flag::Negative, (self.y.wrapping_sub(operand) & 0x80) >> 7 == 1);
+        self.set_flag(
+            Flag::Negative,
+            (self.y.wrapping_sub(operand) & 0x80) >> 7 == 1,
+        );
         self.pc += 1;
     }
 
@@ -586,12 +595,8 @@ impl<'a> CPU<'a> {
     }
 
     fn lda(&mut self, address: u16) {
-        println!("add {:04x}", address);
-
         let operand = self.read(address);
-        println!("before {}", operand);
         self.a = operand;
-        println!("after {}", operand);
         self.set_flag(Flag::Zero, self.a == 0);
         self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
@@ -643,16 +648,20 @@ impl<'a> CPU<'a> {
 
     fn pha(&mut self, _imp: ()) {
         self.push_stack(self.a);
+        println!("pushed {:0x}", self.a);
         self.pc += 1;
     }
 
     fn php(&mut self, _imp: ()) {
         self.push_stack(self.status | 0x30); // NES quirk, not regular 6502
+        println!("pushed {:0x}", self.status | 0x30);
         self.pc += 1;
     }
 
     fn pla(&mut self, _imp: ()) {
         self.a = self.pop_stack();
+        println!("popped {:0x}", self.a);
+
         self.set_flag(Flag::Zero, self.a == 0);
         self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
@@ -660,6 +669,8 @@ impl<'a> CPU<'a> {
 
     fn plp(&mut self, _imp: ()) {
         self.status = (self.pop_stack() & 0xEF) | 0x20; // NES quirk, not regular 6502
+        println!("popped {:0x}", self.status);
+
         self.pc += 1;
     }
 
@@ -754,7 +765,7 @@ impl<'a> CPU<'a> {
     }
 
     fn txs(&mut self, _imp: ()) {
-        self.sp = self.x as u16;
+        self.sp = self.x;
         self.pc += 1;
     }
 
