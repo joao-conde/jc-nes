@@ -1,5 +1,7 @@
 use super::bus::{Bus, Device};
 
+use std::collections::HashSet;
+
 pub struct CPU<'a> {
     a: u8,
     x: u8,
@@ -9,6 +11,9 @@ pub struct CPU<'a> {
     flags: u8,
     cycles_left: u8,
     bus: Bus<'a>,
+
+    tmp_total_cyc: usize,
+    tmp_set: HashSet<u16>
 }
 
 enum Flag {
@@ -33,6 +38,8 @@ impl<'a> CPU<'a> {
             cycles_left: 0,
             bus: bus,
             flags: 0x24,
+            tmp_total_cyc: 7,
+            tmp_set: HashSet::new()
         }
     }
 
@@ -44,8 +51,8 @@ impl<'a> CPU<'a> {
         self.cycles_left -= 1;
     }
 
-    pub fn terminated(&self) -> bool {
-        self.pc >= 0xFFFF || self.pc == 0xC83A // TODO remove
+    pub fn terminated(&mut self) -> bool {
+        self.pc >= 0xFFFF || self.pc == 0xCE51  // TODO remove
     }
 
     fn push_stack(&mut self, val: u8) {
@@ -97,17 +104,18 @@ impl<'a> CPU<'a> {
         let address = address_mode_fn(self);
         opcode_fn(self, address);
         self.cycles_left += cycles;
+        self.tmp_total_cyc += cycles as usize;
     }
 
     fn process_opcode(&mut self, opcode: u8) {
-        // println!(
-        //     "{:0x} {:0x} A:{:0x} X:{:0x} Y:{:0x} P:{:0x} SP:{:0x}",
-        //     self.pc, opcode, self.a, self.x, self.y, self.flags, self.sp
-        // );
         println!(
-            "{:0x} {:0x} A:{:0x} P:{:0x} SP:{:0x}",
-            self.pc, opcode, self.a, self.flags, self.sp
+            "{:0x} {:0x} A:{:0x} X:{:0x} Y:{:0x} P:{:0x} SP:{:0x} CYC:{}",
+            self.pc, opcode, self.a, self.x, self.y, self.flags, self.sp, self.tmp_total_cyc
         );
+        // println!(
+        //     "{:0x} {:0x} A:{:0x} P:{:0x} SP:{:0x}",
+        //     self.pc, opcode, self.a, self.flags, self.sp
+        // );
         // TODO dont forget additional clock cycles!
         match opcode {
             0x00 => self.execute_instruction(CPU::imp, CPU::brk, 7),
@@ -314,10 +322,8 @@ impl<'a> CPU<'a> {
     }
 
     fn brk(&mut self, _imp: ()) {
-        unimplemented!();
-        // self.set(Flag::B1);
-        // self.set(Flag::B2);
-        // self.pc += 1;
+        self.set_flag(Flag::B1);
+        self.pc += 1;
     }
 
     fn bcs(&mut self, address: u16) {
@@ -355,8 +361,8 @@ impl<'a> CPU<'a> {
     fn bmi(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Negative) {
-            false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
-            true => self.pc += 1,
+            true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            false => self.pc += 1,
         }
     }
 
@@ -442,18 +448,21 @@ impl<'a> CPU<'a> {
         self.write(address, operand);
         self.set_or_unset_flag(Flag::Zero, operand == 0);
         self.set_or_unset_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
+        self.pc += 1;
     }
 
     fn dex(&mut self, _imp: ()) {
-        self.x -= 1;
+        self.x = self.x.wrapping_sub(1);
         self.set_or_unset_flag(Flag::Zero, self.x == 0);
         self.set_or_unset_flag(Flag::Negative, (self.x & 0x80) >> 7 == 1);
+        self.pc += 1;
     }
 
     fn dey(&mut self, _imp: ()) {
-        self.y -= 1;
+        self.y = self.y.wrapping_sub(1);
         self.set_or_unset_flag(Flag::Zero, self.y == 0);
         self.set_or_unset_flag(Flag::Negative, (self.y & 0x80) >> 7 == 1);
+        self.pc += 1;
     }
 
     fn eor(&mut self, address: u16) {
@@ -470,18 +479,21 @@ impl<'a> CPU<'a> {
         self.write(address, operand);
         self.set_or_unset_flag(Flag::Zero, operand == 0);
         self.set_or_unset_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
+        self.pc += 1;
     }
 
     fn inx(&mut self, _imp: ()) {
-        self.x += 1;
+        self.x = self.x.wrapping_add(1);
         self.set_or_unset_flag(Flag::Zero, self.x == 0);
         self.set_or_unset_flag(Flag::Negative, (self.x & 0x80) >> 7 == 1);
+        self.pc += 1;
     }
 
     fn iny(&mut self, _imp: ()) {
-        self.y += 1;
+        self.y = self.y.wrapping_add(1);
         self.set_or_unset_flag(Flag::Zero, self.y == 0);
         self.set_or_unset_flag(Flag::Negative, (self.y & 0x80) >> 7 == 1);
+        self.pc += 1;
     }
 
     fn jmp(&mut self, operand: u16) {
@@ -555,8 +567,9 @@ impl<'a> CPU<'a> {
     }
 
     fn php(&mut self, _imp: ()) {
-        self.set_flag(Flag::B1);
         self.push_stack(self.flags | 0x30);
+        self.unset_flag(Flag::B1);
+        self.unset_flag(Flag::B2);
         self.pc += 1;
     }
 

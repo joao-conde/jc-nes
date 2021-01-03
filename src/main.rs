@@ -34,4 +34,8 @@ fn main() {
         // let mut s = String::new();
         // stdin().read_line(&mut s).unwrap();
     }
+
+    use jc_nes::bus::Device;
+    let res = cpu.read(0x0002);
+    println!("0x{:0x}", res);
 }
