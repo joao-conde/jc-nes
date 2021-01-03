@@ -563,9 +563,7 @@ impl<'a> CPU<'a> {
     }
 
     fn php(&mut self, _imp: ()) {
-        self.push_stack(self.flags | 0x30);
-        self.unset_flag(Flag::B1);
-        self.unset_flag(Flag::B2);
+        self.push_stack(self.flags | 0x10); // NES quirk, not regular 6502
         self.pc += 1;
     }
 
@@ -577,8 +575,7 @@ impl<'a> CPU<'a> {
     }
 
     fn plp(&mut self, _imp: ()) {
-        self.flags = self.pop_stack();
-        self.set_flag(Flag::B2);
+        self.flags = self.pop_stack() & 0xEF; // NES quirk, not regular 6502
         self.pc += 1;
     }
 
