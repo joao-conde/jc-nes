@@ -1,7 +1,5 @@
 use super::bus::{Bus, Device};
 
-use std::collections::HashSet;
-
 pub struct CPU<'a> {
     a: u8,
     x: u8,
@@ -13,7 +11,6 @@ pub struct CPU<'a> {
     bus: Bus<'a>,
 
     tmp_total_cyc: usize,
-    tmp_set: HashSet<u16>
 }
 
 enum Flag {
@@ -39,7 +36,6 @@ impl<'a> CPU<'a> {
             bus: bus,
             flags: 0x24,
             tmp_total_cyc: 7,
-            tmp_set: HashSet::new()
         }
     }
 
@@ -52,7 +48,7 @@ impl<'a> CPU<'a> {
     }
 
     pub fn terminated(&mut self) -> bool {
-        self.pc >= 0xFFFF || self.pc == 0xCE51  // TODO remove
+        self.pc >= 0xFFFF || self.pc == 0xCE51 // TODO remove
     }
 
     fn push_stack(&mut self, val: u8) {
@@ -695,18 +691,14 @@ impl<'a> CPU<'a> {
         self.abs() + self.x as u16
     }
 
-    fn acc(&mut self) {
-        ()
-    }
+    fn acc(&mut self) {}
 
     fn imm(&mut self) -> u16 {
         self.pc += 1;
         self.pc
     }
 
-    fn imp(&mut self) {
-        ()
-    }
+    fn imp(&mut self) {}
 
     fn ind(&mut self) -> u16 {
         self.pc += 1;
