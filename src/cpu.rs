@@ -586,8 +586,12 @@ impl<'a> CPU<'a> {
     }
 
     fn lda(&mut self, address: u16) {
+        println!("add {:04x}", address);
+
         let operand = self.read(address);
+        println!("before {}", operand);
         self.a = operand;
+        println!("after {}", operand);
         self.set_flag(Flag::Zero, self.a == 0);
         self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
@@ -674,8 +678,20 @@ impl<'a> CPU<'a> {
     }
 
     fn sbc(&mut self, address: u16) {
-        let operand = self.read(address);
-        //TODO just like ADC
+        let operand = self.read(address) ^ 0xFF; // 2's complement (+1 nulified by 1-C)
+        let tmp = self.a as u16 + operand as u16 + self.is_flag_set(Flag::Carry) as u16;
+        self.set_flag(Flag::Carry, tmp > 0xFF);
+        self.set_flag(Flag::Zero, tmp & 0xFF == 0);
+        self.set_flag(Flag::Negative, (tmp & 0x80) >> 7 == 1);
+
+        // overflows if positive + positive = negative or
+        // negative + negative = positive
+        // V = ~(A ^ OPERAND) & (A ^ TMP)
+        self.set_flag(
+            Flag::Overflow,
+            ((!(self.a as u16 ^ operand as u16) & (self.a as u16 ^ tmp)) & 0x0080) >> 7 == 1,
+        );
+        self.a = tmp as u8;
         self.pc += 1;
     }
 
