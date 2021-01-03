@@ -5,8 +5,6 @@ use std::fs::File;
 use std::io::Read;
 
 fn main() {
-    println!("Booting up NES...");
-
     // read test rom
     let mut rom = File::open("roms/nestest.nes").unwrap();
     let mut buffer = [0u8; 64 * 1024];
@@ -34,10 +32,4 @@ fn main() {
         // let mut s = String::new();
         // stdin().read_line(&mut s).unwrap();
     }
-
-    // use jc_nes::bus::Device;
-    // let res = cpu.read(0x0002);
-    // println!("0x{:0x}", res);
-    // let res = cpu.read(0x0003);
-    // println!("0x{:0x}", res);
 }

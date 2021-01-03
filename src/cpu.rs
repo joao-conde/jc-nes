@@ -98,10 +98,23 @@ impl<'a> CPU<'a> {
         self.tmp_total_cyc += cycles as usize;
     }
 
+
+    fn to_upper_hex(&self, byte: u8) -> String {
+        format!("{:02x}", byte).to_uppercase()
+    }
+
     fn process_opcode(&mut self, opcode: u8) {
+        print!(
+            "{}  {}", format!("{:04x}", self.pc).to_uppercase(), self.to_upper_hex(opcode)
+        );
         println!(
-            "{:0x} {:0x} A:{:0x} X:{:0x} Y:{:0x} P:{:0x} SP:{:0x} CYC:{}",
-            self.pc, opcode, self.a, self.x, self.y, self.status, self.sp, self.tmp_total_cyc
+            " A:{} X:{} Y:{} P:{} SP:{} CYC:{}",
+            self.to_upper_hex(self.a), 
+            self.to_upper_hex(self.x), 
+            self.to_upper_hex(self.y), 
+            self.to_upper_hex(self.status), 
+            format!("{:02x}", self.sp).to_uppercase(), 
+            self.tmp_total_cyc
         );
         // println!(
         //     "{:0x} {:0x} A:{:0x} P:{:0x} SP:{:0x}",
@@ -611,7 +624,6 @@ impl<'a> CPU<'a> {
     }
 
     fn nop(&mut self, _imp: ()) {
-        println!("---NOP---");
         self.pc += 1;
     }
 
