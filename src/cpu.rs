@@ -13,7 +13,7 @@ pub struct CPU<'a> {
     tmp_total_cyc: usize, // TODO remove
 }
 
-enum StatusFlag {
+enum Flag {
     Carry = 0,
     Zero = 1,
     Interrupt = 2,
@@ -75,11 +75,11 @@ impl<'a> CPU<'a> {
         self.read(self.sp)
     }
 
-    fn is_flag_set(&mut self, flag: StatusFlag) -> bool {
+    fn is_flag_set(&mut self, flag: Flag) -> bool {
         (self.status >> flag as u8) & 1 == 1
     }
 
-    fn set_flag(&mut self, flag: StatusFlag, set_condition: bool) {
+    fn set_flag(&mut self, flag: Flag, set_condition: bool) {
         match set_condition {
             true => self.status |= 1 << flag as u8,
             false => self.status &= !(1 << flag as u8),
@@ -98,22 +98,24 @@ impl<'a> CPU<'a> {
         self.tmp_total_cyc += cycles as usize;
     }
 
-
+    //TODO remove
     fn to_upper_hex(&self, byte: u8) -> String {
         format!("{:02x}", byte).to_uppercase()
     }
 
     fn process_opcode(&mut self, opcode: u8) {
         print!(
-            "{}  {}", format!("{:04x}", self.pc).to_uppercase(), self.to_upper_hex(opcode)
+            "{}  {}",
+            format!("{:04x}", self.pc).to_uppercase(),
+            self.to_upper_hex(opcode)
         );
         println!(
             " A:{} X:{} Y:{} P:{} SP:{} CYC:{}",
-            self.to_upper_hex(self.a), 
-            self.to_upper_hex(self.x), 
-            self.to_upper_hex(self.y), 
-            self.to_upper_hex(self.status), 
-            format!("{:02x}", self.sp).to_uppercase(), 
+            self.to_upper_hex(self.a),
+            self.to_upper_hex(self.x),
+            self.to_upper_hex(self.y),
+            self.to_upper_hex(self.status),
+            format!("{:02x}", self.sp).to_uppercase(),
             self.tmp_total_cyc
         );
         // println!(
@@ -356,54 +358,54 @@ impl<'a> CPU<'a> {
 impl<'a> CPU<'a> {
     fn adc(&mut self, address: u16) {
         let operand = self.read(address);
-        let overflow = self
-            .a
-            .checked_add(operand)
-            .and_then(|sum| sum.checked_add(self.is_flag_set(StatusFlag::Carry) as u8));
-        self.a = self
-            .a
-            .wrapping_add(operand)
-            .wrapping_add(self.is_flag_set(StatusFlag::Carry) as u8);
+        let tmp = self.a as u16 + operand as u16 + self.is_flag_set(Flag::Carry) as u16;
+        self.set_flag(Flag::Carry, tmp > 0xFF);
+        self.set_flag(Flag::Zero, tmp & 0xFF == 0);
+        self.set_flag(Flag::Negative, (tmp & 0x80) >> 7 == 1);
 
-        // TODO revisit
-        self.set_flag(StatusFlag::Zero, self.a == 0);
-        self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
-        self.set_flag(StatusFlag::Overflow, overflow.is_some());
+        // overflows if positive + positive = negative or
+        // negative + negative = positive
+        // V = ~(A ^ OPERAND) & (A ^ TMP)
+        self.set_flag(
+            Flag::Overflow,
+            ((!(self.a as u16 ^ operand as u16) & (self.a as u16 ^ tmp)) & 0x0080) >> 7 == 1,
+        );
+        self.a = tmp as u8;
         self.pc += 1;
     }
 
     fn and(&mut self, address: u16) {
         let operand = self.read(address);
         self.a &= operand;
-        self.set_flag(StatusFlag::Zero, self.a == 0);
-        self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.a == 0);
+        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn asl_acc(&mut self, _acc: ()) {
-        self.set_flag(StatusFlag::Carry, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Carry, (self.a & 0x80) >> 7 == 1);
         self.a <<= 1;
-        self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
-        self.set_flag(StatusFlag::Zero, self.a == 0);
+        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.a == 0);
     }
 
     fn asl_mem(&mut self, address: u16) {
         let operand = self.read(address);
-        self.set_flag(StatusFlag::Carry, (operand & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Carry, (operand & 0x80) >> 7 == 1);
         let operand = operand << 1;
-        self.set_flag(StatusFlag::Negative, (operand & 0x80) >> 7 == 1);
-        self.set_flag(StatusFlag::Zero, operand == 0);
+        self.set_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, operand == 0);
         self.write(address, operand);
     }
 
     fn brk(&mut self, _imp: ()) {
-        self.set_flag(StatusFlag::B1, true);
+        self.set_flag(Flag::B1, true);
         self.pc += 1;
     }
 
     fn bcs(&mut self, address: u16) {
         let operand = self.read(address) as i8;
-        match self.is_flag_set(StatusFlag::Carry) {
+        match self.is_flag_set(Flag::Carry) {
             true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             false => self.pc += 1,
         }
@@ -411,7 +413,7 @@ impl<'a> CPU<'a> {
 
     fn bcc(&mut self, address: u16) {
         let operand = self.read(address) as i8;
-        match self.is_flag_set(StatusFlag::Carry) {
+        match self.is_flag_set(Flag::Carry) {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
@@ -419,7 +421,7 @@ impl<'a> CPU<'a> {
 
     fn beq(&mut self, address: u16) {
         let operand = self.read(address) as i8;
-        match self.is_flag_set(StatusFlag::Zero) {
+        match self.is_flag_set(Flag::Zero) {
             true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             false => self.pc += 1,
         }
@@ -427,15 +429,15 @@ impl<'a> CPU<'a> {
 
     fn bit(&mut self, address: u16) {
         let operand = self.read(address);
-        self.set_flag(StatusFlag::Zero, self.a & operand == 0);
-        self.set_flag(StatusFlag::Negative, (operand & 0x80) >> 7 == 1);
-        self.set_flag(StatusFlag::Overflow, (operand & 0x40) >> 6 == 1);
+        self.set_flag(Flag::Zero, self.a & operand == 0);
+        self.set_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Overflow, (operand & 0x40) >> 6 == 1);
         self.pc += 1;
     }
 
     fn bmi(&mut self, address: u16) {
         let operand = self.read(address) as i8;
-        match self.is_flag_set(StatusFlag::Negative) {
+        match self.is_flag_set(Flag::Negative) {
             true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             false => self.pc += 1,
         }
@@ -443,7 +445,7 @@ impl<'a> CPU<'a> {
 
     fn bne(&mut self, address: u16) {
         let operand = self.read(address) as i8;
-        match self.is_flag_set(StatusFlag::Zero) {
+        match self.is_flag_set(Flag::Zero) {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
@@ -451,7 +453,7 @@ impl<'a> CPU<'a> {
 
     fn bpl(&mut self, address: u16) {
         let operand = self.read(address) as i8;
-        match self.is_flag_set(StatusFlag::Negative) {
+        match self.is_flag_set(Flag::Negative) {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
@@ -459,7 +461,7 @@ impl<'a> CPU<'a> {
 
     fn bvs(&mut self, address: u16) {
         let operand = self.read(address) as i8;
-        match self.is_flag_set(StatusFlag::Overflow) {
+        match self.is_flag_set(Flag::Overflow) {
             true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             false => self.pc += 1,
         }
@@ -467,53 +469,53 @@ impl<'a> CPU<'a> {
 
     fn bvc(&mut self, address: u16) {
         let operand = self.read(address) as i8;
-        match self.is_flag_set(StatusFlag::Overflow) {
+        match self.is_flag_set(Flag::Overflow) {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
         }
     }
 
     fn clc(&mut self, _imp: ()) {
-        self.set_flag(StatusFlag::Carry, false);
+        self.set_flag(Flag::Carry, false);
         self.pc += 1;
     }
 
     fn cld(&mut self, _imp: ()) {
-        self.set_flag(StatusFlag::Decimal, false);
+        self.set_flag(Flag::Decimal, false);
         self.pc += 1;
     }
 
     fn cli(&mut self, _imp: ()) {
-        self.set_flag(StatusFlag::Interrupt, false);
+        self.set_flag(Flag::Interrupt, false);
         self.pc += 1;
     }
 
     fn clv(&mut self, _imp: ()) {
-        self.set_flag(StatusFlag::Overflow, false);
+        self.set_flag(Flag::Overflow, false);
         self.pc += 1;
     }
 
     fn cmp(&mut self, address: u16) {
         let operand = self.read(address);
-        self.set_flag(StatusFlag::Carry, self.a >= operand);
-        self.set_flag(StatusFlag::Zero, self.a == operand);
-        self.set_flag(StatusFlag::Negative, self.a > operand);
+        self.set_flag(Flag::Carry, self.a >= operand);
+        self.set_flag(Flag::Zero, self.a == operand);
+        self.set_flag(Flag::Negative, self.a > operand);
         self.pc += 1;
     }
 
     fn cpx(&mut self, address: u16) {
         let operand = self.read(address);
-        self.set_flag(StatusFlag::Carry, self.x >= operand);
-        self.set_flag(StatusFlag::Zero, self.x == operand);
-        self.set_flag(StatusFlag::Negative, self.x > operand);
+        self.set_flag(Flag::Carry, self.x >= operand);
+        self.set_flag(Flag::Zero, self.x == operand);
+        self.set_flag(Flag::Negative, self.x > operand);
         self.pc += 1;
     }
 
     fn cpy(&mut self, address: u16) {
         let operand = self.read(address);
-        self.set_flag(StatusFlag::Carry, self.y >= operand);
-        self.set_flag(StatusFlag::Zero, self.y == operand);
-        self.set_flag(StatusFlag::Negative, self.y > operand);
+        self.set_flag(Flag::Carry, self.y >= operand);
+        self.set_flag(Flag::Zero, self.y == operand);
+        self.set_flag(Flag::Negative, self.y > operand);
         self.pc += 1;
     }
 
@@ -521,30 +523,30 @@ impl<'a> CPU<'a> {
         let operand = self.read(address);
         let operand = operand - 1;
         self.write(address, operand);
-        self.set_flag(StatusFlag::Zero, operand == 0);
-        self.set_flag(StatusFlag::Negative, (operand & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, operand == 0);
+        self.set_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn dex(&mut self, _imp: ()) {
         self.x = self.x.wrapping_sub(1);
-        self.set_flag(StatusFlag::Zero, self.x == 0);
-        self.set_flag(StatusFlag::Negative, (self.x & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.x == 0);
+        self.set_flag(Flag::Negative, (self.x & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn dey(&mut self, _imp: ()) {
         self.y = self.y.wrapping_sub(1);
-        self.set_flag(StatusFlag::Zero, self.y == 0);
-        self.set_flag(StatusFlag::Negative, (self.y & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.y == 0);
+        self.set_flag(Flag::Negative, (self.y & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn eor(&mut self, address: u16) {
         let operand = self.read(address);
         self.a ^= operand;
-        self.set_flag(StatusFlag::Zero, self.a == 0);
-        self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.a == 0);
+        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
@@ -552,22 +554,22 @@ impl<'a> CPU<'a> {
         let operand = self.read(address);
         let operand = operand + 1;
         self.write(address, operand);
-        self.set_flag(StatusFlag::Zero, operand == 0);
-        self.set_flag(StatusFlag::Negative, (operand & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, operand == 0);
+        self.set_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn inx(&mut self, _imp: ()) {
         self.x = self.x.wrapping_add(1);
-        self.set_flag(StatusFlag::Zero, self.x == 0);
-        self.set_flag(StatusFlag::Negative, (self.x & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.x == 0);
+        self.set_flag(Flag::Negative, (self.x & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn iny(&mut self, _imp: ()) {
         self.y = self.y.wrapping_add(1);
-        self.set_flag(StatusFlag::Zero, self.y == 0);
-        self.set_flag(StatusFlag::Negative, (self.y & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.y == 0);
+        self.set_flag(Flag::Negative, (self.y & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
@@ -586,41 +588,41 @@ impl<'a> CPU<'a> {
     fn lda(&mut self, address: u16) {
         let operand = self.read(address);
         self.a = operand;
-        self.set_flag(StatusFlag::Zero, self.a == 0);
-        self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.a == 0);
+        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn ldx(&mut self, address: u16) {
         let operand = self.read(address);
         self.x = operand;
-        self.set_flag(StatusFlag::Zero, self.x == 0);
-        self.set_flag(StatusFlag::Negative, (self.x & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.x == 0);
+        self.set_flag(Flag::Negative, (self.x & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn ldy(&mut self, address: u16) {
         let operand = self.read(address);
         self.y = operand;
-        self.set_flag(StatusFlag::Zero, self.y == 0);
-        self.set_flag(StatusFlag::Negative, (self.y & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.y == 0);
+        self.set_flag(Flag::Negative, (self.y & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn lsr_mem(&mut self, address: u16) {
         let operand = self.read(address);
-        self.set_flag(StatusFlag::Carry, operand & 0x01 == 1);
+        self.set_flag(Flag::Carry, operand & 0x01 == 1);
         let operand = operand >> 1;
-        self.set_flag(StatusFlag::Zero, operand == 0);
-        self.set_flag(StatusFlag::Negative, (operand & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, operand == 0);
+        self.set_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn lsr_acc(&mut self, _acc: ()) {
-        self.set_flag(StatusFlag::Carry, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Carry, (self.a & 0x80) >> 7 == 1);
         self.a <<= 1;
-        self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
-        self.set_flag(StatusFlag::Zero, self.a == 0);
+        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.a == 0);
     }
 
     fn nop(&mut self, _imp: ()) {
@@ -630,8 +632,8 @@ impl<'a> CPU<'a> {
     fn ora(&mut self, address: u16) {
         let operand = self.read(address);
         self.a |= operand;
-        self.set_flag(StatusFlag::Zero, self.a == 0);
-        self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.a == 0);
+        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
@@ -641,19 +643,19 @@ impl<'a> CPU<'a> {
     }
 
     fn php(&mut self, _imp: ()) {
-        self.push_stack(self.status | 0x10); // NES quirk, not regular 6502
+        self.push_stack(self.status | 0x30); // NES quirk, not regular 6502
         self.pc += 1;
     }
 
     fn pla(&mut self, _imp: ()) {
         self.a = self.pop_stack();
-        self.set_flag(StatusFlag::Zero, self.a == 0);
-        self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.a == 0);
+        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn plp(&mut self, _imp: ()) {
-        self.status = self.pop_stack() & 0xEF; // NES quirk, not regular 6502
+        self.status = (self.pop_stack() & 0xEF) | 0x20; // NES quirk, not regular 6502
         self.pc += 1;
     }
 
@@ -678,17 +680,17 @@ impl<'a> CPU<'a> {
     }
 
     fn sec(&mut self, _imp: ()) {
-        self.set_flag(StatusFlag::Carry, true);
+        self.set_flag(Flag::Carry, true);
         self.pc += 1;
     }
 
     fn sed(&mut self, _imp: ()) {
-        self.set_flag(StatusFlag::Decimal, true);
+        self.set_flag(Flag::Decimal, true);
         self.pc += 1;
     }
 
     fn sei(&mut self, _imp: ()) {
-        self.set_flag(StatusFlag::Interrupt, true);
+        self.set_flag(Flag::Interrupt, true);
         self.pc += 1;
     }
 
@@ -709,29 +711,29 @@ impl<'a> CPU<'a> {
 
     fn tax(&mut self, _imp: ()) {
         self.x = self.a;
-        self.set_flag(StatusFlag::Zero, self.x == 0);
-        self.set_flag(StatusFlag::Negative, (self.x & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.x == 0);
+        self.set_flag(Flag::Negative, (self.x & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn tay(&mut self, _imp: ()) {
         self.y = self.a;
-        self.set_flag(StatusFlag::Zero, self.y == 0);
-        self.set_flag(StatusFlag::Negative, (self.y & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.y == 0);
+        self.set_flag(Flag::Negative, (self.y & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn tsx(&mut self, _imp: ()) {
         self.x = self.sp as u8;
-        self.set_flag(StatusFlag::Zero, self.x == 0);
-        self.set_flag(StatusFlag::Negative, (self.x & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.x == 0);
+        self.set_flag(Flag::Negative, (self.x & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
     fn txa(&mut self, _imp: ()) {
         self.a = self.x;
-        self.set_flag(StatusFlag::Zero, self.a == 0);
-        self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.a == 0);
+        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 
@@ -742,8 +744,8 @@ impl<'a> CPU<'a> {
 
     fn tya(&mut self, _imp: ()) {
         self.a = self.y;
-        self.set_flag(StatusFlag::Zero, self.a == 0);
-        self.set_flag(StatusFlag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.a == 0);
+        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
 }

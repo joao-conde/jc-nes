@@ -16,8 +16,8 @@ for (nestest_line, my_line) in zip(nestestlogs, mylogs):
     mine = my_line.split()[:-1]
 
     if expected != mine:
-        print(expected)
-        print(mine)
+        print("expected:", expected)
+        print("mine    :", mine)
         assert(False)
 
 
