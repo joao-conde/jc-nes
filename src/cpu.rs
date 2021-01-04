@@ -60,7 +60,20 @@ impl<'a> CPU<'a> {
     }
 
     pub fn terminated(&mut self) -> bool {
-        self.pc >= 0xFFFF //|| self.pc == 0xCE51 // TODO remove
+
+        // if self.pc == 0xCE40 {
+        //     println!("current sp: {:04x}", 0x0100 + self.sp as u16);
+        //     for i in (1..=10).rev() {
+        //         let address = 0x0100 + (self.sp as u16).checked_sub(i).unwrap();
+        //         println!("{:04x} {:02x}", address, self.read(address));
+        //     }
+        //     for i in 0..=10 {
+        //         let address = 0x0100 + (self.sp as u16).checked_add(i).unwrap();
+        //         println!("{:04x} {:02x}", address, self.read(address));
+        //     }
+        // }
+
+        self.pc >= 0xFFFF || self.pc == 0xCF0C // TODO remove
     }
 }
 
@@ -589,8 +602,8 @@ impl<'a> CPU<'a> {
     fn jsr(&mut self, operand: u16) {
         let pcl = (self.pc & 0xFF) as u8;
         let pch = (self.pc >> 8) as u8;
-        self.push_stack(pcl);
         self.push_stack(pch);
+        self.push_stack(pcl);
         self.pc = operand;
     }
 
@@ -648,20 +661,16 @@ impl<'a> CPU<'a> {
 
     fn pha(&mut self, _imp: ()) {
         self.push_stack(self.a);
-        println!("pushed {:0x}", self.a);
         self.pc += 1;
     }
 
     fn php(&mut self, _imp: ()) {
         self.push_stack(self.status | 0x30); // NES quirk, not regular 6502
-        println!("pushed {:0x}", self.status | 0x30);
         self.pc += 1;
     }
 
     fn pla(&mut self, _imp: ()) {
         self.a = self.pop_stack();
-        println!("popped {:0x}", self.a);
-
         self.set_flag(Flag::Zero, self.a == 0);
         self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
@@ -669,8 +678,6 @@ impl<'a> CPU<'a> {
 
     fn plp(&mut self, _imp: ()) {
         self.status = (self.pop_stack() & 0xEF) | 0x20; // NES quirk, not regular 6502
-        println!("popped {:0x}", self.status);
-
         self.pc += 1;
     }
 
@@ -682,8 +689,8 @@ impl<'a> CPU<'a> {
     }
 
     fn rts(&mut self, _imp: ()) {
-        let pch = self.pop_stack();
         let pcl = self.pop_stack();
+        let pch = self.pop_stack();
         self.pc = ((pch as u16) << 8) | pcl as u16;
         self.pc += 1;
     }
