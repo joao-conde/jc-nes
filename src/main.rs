@@ -15,7 +15,7 @@ fn main() {
     let mut mem = Vec::new();
     (0..0xC000).for_each(|_| mem.push(0));
     buffer[16..0x4F00]
-        .into_iter()
+        .iter()
         .for_each(|byte| mem.push(*byte));
 
     // connect ram to the bus

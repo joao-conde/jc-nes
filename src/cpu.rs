@@ -7,9 +7,9 @@ pub struct CPU<'a> {
     pc: u16,
     sp: u8,
     status: u8,
+
     cycles_left: u8,
     bus: &'a mut Bus<'a>,
-
     tmp_total_cyc: usize, // TODO remove
 }
 
