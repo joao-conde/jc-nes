@@ -1,4 +1,4 @@
-use jc_nes::bus::{Bus, Device};
+use jc_nes::bus::Bus;
 use jc_nes::cpu::CPU;
 use jc_nes::ram::RAM;
 use std::fs::File;

@@ -57,25 +57,9 @@ impl<'a> CPU<'a> {
             self.process_opcode(opcode);
         }
         self.cycles_left -= 1;
-
-        // use std::io::stdin;
-        // let mut s = String::new();
-        // stdin().read_line(&mut s).unwrap();
     }
 
     pub fn terminated(&mut self) -> bool {
-        // print stack contents
-        // if self.pc == 0xCE40 {
-        //     println!("current sp: {:04x}", 0x0100 + self.sp as u16);
-        //     for i in (1..=10).rev() {
-        //         let address = 0x0100 + (self.sp as u16).checked_sub(i).unwrap();
-        //         println!("{:04x} {:02x}", address, self.read(address));
-        //     }
-        //     for i in 0..=10 {
-        //         let address = 0x0100 + (self.sp as u16).checked_add(i).unwrap();
-        //         println!("{:04x} {:02x}", address, self.read(address));
-        //     }
-        // }
         self.tmp_total_cyc > 26554
     }
 }
@@ -134,10 +118,6 @@ impl<'a> CPU<'a> {
             format!("{:02x}", self.sp).to_uppercase(),
             self.tmp_total_cyc
         );
-        // println!(
-        //     "{:0x} {:0x} A:{:0x} P:{:0x} SP:{:0x}",
-        //     self.pc, opcode, self.a, self.flags, self.sp
-        // );
         // TODO dont forget additional clock cycles!
         match opcode {
             0x00 => self.execute_instruction(CPU::imp, CPU::brk, 7),
