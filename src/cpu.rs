@@ -57,6 +57,10 @@ impl<'a> CPU<'a> {
             self.process_opcode(opcode);
         }
         self.cycles_left -= 1;
+
+        use std::io::stdin;
+        let mut s = String::new();
+        stdin().read_line(&mut s).unwrap();
     }
 
     pub fn terminated(&mut self) -> bool {
@@ -73,7 +77,7 @@ impl<'a> CPU<'a> {
         //     }
         // }
 
-        self.pc >= 0xFFFF || self.pc == 0xCFE5  // TODO remove
+        self.pc >= 0xFFFF || self.pc == 0xDB78 // TODO remove
     }
 }
 
@@ -596,16 +600,16 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn jmp(&mut self, operand: u16) {
-        self.pc = operand;
+    fn jmp(&mut self, address: u16) {
+        self.pc = address;
     }
 
-    fn jsr(&mut self, operand: u16) {
+    fn jsr(&mut self, address: u16) {
         let pcl = (self.pc & 0xFF) as u8;
         let pch = (self.pc >> 8) as u8;
         self.push_stack(pch);
         self.push_stack(pcl);
-        self.pc = operand;
+        self.pc = address;
     }
 
     fn lda(&mut self, address: u16) {
@@ -778,18 +782,18 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn sta(&mut self, operand: u16) {
-        self.write(operand, self.a);
+    fn sta(&mut self, address: u16) {
+        self.write(address, self.a);
         self.pc += 1;
     }
 
-    fn stx(&mut self, operand: u16) {
-        self.write(operand, self.x);
+    fn stx(&mut self, address: u16) {
+        self.write(address, self.x);
         self.pc += 1;
     }
 
-    fn sty(&mut self, operand: u16) {
-        self.write(operand, self.y);
+    fn sty(&mut self, address: u16) {
+        self.write(address, self.y);
         self.pc += 1;
     }
 
