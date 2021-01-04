@@ -65,7 +65,7 @@ impl<'a> CPU<'a> {
         //     }
         // }
 
-        self.tmp_total_cyc >= 26554 || self.pc >= 0xFFFF || self.pc == 0xA900 // TODO remove
+        self.tmp_total_cyc > 26554 || self.pc > 0xFFFF
     }
 }
 
@@ -277,14 +277,18 @@ impl<'a> CPU<'a> {
             0x80 | 0xEB => self.execute_instruction(|_| 2, CPU::nop, 2),
             0x04 | 0x44 | 0x64 | 0x87 | 0xA7 => self.execute_instruction(|_| 2, CPU::nop, 3),
             0x14 | 0x34 | 0x54 | 0x74 | 0x97 | 0xB7 | 0xBF | 0xD4 | 0xF4 => self.execute_instruction(|_| 2, CPU::nop, 4),
-            0xC7 | 0xE7 => self.execute_instruction(|_| 2, CPU::nop, 5),
-            0x83 | 0xA3 | 0xB3 | 0xD7 | 0xF7 => self.execute_instruction(|_| 2, CPU::nop, 6),
-            0xC3 | 0xD3 | 0xE3 | 0xF3 => self.execute_instruction(|_| 2, CPU::nop, 8),
+            0x07 | 0x27 | 0x47 | 0x67 | 0xC7 | 0xE7 => self.execute_instruction(|_| 2, CPU::nop, 5),
+            0x17 | 0x37 | 0x57 | 0x77 | 0x83 | 0xA3 | 0xB3 | 0xD7 | 0xF7 => self.execute_instruction(|_| 2, CPU::nop, 6),
+            0x03 | 0x13 | 0x23 | 0x33 | 0x43 | 0x53 | 0x63 | 0x73 | 0xC3 | 0xD3 | 0xE3 | 0xF3 => {
+                self.execute_instruction(|_| 2, CPU::nop, 8)
+            }
 
             0x0C | 0x8F | 0xAF => self.execute_instruction(|_| 3, CPU::nop, 4),
             0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => self.execute_instruction(|_| 3, CPU::nop, 5),
-            0xCF | 0xEF => self.execute_instruction(|_| 3, CPU::nop, 6),
-            0xDB | 0xDF => self.execute_instruction(|_| 3, CPU::nop, 7),
+            0x0F | 0x2F | 0x4F | 0x6F | 0xCF | 0xEF => self.execute_instruction(|_| 3, CPU::nop, 6),
+            0x1B | 0x1F | 0x3B | 0x3F | 0x5B | 0x5F | 0x7B | 0x7F | 0xDB | 0xDF | 0xFB | 0xFF => {
+                self.execute_instruction(|_| 3, CPU::nop, 7)
+            }
 
             _ => panic!(format!("invalid opcode 0x{:0x} at 0x{:0x}", opcode, self.pc)),
         }
