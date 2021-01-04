@@ -56,11 +56,15 @@ After (or while) you implement the addressing modes and instructions:
 4. point your CPU PC at 0xC000
 5. execute and compare your logs with the the `nestest.nes` logs https://github.com/christopherpow/nes-test-roms/blob/master/other/nestest.log
 
-## CPU References
+## NES CPU Quirks
+
+The NES CPU is based on a 6502 yet it is not the same:
+
+- besides lacking decimal mode, the behavior of the status bits 4 and 5 (from 0 to 7) is quite bizarre; check https://wiki.nesdev.com/w/index.php/Status_flags#The_B_flag and pay close attention to the PHP/PLP instructions
+- the indirect (IND) addressing mode was bugged in the original hardware; to mimic the original behavior, you have to reproduce the bug behavior in this addressing mode (it should cross page boundaries, instead it just wraps around)
+
+## Other References
 
 - http://wiki.nesdev.com/w/index.php/CPU
-- http://www.obelisk.me.uk/6502/
 - http://archive.6502.org/datasheets/rockwell_r650x_r651x.pdf
-- https://gist.github.com/bit-hack/3be16a5333a50732d3eee85c962157a7
-- https://wiki.nesdev.com/w/index.php/Status_flags#The_B_flag
 - https://skilldrick.github.io/easy6502/
