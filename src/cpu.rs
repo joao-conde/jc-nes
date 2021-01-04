@@ -60,7 +60,6 @@ impl<'a> CPU<'a> {
     }
 
     pub fn terminated(&mut self) -> bool {
-
         // if self.pc == 0xCE40 {
         //     println!("current sp: {:04x}", 0x0100 + self.sp as u16);
         //     for i in (1..=10).rev() {
@@ -306,12 +305,12 @@ impl<'a> CPU<'a> {
         ((hi as u16) << 8) | lo as u16
     }
 
-    fn absy(&mut self) -> u16 {
-        self.abs() + self.y as u16
-    }
-
     fn absx(&mut self) -> u16 {
         self.abs() + self.x as u16
+    }
+
+    fn absy(&mut self) -> u16 {
+        self.abs() + self.y as u16
     }
 
     fn acc(&mut self) {}
@@ -412,9 +411,12 @@ impl<'a> CPU<'a> {
         self.write(address, operand);
     }
 
-    fn brk(&mut self, _imp: ()) {
-        self.set_flag(Flag::B1, true);
-        self.pc += 1;
+    fn bcc(&mut self, address: u16) {
+        let operand = self.read(address) as i8;
+        match self.is_flag_set(Flag::Carry) {
+            false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            true => self.pc += 1,
+        }
     }
 
     fn bcs(&mut self, address: u16) {
@@ -422,14 +424,6 @@ impl<'a> CPU<'a> {
         match self.is_flag_set(Flag::Carry) {
             true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             false => self.pc += 1,
-        }
-    }
-
-    fn bcc(&mut self, address: u16) {
-        let operand = self.read(address) as i8;
-        match self.is_flag_set(Flag::Carry) {
-            false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
-            true => self.pc += 1,
         }
     }
 
@@ -473,12 +467,9 @@ impl<'a> CPU<'a> {
         }
     }
 
-    fn bvs(&mut self, address: u16) {
-        let operand = self.read(address) as i8;
-        match self.is_flag_set(Flag::Overflow) {
-            true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
-            false => self.pc += 1,
-        }
+    fn brk(&mut self, _imp: ()) {
+        self.set_flag(Flag::B1, true);
+        self.pc += 1;
     }
 
     fn bvc(&mut self, address: u16) {
@@ -486,6 +477,14 @@ impl<'a> CPU<'a> {
         match self.is_flag_set(Flag::Overflow) {
             false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
             true => self.pc += 1,
+        }
+    }
+
+    fn bvs(&mut self, address: u16) {
+        let operand = self.read(address) as i8;
+        match self.is_flag_set(Flag::Overflow) {
+            true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            false => self.pc += 1,
         }
     }
 
@@ -632,20 +631,21 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn lsr_mem(&mut self, address: u16) {
-        let operand = self.read(address);
-        self.set_flag(Flag::Carry, operand & 0x01 == 1);
-        let operand = operand >> 1;
-        self.set_flag(Flag::Zero, operand == 0);
-        self.set_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
-        self.pc += 1;
-    }
-
     fn lsr_acc(&mut self, _acc: ()) {
         self.set_flag(Flag::Carry, self.a & 0x01 == 1);
         self.a >>= 1;
         self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.set_flag(Flag::Zero, self.a == 0);
+        self.pc += 1;
+    }
+
+    fn lsr_mem(&mut self, address: u16) {
+        let operand = self.read(address);
+        self.set_flag(Flag::Carry, operand & 0x01 == 1);
+        let operand = operand >> 1;
+        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.a == 0);
+        self.write(address, operand);
         self.pc += 1;
     }
 
@@ -682,6 +682,10 @@ impl<'a> CPU<'a> {
         self.status = (self.pop_stack() & 0xEF) | 0x20; // NES quirk, not regular 6502
         self.pc += 1;
     }
+
+    fn rol(&mut self) {}
+
+    fn ror(&mut self) {}
 
     fn rti(&mut self, _imp: ()) {
         self.status = self.pop_stack();
