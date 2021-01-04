@@ -19,7 +19,7 @@ enum Flag {
     Interrupt = 2,
     Decimal = 3,
     B1 = 4,
-    B2 = 5, //TODO remove
+    B2 = 5,
     Overflow = 6,
     Negative = 7,
 }
@@ -60,6 +60,7 @@ impl<'a> CPU<'a> {
     }
 
     pub fn terminated(&mut self) -> bool {
+        // print stack contents
         // if self.pc == 0xCE40 {
         //     println!("current sp: {:04x}", 0x0100 + self.sp as u16);
         //     for i in (1..=10).rev() {
@@ -157,21 +158,21 @@ impl<'a> CPU<'a> {
             0x21 => self.execute_instruction(CPU::indx, CPU::and, 6),
             0x24 => self.execute_instruction(CPU::zp, CPU::bit, 3),
             0x25 => self.execute_instruction(CPU::zp, CPU::and, 3),
-            0x26 => unimplemented!(),
+            0x26 => self.execute_instruction(CPU::zp, CPU::rol_mem, 5),
             0x28 => self.execute_instruction(CPU::imp, CPU::plp, 4),
             0x29 => self.execute_instruction(CPU::imm, CPU::and, 2),
-            0x2A => unimplemented!(),
+            0x2A => self.execute_instruction(CPU::acc, CPU::rol_acc, 2),
             0x2C => self.execute_instruction(CPU::abs, CPU::bit, 4),
             0x2D => self.execute_instruction(CPU::abs, CPU::and, 4),
-            0x2E => unimplemented!(),
+            0x2E => self.execute_instruction(CPU::abs, CPU::rol_mem, 6),
             0x30 => self.execute_instruction(CPU::relative, CPU::bmi, 2),
             0x31 => self.execute_instruction(CPU::indy, CPU::and, 5),
             0x35 => self.execute_instruction(CPU::zpx, CPU::and, 4),
-            0x36 => unimplemented!(),
+            0x36 => self.execute_instruction(CPU::zpx, CPU::rol_mem, 6),
             0x38 => self.execute_instruction(CPU::imp, CPU::sec, 2),
             0x39 => self.execute_instruction(CPU::absy, CPU::and, 4),
             0x3D => self.execute_instruction(CPU::absx, CPU::and, 4),
-            0x3E => unimplemented!(),
+            0x3E => self.execute_instruction(CPU::absx, CPU::rol_mem, 7),
             0x40 => self.execute_instruction(CPU::imp, CPU::rti, 6),
             0x41 => self.execute_instruction(CPU::indx, CPU::eor, 6),
             0x45 => self.execute_instruction(CPU::zp, CPU::eor, 3),
@@ -193,21 +194,21 @@ impl<'a> CPU<'a> {
             0x60 => self.execute_instruction(CPU::imp, CPU::rts, 6),
             0x61 => self.execute_instruction(CPU::indx, CPU::adc, 6),
             0x65 => self.execute_instruction(CPU::zp, CPU::adc, 3),
-            0x66 => unimplemented!(),
+            0x66 => self.execute_instruction(CPU::zp, CPU::ror_mem, 5),
             0x68 => self.execute_instruction(CPU::imp, CPU::pla, 4),
             0x69 => self.execute_instruction(CPU::imm, CPU::adc, 2),
-            0x6A => unimplemented!(),
+            0x6A => self.execute_instruction(CPU::acc, CPU::ror_acc, 2),
             0x6C => self.execute_instruction(CPU::ind, CPU::jmp, 5),
             0x6D => self.execute_instruction(CPU::abs, CPU::adc, 4),
-            0x6E => unimplemented!(),
+            0x6E => self.execute_instruction(CPU::abs, CPU::ror_mem, 6),
             0x70 => self.execute_instruction(CPU::relative, CPU::bvs, 2),
             0x71 => self.execute_instruction(CPU::indy, CPU::adc, 5),
             0x75 => self.execute_instruction(CPU::zpx, CPU::adc, 4),
-            0x76 => unimplemented!(),
+            0x76 => self.execute_instruction(CPU::zpx, CPU::ror_mem, 6),
             0x78 => self.execute_instruction(CPU::imp, CPU::sei, 2),
             0x79 => self.execute_instruction(CPU::absy, CPU::adc, 4),
             0x7D => self.execute_instruction(CPU::absx, CPU::adc, 4),
-            0x7E => unimplemented!(),
+            0x7E => self.execute_instruction(CPU::absx, CPU::ror_mem, 7),
             0x81 => self.execute_instruction(CPU::indx, CPU::sta, 6),
             0x84 => self.execute_instruction(CPU::zp, CPU::sty, 3),
             0x85 => self.execute_instruction(CPU::zp, CPU::sta, 3),
@@ -683,9 +684,21 @@ impl<'a> CPU<'a> {
         self.pc += 1;
     }
 
-    fn rol(&mut self) {}
+    fn rol_acc(&mut self, _imp: ()) {
+        unimplemented!()
+    }
 
-    fn ror(&mut self) {}
+    fn rol_mem(&mut self, address: u16) {
+        unimplemented!()
+    }
+
+    fn ror_acc(&mut self, _imp: ()) {
+        unimplemented!()
+    }
+
+    fn ror_mem(&mut self, address: u16) {
+        unimplemented!()
+    }
 
     fn rti(&mut self, _imp: ()) {
         self.status = self.pop_stack();
@@ -704,6 +717,8 @@ impl<'a> CPU<'a> {
 
     fn sbc(&mut self, address: u16) {
         let operand = self.read(address) ^ 0xFF; // 2's complement (+1 nulified by 1-C)
+
+        // rest is the same as adc
         let tmp = self.a as u16 + operand as u16 + self.is_flag_set(Flag::Carry) as u16;
         self.set_flag(Flag::Carry, tmp > 0xFF);
         self.set_flag(Flag::Zero, tmp & 0xFF == 0);
