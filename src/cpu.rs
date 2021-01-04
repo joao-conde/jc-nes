@@ -58,9 +58,9 @@ impl<'a> CPU<'a> {
         }
         self.cycles_left -= 1;
 
-        use std::io::stdin;
-        let mut s = String::new();
-        stdin().read_line(&mut s).unwrap();
+        // use std::io::stdin;
+        // let mut s = String::new();
+        // stdin().read_line(&mut s).unwrap();
     }
 
     pub fn terminated(&mut self) -> bool {
@@ -77,7 +77,7 @@ impl<'a> CPU<'a> {
         //     }
         // }
 
-        self.pc >= 0xFFFF || self.pc == 0xDB78 // TODO remove
+        self.tmp_total_cyc >= 26554 || self.pc >= 0xFFFF || self.pc == 0xA900 // TODO remove
     }
 }
 
@@ -328,11 +328,21 @@ impl<'a> CPU<'a> {
     fn imp(&mut self) {}
 
     fn ind(&mut self) -> u16 {
+        // "ind" is bugged in the original hardware
+        // if the low byte is 0xFF then the high byte should be read from the next page
+        // the bug is that it does not, and instead just wraps around in the same page
         self.pc += 1;
         let lo = self.read(self.pc);
         self.pc += 1;
-        let hi = self.read(self.pc);
-        ((hi as u16) << 8) + lo as u16
+        let hi = self.read(self.pc);     
+        let address = ((hi as u16) << 8) | lo as u16;
+        
+        if lo == 0xFF {
+            ((self.read(address & 0xFF00) as u16) << 8)| self.read(address) as u16
+        }
+        else {
+            ((self.read(address + 1) as u16) << 8) | self.read(address) as u16
+        }
     }
 
     fn indx(&mut self) -> u16 {
@@ -414,6 +424,7 @@ impl<'a> CPU<'a> {
         self.set_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
         self.set_flag(Flag::Zero, operand == 0);
         self.write(address, operand);
+        self.pc += 1;
     }
 
     fn bcc(&mut self, address: u16) {
@@ -648,8 +659,8 @@ impl<'a> CPU<'a> {
         let operand = self.read(address);
         self.set_flag(Flag::Carry, operand & 0x01 == 1);
         let operand = operand >> 1;
-        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
-        self.set_flag(Flag::Zero, self.a == 0);
+        self.set_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, operand == 0);
         self.write(address, operand);
         self.pc += 1;
     }
