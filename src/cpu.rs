@@ -73,7 +73,7 @@ impl<'a> CPU<'a> {
         //     }
         // }
 
-        self.pc >= 0xFFFF || self.pc == 0xCF0C // TODO remove
+        self.pc >= 0xFFFF //|| self.pc == 0xCEFC  // TODO remove
     }
 }
 
@@ -400,6 +400,7 @@ impl<'a> CPU<'a> {
         self.a <<= 1;
         self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.set_flag(Flag::Zero, self.a == 0);
+        self.pc += 1;
     }
 
     fn asl_mem(&mut self, address: u16) {
@@ -641,10 +642,11 @@ impl<'a> CPU<'a> {
     }
 
     fn lsr_acc(&mut self, _acc: ()) {
-        self.set_flag(Flag::Carry, (self.a & 0x80) >> 7 == 1);
-        self.a <<= 1;
+        self.set_flag(Flag::Carry, self.a & 0x01 == 1);
+        self.a >>= 1;
         self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.set_flag(Flag::Zero, self.a == 0);
+        self.pc += 1;
     }
 
     fn nop(&mut self, _imp: ()) {
@@ -683,8 +685,9 @@ impl<'a> CPU<'a> {
 
     fn rti(&mut self, _imp: ()) {
         self.status = self.pop_stack();
-        let pch = self.pop_stack();
         let pcl = self.pop_stack();
+        let pch = self.pop_stack();
+        self.set_flag(Flag::B2, true);
         self.pc = ((pch as u16) << 8) | pcl as u16;
     }
 
