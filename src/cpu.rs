@@ -73,7 +73,7 @@ impl<'a> CPU<'a> {
         //     }
         // }
 
-        self.pc >= 0xFFFF //|| self.pc == 0xCEFC  // TODO remove
+        self.pc >= 0xFFFF || self.pc == 0xCFE5  // TODO remove
     }
 }
 
@@ -345,7 +345,7 @@ impl<'a> CPU<'a> {
         let lo = self.read(address) as u16;
         let hi = self.read((address + 1) & 0x00FF);
         let hi = (hi as u16) << 8;
-        lo + hi + self.y as u16
+        lo.wrapping_add(hi).wrapping_add(self.y as u16)
     }
 
     fn relative(&mut self) -> u16 {
@@ -544,7 +544,7 @@ impl<'a> CPU<'a> {
 
     fn dec(&mut self, address: u16) {
         let operand = self.read(address);
-        let operand = operand - 1;
+        let operand = operand.wrapping_sub(1);
         self.write(address, operand);
         self.set_flag(Flag::Zero, operand == 0);
         self.set_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
@@ -575,7 +575,7 @@ impl<'a> CPU<'a> {
 
     fn inc(&mut self, address: u16) {
         let operand = self.read(address);
-        let operand = operand + 1;
+        let operand = operand.wrapping_add(1);
         self.write(address, operand);
         self.set_flag(Flag::Zero, operand == 0);
         self.set_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
@@ -685,19 +685,47 @@ impl<'a> CPU<'a> {
     }
 
     fn rol_acc(&mut self, _imp: ()) {
-        unimplemented!()
+        let bit0 = self.is_flag_set(Flag::Carry) as u8;
+        self.set_flag(Flag::Carry, (self.a & 0x80) >> 7 == 1);
+        self.a <<= 1;
+        self.a |= bit0;
+        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.a == 0);
+        self.pc += 1;
     }
 
     fn rol_mem(&mut self, address: u16) {
-        unimplemented!()
+        let operand = self.read(address);
+        let bit0 = self.is_flag_set(Flag::Carry) as u8;
+        self.set_flag(Flag::Carry, (operand & 0x80) >> 7 == 1);
+        let operand = operand << 1;
+        let operand = operand | bit0;
+        self.write(address, operand);
+        self.set_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, operand == 0);
+        self.pc += 1;
     }
 
     fn ror_acc(&mut self, _imp: ()) {
-        unimplemented!()
+        let bit7 = self.is_flag_set(Flag::Carry) as u8;
+        self.set_flag(Flag::Carry, self.a & 0x01 == 1);
+        self.a >>= 1;
+        self.a |= bit7 << 7;
+        self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, self.a == 0);
+        self.pc += 1;
     }
 
     fn ror_mem(&mut self, address: u16) {
-        unimplemented!()
+        let operand = self.read(address);
+        let bit7 = self.is_flag_set(Flag::Carry) as u8;
+        self.set_flag(Flag::Carry, operand & 0x01 == 1);
+        let operand = operand >> 1;
+        let operand = operand | bit7 << 7;
+        self.write(address, operand);
+        self.set_flag(Flag::Negative, (operand & 0x80) >> 7 == 1);
+        self.set_flag(Flag::Zero, operand == 0);
+        self.pc += 1;
     }
 
     fn rti(&mut self, _imp: ()) {
