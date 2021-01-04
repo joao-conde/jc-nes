@@ -1,4 +1,4 @@
-use jc_nes::bus::Bus;
+use jc_nes::bus::{Bus, Device};
 use jc_nes::cpu::CPU;
 use jc_nes::ram::RAM;
 use std::fs::File;
@@ -14,20 +14,19 @@ fn main() {
     // and discard 16-bit header
     let mut mem = Vec::new();
     (0..0xC000).for_each(|_| mem.push(0));
-    buffer[16..0x4F00].into_iter().for_each(|byte| mem.push(*byte));
+    buffer[16..0x4F00]
+        .into_iter()
+        .for_each(|byte| mem.push(*byte));
 
     // connect ram to the bus
     // give bus to CPU to read/write
-    let ram = RAM { mem };
+    let mut ram = RAM { mem };
     let mut bus = Bus::default();
-    bus.connect(0x0000..=0xFFFF, ram);
-    let mut cpu = CPU::new(bus);
+    bus.connect(0x0000..=0xFFFF, &mut ram);
+    let mut cpu = CPU::new(&mut bus);
 
     // emulate clock cycle
     while !cpu.terminated() {
         cpu.clock();
-        // use std::io::stdin;
-        // let mut s = String::new();
-        // stdin().read_line(&mut s).unwrap();
     }
 }
