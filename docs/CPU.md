@@ -36,6 +36,8 @@ http://www.obelisk.me.uk/6502/instructions.html
 - together with the addressing mode, can be 1, 2 or 3 bytes long (size)
 - first byte of the instruction specifies operation, duration and size
 
+http://www.ffd2.com/fridge/docs/6502-NMOS.extra.opcodes
+
 ## Executing The Program
 
 1. read the byte at PC (program counter) location

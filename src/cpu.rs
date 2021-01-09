@@ -1,6 +1,7 @@
 use super::bus::{Bus, Device};
 
 pub struct CPU<'a> {
+    /// CPU registers
     a: u8,
     x: u8,
     y: u8,
@@ -8,8 +9,11 @@ pub struct CPU<'a> {
     sp: u8,
     status: u8,
 
+    /// Implementation specific
     cycles_left: u8,
+    extra_cycles: bool,
     bus: &'a mut Bus<'a>,
+
     tmp_total_cyc: usize, // TODO remove
 }
 
@@ -44,9 +48,10 @@ impl<'a> CPU<'a> {
             y: 0x00,
             pc: 0xC000,
             sp: 0xFD,
-            cycles_left: 0,
-            bus: bus,
             status: 0x24,
+            cycles_left: 0,
+            extra_cycles: true,
+            bus: bus,
             tmp_total_cyc: 7,
         }
     }
@@ -60,11 +65,234 @@ impl<'a> CPU<'a> {
     }
 
     pub fn terminated(&mut self) -> bool {
-        self.tmp_total_cyc > 26554
+        self.tmp_total_cyc > 26554 //|| self.pc == 0xDBF1
     }
 }
 
 impl<'a> CPU<'a> {
+    fn process_opcode(&mut self, opcode: u8) {
+        print!(
+            "{}  {}",
+            format!("{:04x}", self.pc).to_uppercase(),
+            to_upper_hex(opcode)
+        );
+        println!(
+            " A:{} X:{} Y:{} P:{} SP:{} CYC:{}",
+            to_upper_hex(self.a),
+            to_upper_hex(self.x),
+            to_upper_hex(self.y),
+            to_upper_hex(self.status),
+            format!("{:02x}", self.sp).to_uppercase(),
+            self.tmp_total_cyc
+        );
+        // TODO dont forget additional clock cycles!
+        match opcode {
+            0x00 => self.execute_instruction(CPU::imp, CPU::brk, 7, false),
+            0x01 => self.execute_instruction(CPU::indx, CPU::ora, 6, false),
+            0x05 => self.execute_instruction(CPU::zp, CPU::ora, 3, false),
+            0x06 => self.execute_instruction(CPU::zp, CPU::asl_mem, 5, false),
+            0x08 => self.execute_instruction(CPU::imp, CPU::php, 3, false),
+            0x09 => self.execute_instruction(CPU::imm, CPU::ora, 2, false),
+            0x0A => self.execute_instruction(CPU::acc, CPU::asl_acc, 2, false),
+            0x0D => self.execute_instruction(CPU::abs, CPU::ora, 4, false),
+            0x0E => self.execute_instruction(CPU::abs, CPU::asl_mem, 6, false),
+            0x10 => self.execute_instruction(CPU::relative, CPU::bpl, 2, false),
+            0x11 => self.execute_instruction(CPU::indy, CPU::ora, 5, false),
+            0x15 => self.execute_instruction(CPU::zpx, CPU::ora, 4, false),
+            0x16 => self.execute_instruction(CPU::zpx, CPU::asl_mem, 6, false),
+            0x18 => self.execute_instruction(CPU::imp, CPU::clc, 2, false),
+            0x19 => self.execute_instruction(CPU::absy, CPU::ora, 4, false),
+            0x1D => self.execute_instruction(CPU::absx, CPU::ora, 4, false),
+            0x1E => self.execute_instruction(CPU::absx, CPU::asl_mem, 7, false),
+            0x20 => self.execute_instruction(CPU::abs, CPU::jsr, 6, false),
+            0x21 => self.execute_instruction(CPU::indx, CPU::and, 6, false),
+            0x24 => self.execute_instruction(CPU::zp, CPU::bit, 3, false),
+            0x25 => self.execute_instruction(CPU::zp, CPU::and, 3, false),
+            0x26 => self.execute_instruction(CPU::zp, CPU::rol_mem, 5, false),
+            0x28 => self.execute_instruction(CPU::imp, CPU::plp, 4, false),
+            0x29 => self.execute_instruction(CPU::imm, CPU::and, 2, false),
+            0x2A => self.execute_instruction(CPU::acc, CPU::rol_acc, 2, false),
+            0x2C => self.execute_instruction(CPU::abs, CPU::bit, 4, false),
+            0x2D => self.execute_instruction(CPU::abs, CPU::and, 4, false),
+            0x2E => self.execute_instruction(CPU::abs, CPU::rol_mem, 6, false),
+            0x30 => self.execute_instruction(CPU::relative, CPU::bmi, 2, false),
+            0x31 => self.execute_instruction(CPU::indy, CPU::and, 5, false),
+            0x35 => self.execute_instruction(CPU::zpx, CPU::and, 4, false),
+            0x36 => self.execute_instruction(CPU::zpx, CPU::rol_mem, 6, false),
+            0x38 => self.execute_instruction(CPU::imp, CPU::sec, 2, false),
+            0x39 => self.execute_instruction(CPU::absy, CPU::and, 4, false),
+            0x3D => self.execute_instruction(CPU::absx, CPU::and, 4, false),
+            0x3E => self.execute_instruction(CPU::absx, CPU::rol_mem, 7, false),
+            0x40 => self.execute_instruction(CPU::imp, CPU::rti, 6, false),
+            0x41 => self.execute_instruction(CPU::indx, CPU::eor, 6, false),
+            0x45 => self.execute_instruction(CPU::zp, CPU::eor, 3, false),
+            0x46 => self.execute_instruction(CPU::zp, CPU::lsr_mem, 5, false),
+            0x48 => self.execute_instruction(CPU::imp, CPU::pha, 3, false),
+            0x49 => self.execute_instruction(CPU::imm, CPU::eor, 2, false),
+            0x4A => self.execute_instruction(CPU::acc, CPU::lsr_acc, 2, false),
+            0x4C => self.execute_instruction(CPU::abs, CPU::jmp, 3, false),
+            0x4D => self.execute_instruction(CPU::abs, CPU::eor, 4, false),
+            0x4E => self.execute_instruction(CPU::abs, CPU::lsr_mem, 6, false),
+            0x50 => self.execute_instruction(CPU::relative, CPU::bvc, 2, false),
+            0x51 => self.execute_instruction(CPU::indy, CPU::eor, 5, false),
+            0x55 => self.execute_instruction(CPU::zpx, CPU::eor, 4, false),
+            0x56 => self.execute_instruction(CPU::zpx, CPU::lsr_mem, 6, false),
+            0x58 => self.execute_instruction(CPU::imp, CPU::cli, 2, false),
+            0x59 => self.execute_instruction(CPU::absy, CPU::eor, 4, false),
+            0x5D => self.execute_instruction(CPU::absx, CPU::eor, 4, false),
+            0x5E => self.execute_instruction(CPU::absx, CPU::lsr_mem, 7, false),
+            0x60 => self.execute_instruction(CPU::imp, CPU::rts, 6, false),
+            0x61 => self.execute_instruction(CPU::indx, CPU::adc, 6, false),
+            0x65 => self.execute_instruction(CPU::zp, CPU::adc, 3, false),
+            0x66 => self.execute_instruction(CPU::zp, CPU::ror_mem, 5, false),
+            0x68 => self.execute_instruction(CPU::imp, CPU::pla, 4, false),
+            0x69 => self.execute_instruction(CPU::imm, CPU::adc, 2, false),
+            0x6A => self.execute_instruction(CPU::acc, CPU::ror_acc, 2, false),
+            0x6C => self.execute_instruction(CPU::ind, CPU::jmp, 5, false),
+            0x6D => self.execute_instruction(CPU::abs, CPU::adc, 4, false),
+            0x6E => self.execute_instruction(CPU::abs, CPU::ror_mem, 6, false),
+            0x70 => self.execute_instruction(CPU::relative, CPU::bvs, 2, false),
+            0x71 => self.execute_instruction(CPU::indy, CPU::adc, 5, false),
+            0x75 => self.execute_instruction(CPU::zpx, CPU::adc, 4, false),
+            0x76 => self.execute_instruction(CPU::zpx, CPU::ror_mem, 6, false),
+            0x78 => self.execute_instruction(CPU::imp, CPU::sei, 2, false),
+            0x79 => self.execute_instruction(CPU::absy, CPU::adc, 4, false),
+            0x7D => self.execute_instruction(CPU::absx, CPU::adc, 4, false),
+            0x7E => self.execute_instruction(CPU::absx, CPU::ror_mem, 7, false),
+            0x81 => self.execute_instruction(CPU::indx, CPU::sta, 6, false),
+            0x84 => self.execute_instruction(CPU::zp, CPU::sty, 3, false),
+            0x85 => self.execute_instruction(CPU::zp, CPU::sta, 3, false),
+            0x86 => self.execute_instruction(CPU::zp, CPU::stx, 3, false),
+            0x88 => self.execute_instruction(CPU::imp, CPU::dey, 2, false),
+            0x8A => self.execute_instruction(CPU::imp, CPU::txa, 2, false),
+            0x8C => self.execute_instruction(CPU::abs, CPU::sty, 4, false),
+            0x8D => self.execute_instruction(CPU::abs, CPU::sta, 4, false),
+            0x8E => self.execute_instruction(CPU::abs, CPU::stx, 4, false),
+            0x90 => self.execute_instruction(CPU::relative, CPU::bcc, 2, false),
+            0x91 => self.execute_instruction(CPU::indy, CPU::sta, 6, false),
+            0x94 => self.execute_instruction(CPU::zpx, CPU::sty, 4, false),
+            0x95 => self.execute_instruction(CPU::zpx, CPU::sta, 4, false),
+            0x96 => self.execute_instruction(CPU::zpy, CPU::stx, 4, false),
+            0x98 => self.execute_instruction(CPU::imp, CPU::tya, 2, false),
+            0x99 => self.execute_instruction(CPU::absy, CPU::sta, 5, false),
+            0x9A => self.execute_instruction(CPU::imp, CPU::txs, 2, false),
+            0x9D => self.execute_instruction(CPU::absx, CPU::sta, 5, false),
+            0xA0 => self.execute_instruction(CPU::imm, CPU::ldy, 2, false),
+            0xA1 => self.execute_instruction(CPU::indx, CPU::lda, 6, false),
+            0xA2 => self.execute_instruction(CPU::imm, CPU::ldx, 2, false),
+            0xA4 => self.execute_instruction(CPU::zp, CPU::ldy, 3, false),
+            0xA5 => self.execute_instruction(CPU::zp, CPU::lda, 3, false),
+            0xA6 => self.execute_instruction(CPU::zp, CPU::ldx, 3, false),
+            0xA8 => self.execute_instruction(CPU::imp, CPU::tay, 2, false),
+            0xA9 => self.execute_instruction(CPU::imm, CPU::lda, 2, false),
+            0xAA => self.execute_instruction(CPU::imp, CPU::tax, 2, false),
+            0xAC => self.execute_instruction(CPU::abs, CPU::ldy, 4, false),
+            0xAD => self.execute_instruction(CPU::abs, CPU::lda, 4, false),
+            0xAE => self.execute_instruction(CPU::abs, CPU::ldx, 4, false),
+            0xB0 => self.execute_instruction(CPU::relative, CPU::bcs, 2, false),
+            0xB1 => self.execute_instruction(CPU::indy, CPU::lda, 5, false),
+            0xB4 => self.execute_instruction(CPU::zpx, CPU::ldy, 4, false),
+            0xB5 => self.execute_instruction(CPU::zpx, CPU::lda, 4, false),
+            0xB6 => self.execute_instruction(CPU::zpy, CPU::ldx, 4, false),
+            0xB8 => self.execute_instruction(CPU::imp, CPU::clv, 2, false),
+            0xB9 => self.execute_instruction(CPU::absy, CPU::lda, 4, false),
+            0xBA => self.execute_instruction(CPU::imp, CPU::tsx, 2, false),
+            0xBC => self.execute_instruction(CPU::absx, CPU::ldy, 4, false),
+            0xBD => self.execute_instruction(CPU::absx, CPU::lda, 4, false),
+            0xBE => self.execute_instruction(CPU::absy, CPU::ldx, 4, false),
+            0xC0 => self.execute_instruction(CPU::imm, CPU::cpy, 2, false),
+            0xC1 => self.execute_instruction(CPU::indx, CPU::cmp, 6, false),
+            0xC4 => self.execute_instruction(CPU::zp, CPU::cpy, 3, false),
+            0xC5 => self.execute_instruction(CPU::zp, CPU::cmp, 3, false),
+            0xC6 => self.execute_instruction(CPU::zp, CPU::dec, 5, false),
+            0xC8 => self.execute_instruction(CPU::imp, CPU::iny, 2, false),
+            0xC9 => self.execute_instruction(CPU::imm, CPU::cmp, 2, false),
+            0xCA => self.execute_instruction(CPU::imp, CPU::dex, 2, false),
+            0xCC => self.execute_instruction(CPU::abs, CPU::cpy, 4, false),
+            0xCD => self.execute_instruction(CPU::abs, CPU::cmp, 4, false),
+            0xCE => self.execute_instruction(CPU::abs, CPU::dec, 6, false),
+            0xD0 => self.execute_instruction(CPU::relative, CPU::bne, 2, false),
+            0xD1 => self.execute_instruction(CPU::indy, CPU::cmp, 5, false),
+            0xD5 => self.execute_instruction(CPU::zpx, CPU::cmp, 4, false),
+            0xD6 => self.execute_instruction(CPU::zpx, CPU::dec, 6, false),
+            0xD8 => self.execute_instruction(CPU::imp, CPU::cld, 2, false),
+            0xD9 => self.execute_instruction(CPU::absy, CPU::cmp, 4, false),
+            0xDD => self.execute_instruction(CPU::absx, CPU::cmp, 4, false),
+            0xDE => self.execute_instruction(CPU::absx, CPU::dec, 7, false),
+            0xE0 => self.execute_instruction(CPU::imm, CPU::cpx, 2, false),
+            0xE1 => self.execute_instruction(CPU::indx, CPU::sbc, 6, false),
+            0xE4 => self.execute_instruction(CPU::zp, CPU::cpx, 3, false),
+            0xE5 => self.execute_instruction(CPU::zp, CPU::sbc, 3, false),
+            0xE6 => self.execute_instruction(CPU::zp, CPU::inc, 5, false),
+            0xE8 => self.execute_instruction(CPU::imp, CPU::inx, 2, false),
+            0xE9 => self.execute_instruction(CPU::imm, CPU::sbc, 2, false),
+            0xEC => self.execute_instruction(CPU::abs, CPU::cpx, 4, false),
+            0xED => self.execute_instruction(CPU::abs, CPU::sbc, 4, false),
+            0xEE => self.execute_instruction(CPU::abs, CPU::inc, 6, false),
+            0xF0 => self.execute_instruction(CPU::relative, CPU::beq, 2, false),
+            0xF1 => self.execute_instruction(CPU::indy, CPU::sbc, 5, false),
+            0xF5 => self.execute_instruction(CPU::zpx, CPU::sbc, 4, false),
+            0xF6 => self.execute_instruction(CPU::zpx, CPU::inc, 6, false),
+            0xF8 => self.execute_instruction(CPU::imp, CPU::sed, 2, false),
+            0xF9 => self.execute_instruction(CPU::absy, CPU::sbc, 4, false),
+            0xFD => self.execute_instruction(CPU::absx, CPU::sbc, 4, false),
+            0xFE => self.execute_instruction(CPU::absx, CPU::inc, 7, false),
+
+            // NOPs (and illegal opcodes, false)
+            0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xEA | 0xFA => {
+                self.execute_instruction(|_| 1, CPU::nop, 2, false)
+            }
+
+            0x80 | 0xEB => self.execute_instruction(|_| 2, CPU::nop, 2, false),
+            0x04 | 0x44 | 0x64 | 0x87 | 0xA7 => self.execute_instruction(|_| 2, CPU::nop, 3, false),
+            0x14 | 0x34 | 0x54 | 0x74 | 0x97 | 0xB7 | 0xBF | 0xD4 | 0xF4 => {
+                self.execute_instruction(|_| 2, CPU::nop, 4, false)
+            }
+            0x07 | 0x27 | 0x47 | 0x67 | 0xC7 | 0xE7 => {
+                self.execute_instruction(|_| 2, CPU::nop, 5, false)
+            }
+            0x17 | 0x37 | 0x57 | 0x77 | 0x83 | 0xA3 | 0xB3 | 0xD7 | 0xF7 => {
+                self.execute_instruction(|_| 2, CPU::nop, 6, false)
+            }
+            0x03 | 0x13 | 0x23 | 0x33 | 0x43 | 0x53 | 0x63 | 0x73 | 0xC3 | 0xD3 | 0xE3 | 0xF3 => {
+                self.execute_instruction(|_| 2, CPU::nop, 8, false)
+            }
+
+            0x0C | 0x8F | 0xAF => self.execute_instruction(|_| 3, CPU::nop, 4, false),
+            0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => {
+                self.execute_instruction(|_| 3, CPU::nop, 5, false)
+            }
+            0x0F | 0x2F | 0x4F | 0x6F | 0xCF | 0xEF => {
+                self.execute_instruction(|_| 3, CPU::nop, 6, false)
+            }
+            0x1B | 0x1F | 0x3B | 0x3F | 0x5B | 0x5F | 0x7B | 0x7F | 0xDB | 0xDF | 0xFB | 0xFF => {
+                self.execute_instruction(|_| 3, CPU::nop, 7, false)
+            }
+
+            _ => panic!(format!(
+                "invalid opcode 0x{:0x} at 0x{:0x}",
+                opcode, self.pc
+            )),
+        }
+    }
+
+    fn execute_instruction<T>(
+        &mut self,
+        address_mode_fn: fn(&mut CPU<'a>) -> T,
+        opcode_fn: fn(&mut CPU<'a>, T),
+        cycles: u8,
+        extra_cycles: bool,
+    ) {
+        let tmp = self.cycles_left;
+
+        self.extra_cycles = extra_cycles;
+        let address = address_mode_fn(self);
+        opcode_fn(self, address);
+        self.cycles_left += cycles;
+
+        self.tmp_total_cyc += (self.cycles_left - tmp) as usize;
+    }
+
     fn push_stack(&mut self, val: u8) {
         self.write(0x0100 + self.sp as u16, val);
         self.sp -= 1;
@@ -86,221 +314,9 @@ impl<'a> CPU<'a> {
         }
     }
 
-    fn execute_instruction<T>(
-        &mut self,
-        address_mode_fn: fn(&mut CPU<'a>) -> T,
-        opcode_fn: fn(&mut CPU<'a>, T),
-        cycles: u8,
-    ) {
-        let address = address_mode_fn(self);
-        opcode_fn(self, address);
-        self.cycles_left += cycles;
-        self.tmp_total_cyc += cycles as usize;
-    }
-
-    //TODO remove
-    fn to_upper_hex(&self, byte: u8) -> String {
-        format!("{:02x}", byte).to_uppercase()
-    }
-
-    fn process_opcode(&mut self, opcode: u8) {
-        print!(
-            "{}  {}",
-            format!("{:04x}", self.pc).to_uppercase(),
-            self.to_upper_hex(opcode)
-        );
-        println!(
-            " A:{} X:{} Y:{} P:{} SP:{} CYC:{}",
-            self.to_upper_hex(self.a),
-            self.to_upper_hex(self.x),
-            self.to_upper_hex(self.y),
-            self.to_upper_hex(self.status),
-            format!("{:02x}", self.sp).to_uppercase(),
-            self.tmp_total_cyc
-        );
-        // TODO dont forget additional clock cycles!
-        match opcode {
-            0x00 => self.execute_instruction(CPU::imp, CPU::brk, 7),
-            0x01 => self.execute_instruction(CPU::indx, CPU::ora, 6),
-            0x05 => self.execute_instruction(CPU::zp, CPU::ora, 3),
-            0x06 => self.execute_instruction(CPU::zp, CPU::asl_mem, 5),
-            0x08 => self.execute_instruction(CPU::imp, CPU::php, 3),
-            0x09 => self.execute_instruction(CPU::imm, CPU::ora, 2),
-            0x0A => self.execute_instruction(CPU::acc, CPU::asl_acc, 2),
-            0x0D => self.execute_instruction(CPU::abs, CPU::ora, 4),
-            0x0E => self.execute_instruction(CPU::abs, CPU::asl_mem, 6),
-            0x10 => self.execute_instruction(CPU::relative, CPU::bpl, 2),
-            0x11 => self.execute_instruction(CPU::indy, CPU::ora, 5),
-            0x15 => self.execute_instruction(CPU::zpx, CPU::ora, 4),
-            0x16 => self.execute_instruction(CPU::zpx, CPU::asl_mem, 6),
-            0x18 => self.execute_instruction(CPU::imp, CPU::clc, 2),
-            0x19 => self.execute_instruction(CPU::absy, CPU::ora, 4),
-            0x1D => self.execute_instruction(CPU::absx, CPU::ora, 4),
-            0x1E => self.execute_instruction(CPU::absx, CPU::asl_mem, 7),
-            0x20 => self.execute_instruction(CPU::abs, CPU::jsr, 6),
-            0x21 => self.execute_instruction(CPU::indx, CPU::and, 6),
-            0x24 => self.execute_instruction(CPU::zp, CPU::bit, 3),
-            0x25 => self.execute_instruction(CPU::zp, CPU::and, 3),
-            0x26 => self.execute_instruction(CPU::zp, CPU::rol_mem, 5),
-            0x28 => self.execute_instruction(CPU::imp, CPU::plp, 4),
-            0x29 => self.execute_instruction(CPU::imm, CPU::and, 2),
-            0x2A => self.execute_instruction(CPU::acc, CPU::rol_acc, 2),
-            0x2C => self.execute_instruction(CPU::abs, CPU::bit, 4),
-            0x2D => self.execute_instruction(CPU::abs, CPU::and, 4),
-            0x2E => self.execute_instruction(CPU::abs, CPU::rol_mem, 6),
-            0x30 => self.execute_instruction(CPU::relative, CPU::bmi, 2),
-            0x31 => self.execute_instruction(CPU::indy, CPU::and, 5),
-            0x35 => self.execute_instruction(CPU::zpx, CPU::and, 4),
-            0x36 => self.execute_instruction(CPU::zpx, CPU::rol_mem, 6),
-            0x38 => self.execute_instruction(CPU::imp, CPU::sec, 2),
-            0x39 => self.execute_instruction(CPU::absy, CPU::and, 4),
-            0x3D => self.execute_instruction(CPU::absx, CPU::and, 4),
-            0x3E => self.execute_instruction(CPU::absx, CPU::rol_mem, 7),
-            0x40 => self.execute_instruction(CPU::imp, CPU::rti, 6),
-            0x41 => self.execute_instruction(CPU::indx, CPU::eor, 6),
-            0x45 => self.execute_instruction(CPU::zp, CPU::eor, 3),
-            0x46 => self.execute_instruction(CPU::zp, CPU::lsr_mem, 5),
-            0x48 => self.execute_instruction(CPU::imp, CPU::pha, 3),
-            0x49 => self.execute_instruction(CPU::imm, CPU::eor, 2),
-            0x4A => self.execute_instruction(CPU::acc, CPU::lsr_acc, 2),
-            0x4C => self.execute_instruction(CPU::abs, CPU::jmp, 3),
-            0x4D => self.execute_instruction(CPU::abs, CPU::eor, 4),
-            0x4E => self.execute_instruction(CPU::abs, CPU::lsr_mem, 6),
-            0x50 => self.execute_instruction(CPU::relative, CPU::bvc, 2),
-            0x51 => self.execute_instruction(CPU::indy, CPU::eor, 5),
-            0x55 => self.execute_instruction(CPU::zpx, CPU::eor, 4),
-            0x56 => self.execute_instruction(CPU::zpx, CPU::lsr_mem, 6),
-            0x58 => self.execute_instruction(CPU::imp, CPU::cli, 2),
-            0x59 => self.execute_instruction(CPU::absy, CPU::eor, 4),
-            0x5D => self.execute_instruction(CPU::absx, CPU::eor, 4),
-            0x5E => self.execute_instruction(CPU::absx, CPU::lsr_mem, 7),
-            0x60 => self.execute_instruction(CPU::imp, CPU::rts, 6),
-            0x61 => self.execute_instruction(CPU::indx, CPU::adc, 6),
-            0x65 => self.execute_instruction(CPU::zp, CPU::adc, 3),
-            0x66 => self.execute_instruction(CPU::zp, CPU::ror_mem, 5),
-            0x68 => self.execute_instruction(CPU::imp, CPU::pla, 4),
-            0x69 => self.execute_instruction(CPU::imm, CPU::adc, 2),
-            0x6A => self.execute_instruction(CPU::acc, CPU::ror_acc, 2),
-            0x6C => self.execute_instruction(CPU::ind, CPU::jmp, 5),
-            0x6D => self.execute_instruction(CPU::abs, CPU::adc, 4),
-            0x6E => self.execute_instruction(CPU::abs, CPU::ror_mem, 6),
-            0x70 => self.execute_instruction(CPU::relative, CPU::bvs, 2),
-            0x71 => self.execute_instruction(CPU::indy, CPU::adc, 5),
-            0x75 => self.execute_instruction(CPU::zpx, CPU::adc, 4),
-            0x76 => self.execute_instruction(CPU::zpx, CPU::ror_mem, 6),
-            0x78 => self.execute_instruction(CPU::imp, CPU::sei, 2),
-            0x79 => self.execute_instruction(CPU::absy, CPU::adc, 4),
-            0x7D => self.execute_instruction(CPU::absx, CPU::adc, 4),
-            0x7E => self.execute_instruction(CPU::absx, CPU::ror_mem, 7),
-            0x81 => self.execute_instruction(CPU::indx, CPU::sta, 6),
-            0x84 => self.execute_instruction(CPU::zp, CPU::sty, 3),
-            0x85 => self.execute_instruction(CPU::zp, CPU::sta, 3),
-            0x86 => self.execute_instruction(CPU::zp, CPU::stx, 3),
-            0x88 => self.execute_instruction(CPU::imp, CPU::dey, 2),
-            0x8A => self.execute_instruction(CPU::imp, CPU::txa, 2),
-            0x8C => self.execute_instruction(CPU::abs, CPU::sty, 4),
-            0x8D => self.execute_instruction(CPU::abs, CPU::sta, 4),
-            0x8E => self.execute_instruction(CPU::abs, CPU::stx, 4),
-            0x90 => self.execute_instruction(CPU::relative, CPU::bcc, 2),
-            0x91 => self.execute_instruction(CPU::indy, CPU::sta, 6),
-            0x94 => self.execute_instruction(CPU::zpx, CPU::sty, 4),
-            0x95 => self.execute_instruction(CPU::zpx, CPU::sta, 4),
-            0x96 => self.execute_instruction(CPU::zpy, CPU::stx, 4),
-            0x98 => self.execute_instruction(CPU::imp, CPU::tya, 2),
-            0x99 => self.execute_instruction(CPU::absy, CPU::sta, 5),
-            0x9A => self.execute_instruction(CPU::imp, CPU::txs, 2),
-            0x9D => self.execute_instruction(CPU::absx, CPU::sta, 5),
-            0xA0 => self.execute_instruction(CPU::imm, CPU::ldy, 2),
-            0xA1 => self.execute_instruction(CPU::indx, CPU::lda, 6),
-            0xA2 => self.execute_instruction(CPU::imm, CPU::ldx, 2),
-            0xA4 => self.execute_instruction(CPU::zp, CPU::ldy, 3),
-            0xA5 => self.execute_instruction(CPU::zp, CPU::lda, 3),
-            0xA6 => self.execute_instruction(CPU::zp, CPU::ldx, 3),
-            0xA8 => self.execute_instruction(CPU::imp, CPU::tay, 2),
-            0xA9 => self.execute_instruction(CPU::imm, CPU::lda, 2),
-            0xAA => self.execute_instruction(CPU::imp, CPU::tax, 2),
-            0xAC => self.execute_instruction(CPU::abs, CPU::ldy, 4),
-            0xAD => self.execute_instruction(CPU::abs, CPU::lda, 4),
-            0xAE => self.execute_instruction(CPU::abs, CPU::ldx, 4),
-            0xB0 => self.execute_instruction(CPU::relative, CPU::bcs, 2),
-            0xB1 => self.execute_instruction(CPU::indy, CPU::lda, 5),
-            0xB4 => self.execute_instruction(CPU::zpx, CPU::ldy, 4),
-            0xB5 => self.execute_instruction(CPU::zpx, CPU::lda, 4),
-            0xB6 => self.execute_instruction(CPU::zpy, CPU::ldx, 4),
-            0xB8 => self.execute_instruction(CPU::imp, CPU::clv, 2),
-            0xB9 => self.execute_instruction(CPU::absy, CPU::lda, 4),
-            0xBA => self.execute_instruction(CPU::imp, CPU::tsx, 2),
-            0xBC => self.execute_instruction(CPU::absx, CPU::ldy, 4),
-            0xBD => self.execute_instruction(CPU::absx, CPU::lda, 4),
-            0xBE => self.execute_instruction(CPU::absy, CPU::ldx, 4),
-            0xC0 => self.execute_instruction(CPU::imm, CPU::cpy, 2),
-            0xC1 => self.execute_instruction(CPU::indx, CPU::cmp, 6),
-            0xC4 => self.execute_instruction(CPU::zp, CPU::cpy, 3),
-            0xC5 => self.execute_instruction(CPU::zp, CPU::cmp, 3),
-            0xC6 => self.execute_instruction(CPU::zp, CPU::dec, 5),
-            0xC8 => self.execute_instruction(CPU::imp, CPU::iny, 2),
-            0xC9 => self.execute_instruction(CPU::imm, CPU::cmp, 2),
-            0xCA => self.execute_instruction(CPU::imp, CPU::dex, 2),
-            0xCC => self.execute_instruction(CPU::abs, CPU::cpy, 4),
-            0xCD => self.execute_instruction(CPU::abs, CPU::cmp, 4),
-            0xCE => self.execute_instruction(CPU::abs, CPU::dec, 6),
-            0xD0 => self.execute_instruction(CPU::relative, CPU::bne, 2),
-            0xD1 => self.execute_instruction(CPU::indy, CPU::cmp, 5),
-            0xD5 => self.execute_instruction(CPU::zpx, CPU::cmp, 4),
-            0xD6 => self.execute_instruction(CPU::zpx, CPU::dec, 6),
-            0xD8 => self.execute_instruction(CPU::imp, CPU::cld, 2),
-            0xD9 => self.execute_instruction(CPU::absy, CPU::cmp, 4),
-            0xDD => self.execute_instruction(CPU::absx, CPU::cmp, 4),
-            0xDE => self.execute_instruction(CPU::absx, CPU::dec, 7),
-            0xE0 => self.execute_instruction(CPU::imm, CPU::cpx, 2),
-            0xE1 => self.execute_instruction(CPU::indx, CPU::sbc, 6),
-            0xE4 => self.execute_instruction(CPU::zp, CPU::cpx, 3),
-            0xE5 => self.execute_instruction(CPU::zp, CPU::sbc, 3),
-            0xE6 => self.execute_instruction(CPU::zp, CPU::inc, 5),
-            0xE8 => self.execute_instruction(CPU::imp, CPU::inx, 2),
-            0xE9 => self.execute_instruction(CPU::imm, CPU::sbc, 2),
-            0xEC => self.execute_instruction(CPU::abs, CPU::cpx, 4),
-            0xED => self.execute_instruction(CPU::abs, CPU::sbc, 4),
-            0xEE => self.execute_instruction(CPU::abs, CPU::inc, 6),
-            0xF0 => self.execute_instruction(CPU::relative, CPU::beq, 2),
-            0xF1 => self.execute_instruction(CPU::indy, CPU::sbc, 5),
-            0xF5 => self.execute_instruction(CPU::zpx, CPU::sbc, 4),
-            0xF6 => self.execute_instruction(CPU::zpx, CPU::inc, 6),
-            0xF8 => self.execute_instruction(CPU::imp, CPU::sed, 2),
-            0xF9 => self.execute_instruction(CPU::absy, CPU::sbc, 4),
-            0xFD => self.execute_instruction(CPU::absx, CPU::sbc, 4),
-            0xFE => self.execute_instruction(CPU::absx, CPU::inc, 7),
-
-            // NOPs (and illegal opcodes)
-            0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xEA | 0xFA => {
-                self.execute_instruction(|_| 1, CPU::nop, 2)
-            }
-
-            0x80 | 0xEB => self.execute_instruction(|_| 2, CPU::nop, 2),
-            0x04 | 0x44 | 0x64 | 0x87 | 0xA7 => self.execute_instruction(|_| 2, CPU::nop, 3),
-            0x14 | 0x34 | 0x54 | 0x74 | 0x97 | 0xB7 | 0xBF | 0xD4 | 0xF4 => {
-                self.execute_instruction(|_| 2, CPU::nop, 4)
-            }
-            0x07 | 0x27 | 0x47 | 0x67 | 0xC7 | 0xE7 => self.execute_instruction(|_| 2, CPU::nop, 5),
-            0x17 | 0x37 | 0x57 | 0x77 | 0x83 | 0xA3 | 0xB3 | 0xD7 | 0xF7 => {
-                self.execute_instruction(|_| 2, CPU::nop, 6)
-            }
-            0x03 | 0x13 | 0x23 | 0x33 | 0x43 | 0x53 | 0x63 | 0x73 | 0xC3 | 0xD3 | 0xE3 | 0xF3 => {
-                self.execute_instruction(|_| 2, CPU::nop, 8)
-            }
-
-            0x0C | 0x8F | 0xAF => self.execute_instruction(|_| 3, CPU::nop, 4),
-            0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => self.execute_instruction(|_| 3, CPU::nop, 5),
-            0x0F | 0x2F | 0x4F | 0x6F | 0xCF | 0xEF => self.execute_instruction(|_| 3, CPU::nop, 6),
-            0x1B | 0x1F | 0x3B | 0x3F | 0x5B | 0x5F | 0x7B | 0x7F | 0xDB | 0xDF | 0xFB | 0xFF => {
-                self.execute_instruction(|_| 3, CPU::nop, 7)
-            }
-
-            _ => panic!(format!(
-                "invalid opcode 0x{:0x} at 0x{:0x}",
-                opcode, self.pc
-            )),
-        }
+    fn page_checked_jump(&mut self, address: u16) {
+        self.cycles_left += if address > self.pc + 0xFF { 2 } else { 1 };
+        self.pc = address;
     }
 }
 
@@ -332,15 +348,15 @@ impl<'a> CPU<'a> {
     fn imp(&mut self) {}
 
     fn ind(&mut self) -> u16 {
-        // "ind" is bugged in the original hardware
-        // if the low byte is 0xFF then the high byte should be read from the next page
-        // the bug is that it does not, and instead just wraps around in the same page
         self.pc += 1;
         let lo = self.read(self.pc);
         self.pc += 1;
         let hi = self.read(self.pc);
         let address = ((hi as u16) << 8) | lo as u16;
 
+        // "ind" is bugged in the original hardware
+        // if the low byte is 0xFF then the high byte should be read from the next page
+        // the bug is that it does not, and instead just wraps around in the same page
         if lo == 0xFF {
             ((self.read(address & 0xFF00) as u16) << 8) | self.read(address) as u16
         } else {
@@ -376,11 +392,11 @@ impl<'a> CPU<'a> {
     }
 
     fn zpx(&mut self) -> u16 {
-        self.zp() + self.x as u16
+        (self.zp() + self.x as u16) & 0xFF
     }
 
     fn zpy(&mut self) -> u16 {
-        self.zp() + self.y as u16
+        (self.zp() + self.y as u16) & 0xFF
     }
 }
 
@@ -433,7 +449,7 @@ impl<'a> CPU<'a> {
     fn bcc(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Carry) {
-            false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            false => self.page_checked_jump((self.pc as i32 + operand as i32) as u16 + 1),
             true => self.pc += 1,
         }
     }
@@ -441,7 +457,7 @@ impl<'a> CPU<'a> {
     fn bcs(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Carry) {
-            true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            true => self.page_checked_jump((self.pc as i32 + operand as i32) as u16 + 1),
             false => self.pc += 1,
         }
     }
@@ -449,7 +465,7 @@ impl<'a> CPU<'a> {
     fn beq(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Zero) {
-            true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            true => self.page_checked_jump((self.pc as i32 + operand as i32) as u16 + 1),
             false => self.pc += 1,
         }
     }
@@ -473,7 +489,7 @@ impl<'a> CPU<'a> {
     fn bne(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Zero) {
-            false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            false => self.page_checked_jump((self.pc as i32 + operand as i32) as u16 + 1),
             true => self.pc += 1,
         }
     }
@@ -481,7 +497,7 @@ impl<'a> CPU<'a> {
     fn bpl(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Negative) {
-            false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            false => self.page_checked_jump((self.pc as i32 + operand as i32) as u16 + 1),
             true => self.pc += 1,
         }
     }
@@ -494,7 +510,7 @@ impl<'a> CPU<'a> {
     fn bvc(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Overflow) {
-            false => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            false => self.page_checked_jump((self.pc as i32 + operand as i32) as u16 + 1),
             true => self.pc += 1,
         }
     }
@@ -502,7 +518,7 @@ impl<'a> CPU<'a> {
     fn bvs(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Overflow) {
-            true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            true => self.page_checked_jump((self.pc as i32 + operand as i32) as u16 + 1),
             false => self.pc += 1,
         }
     }
@@ -850,4 +866,9 @@ impl<'a> CPU<'a> {
         self.set_flag(Flag::Negative, (self.a & 0x80) >> 7 == 1);
         self.pc += 1;
     }
+}
+
+//TODO remove
+fn to_upper_hex(byte: u8) -> String {
+    format!("{:02x}", byte).to_uppercase()
 }

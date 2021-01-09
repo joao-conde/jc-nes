@@ -1,5 +1,10 @@
 use std::{collections::HashMap, ops::RangeInclusive};
 
+pub trait Device {
+    fn read(&self, address: u16) -> u8;
+    fn write(&mut self, address: u16, data: u8);
+}
+
 #[derive(Default)]
 pub struct Bus<'a> {
     pub addresses: HashMap<RangeInclusive<u16>, &'a mut dyn Device>,
@@ -25,9 +30,4 @@ impl<'a> Bus<'a> {
             }
         }
     }
-}
-
-pub trait Device {
-    fn read(&self, address: u16) -> u8;
-    fn write(&mut self, address: u16, data: u8);
 }
