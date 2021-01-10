@@ -317,12 +317,9 @@ impl<'a> CPU<'a> {
     }
 
     fn relative_jump(&mut self, operand: i8) {
+        self.cycles_left += 1;
         let next = (self.pc as i32 + operand as i32) as u16 + 1;
-        self.cycles_left += if self.page_crossed(self.pc + 1, next) {
-            2
-        } else {
-            1
-        };
+        self.cycles_left += self.page_crossed(self.pc + 1, next) as u8;
         self.pc = next;
     }
 }
@@ -338,9 +335,6 @@ impl<'a> CPU<'a> {
     }
 
     fn absx(&mut self) -> u16 {
-        // let address = self.abs() + self.x as u16;
-        // self.cycles_left += (self.extra_cycles && self.page_crossed(self.pc + 1, address)) as u8;
-        // address
         let address = self.abs();
         let hi = address & 0xFF00;
         let address = address.wrapping_add(self.x as u16);
