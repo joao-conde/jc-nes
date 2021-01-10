@@ -65,7 +65,7 @@ impl<'a> CPU<'a> {
     }
 
     pub fn terminated(&mut self) -> bool {
-        self.tmp_total_cyc > 26554 //|| self.pc == 0xD00C
+        self.tmp_total_cyc > 26554 // || self.pc == 0xD924
     }
 }
 
@@ -314,14 +314,17 @@ impl<'a> CPU<'a> {
         }
     }
 
-    fn page_crossed(&self, address: u16) -> bool {
-        (self.pc & 0xFF00) != (address & 0xFF00)
+    fn page_crossed(&self, addr1: u16, addr2: u16) -> bool {
+        (addr1 & 0xFF00) != (addr2 & 0xFF00)
     }
 
     fn do_conditional_jump(&mut self, operand: i8) {
         let next = (self.pc as i32 + operand as i32) as u16 + 1;
-        self.pc += 1;
-        self.cycles_left += if self.page_crossed(next) { 2 } else { 1 };
+        self.cycles_left += if self.page_crossed(self.pc + 1, next) {
+            2
+        } else {
+            1
+        };
         self.pc = next;
     }
 }
@@ -338,13 +341,13 @@ impl<'a> CPU<'a> {
 
     fn absx(&mut self) -> u16 {
         let address = self.abs() + self.x as u16;
-        self.cycles_left += (self.extra_cycles && self.page_crossed(address)) as u8;
+        self.cycles_left += (self.extra_cycles && self.page_crossed(self.pc + 1, address)) as u8;
         address
     }
 
     fn absy(&mut self) -> u16 {
         let address = self.abs().wrapping_add(self.y as u16);
-        self.cycles_left += (self.extra_cycles && self.page_crossed(address)) as u8;
+        self.cycles_left += (self.extra_cycles && self.page_crossed(self.pc + 1, address)) as u8;
         address
     }
 
@@ -385,15 +388,11 @@ impl<'a> CPU<'a> {
     fn indy(&mut self) -> u16 {
         self.pc += 1;
         let address = self.read(self.pc) as u16;
-        let lo = self.read(address) as u16;
+        let lo = self.read(address & 0x00FF) as u16;
         let hi = self.read((address + 1) & 0x00FF);
         let hi = (hi as u16) << 8;
-
-        // let address = lo.wrapping_add(hi).wrapping_add(self.y as u16);
-        let address = ((hi as u16) << 8) + lo as u16 + self.y as u16;
-
-        self.cycles_left += (self.extra_cycles && self.page_crossed(address)) as u8;
-
+        let address = lo.wrapping_add(hi).wrapping_add(self.y as u16);
+        self.cycles_left += (self.extra_cycles && self.page_crossed(address, hi)) as u8;
         address
     }
 
