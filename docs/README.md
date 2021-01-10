@@ -16,7 +16,7 @@ This folder contains summary information about the NES console compiled from the
 - outputs pixel at each clock
 - 3x the clock speed of CPU
 - bus of its own
- 
+
 # Connected to CPU bus
 
 ## [APU](http://wiki.nesdev.com/w/index.php/APU)
@@ -85,5 +85,5 @@ PPU Bus gives the PPU access to:
 Both CPU and PPU Buses give them access to:
 - Cartridge:
   - Pattern memory (sprites, tiles)
-  - Program ROM 
+  - Program ROM
   - Mapper

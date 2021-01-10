@@ -31,7 +31,7 @@ http://www.obelisk.me.uk/6502/addressing.html
 
 http://www.obelisk.me.uk/6502/instructions.html
 
-- 56 legal instructions 
+- 56 legal instructions
 - together with the addressing mode, take different number of clock cycles to execute (duration)
 - together with the addressing mode, can be 1, 2 or 3 bytes long (size)
 - first byte of the instruction specifies operation, duration and size
