@@ -197,9 +197,9 @@ impl<'a> CPU<'a> {
             0xB8 => self.execute_instruction(CPU::imp, CPU::clv, 2, false),
             0xB9 => self.execute_instruction(CPU::absy, CPU::lda, 4, true),
             0xBA => self.execute_instruction(CPU::imp, CPU::tsx, 2, false),
-            0xBC => self.execute_instruction(CPU::absx, CPU::ldy, 4, false),
+            0xBC => self.execute_instruction(CPU::absx, CPU::ldy, 4, true),
             0xBD => self.execute_instruction(CPU::absx, CPU::lda, 4, true),
-            0xBE => self.execute_instruction(CPU::absy, CPU::ldx, 4, false),
+            0xBE => self.execute_instruction(CPU::absy, CPU::ldx, 4, true),
             0xC0 => self.execute_instruction(CPU::imm, CPU::cpy, 2, false),
             0xC1 => self.execute_instruction(CPU::indx, CPU::cmp, 6, false),
             0xC4 => self.execute_instruction(CPU::zp, CPU::cpy, 3, false),
@@ -258,10 +258,8 @@ impl<'a> CPU<'a> {
                 self.execute_instruction(|_| 2, CPU::nop, 8, false)
             }
 
-            0x0C | 0x8F | 0xAF => self.execute_instruction(|_| 3, CPU::nop, 4, false),
-            0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => {
-                self.execute_instruction(|_| 3, CPU::nop, 5, false)
-            }
+            0x1C | 0x0C | 0x8F | 0xAF => self.execute_instruction(|_| 3, CPU::nop, 4, false),
+            0x3C | 0x5C | 0x7C | 0xDC | 0xFC => self.execute_instruction(|_| 3, CPU::nop, 5, false),
             0x0F | 0x2F | 0x4F | 0x6F | 0xCF | 0xEF => {
                 self.execute_instruction(|_| 3, CPU::nop, 6, false)
             }
@@ -318,7 +316,7 @@ impl<'a> CPU<'a> {
         (addr1 & 0xFF00) != (addr2 & 0xFF00)
     }
 
-    fn do_conditional_jump(&mut self, operand: i8) {
+    fn relative_jump(&mut self, operand: i8) {
         let next = (self.pc as i32 + operand as i32) as u16 + 1;
         self.cycles_left += if self.page_crossed(self.pc + 1, next) {
             2
@@ -340,14 +338,21 @@ impl<'a> CPU<'a> {
     }
 
     fn absx(&mut self) -> u16 {
-        let address = self.abs() + self.x as u16;
-        self.cycles_left += (self.extra_cycles && self.page_crossed(self.pc + 1, address)) as u8;
+        // let address = self.abs() + self.x as u16;
+        // self.cycles_left += (self.extra_cycles && self.page_crossed(self.pc + 1, address)) as u8;
+        // address
+        let address = self.abs();
+        let hi = address & 0xFF00;
+        let address = address.wrapping_add(self.x as u16);
+        self.cycles_left += (self.extra_cycles && self.page_crossed(hi, address)) as u8;
         address
     }
 
     fn absy(&mut self) -> u16 {
-        let address = self.abs().wrapping_add(self.y as u16);
-        self.cycles_left += (self.extra_cycles && self.page_crossed(self.pc + 1, address)) as u8;
+        let address = self.abs();
+        let hi = address & 0xFF00;
+        let address = address.wrapping_add(self.y as u16);
+        self.cycles_left += (self.extra_cycles && self.page_crossed(hi, address)) as u8;
         address
     }
 
@@ -464,7 +469,7 @@ impl<'a> CPU<'a> {
     fn bcc(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Carry) {
-            false => self.do_conditional_jump(operand),
+            false => self.relative_jump(operand),
             true => self.pc += 1,
         }
     }
@@ -472,7 +477,7 @@ impl<'a> CPU<'a> {
     fn bcs(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Carry) {
-            true => self.do_conditional_jump(operand),
+            true => self.relative_jump(operand),
             false => self.pc += 1,
         }
     }
@@ -480,7 +485,7 @@ impl<'a> CPU<'a> {
     fn beq(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Zero) {
-            true => self.do_conditional_jump(operand),
+            true => self.relative_jump(operand),
             false => self.pc += 1,
         }
     }
@@ -496,7 +501,7 @@ impl<'a> CPU<'a> {
     fn bmi(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Negative) {
-            true => self.pc = (self.pc as i32 + operand as i32) as u16 + 1,
+            true => self.relative_jump(operand),
             false => self.pc += 1,
         }
     }
@@ -504,7 +509,7 @@ impl<'a> CPU<'a> {
     fn bne(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Zero) {
-            false => self.do_conditional_jump(operand),
+            false => self.relative_jump(operand),
             true => self.pc += 1,
         }
     }
@@ -512,7 +517,7 @@ impl<'a> CPU<'a> {
     fn bpl(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Negative) {
-            false => self.do_conditional_jump(operand),
+            false => self.relative_jump(operand),
             true => self.pc += 1,
         }
     }
@@ -525,7 +530,7 @@ impl<'a> CPU<'a> {
     fn bvc(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Overflow) {
-            false => self.do_conditional_jump(operand),
+            false => self.relative_jump(operand),
             true => self.pc += 1,
         }
     }
@@ -533,7 +538,7 @@ impl<'a> CPU<'a> {
     fn bvs(&mut self, address: u16) {
         let operand = self.read(address) as i8;
         match self.is_flag_set(Flag::Overflow) {
-            true => self.do_conditional_jump(operand),
+            true => self.relative_jump(operand),
             false => self.pc += 1,
         }
     }
