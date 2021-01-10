@@ -6,8 +6,6 @@ This folder contains summary information about the NES console compiled from the
 
 - [CPU](CPU.md)
 
-
-
 # TODO REMOVE
 
 ## [PPU](http://wiki.nesdev.com/w/index.php/PPU)
