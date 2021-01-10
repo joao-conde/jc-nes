@@ -35,7 +35,7 @@ http://www.obelisk.me.uk/6502/instructions.html
 - together with the addressing mode, take different number of clock cycles to execute (duration)
 - together with the addressing mode, can be 1, 2 or 3 bytes long (size)
 - first byte of the instruction specifies operation, duration and size
-- illegal instructions (that some ROMs use): 
+- illegal instructions (that some ROMs use):
   - http://www.ffd2.com/fridge/docs/6502-NMOS.extra.opcodes
   - http://www.oxyron.de/html/opcodes02.html
 

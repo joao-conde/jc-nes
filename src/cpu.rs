@@ -64,17 +64,16 @@ impl<'a> CPU<'a> {
         self.cycles_left -= 1;
     }
 
-    pub fn terminated(&mut self) -> bool {
+    pub fn terminated(&self) -> bool {
         self.tmp_total_cyc > 26554 //|| self.pc == 0xEF0A
     }
 }
 
 impl<'a> CPU<'a> {
     fn process_opcode(&mut self, opcode: u8) {
-        print!("{:04X} {:02X}", self.pc, opcode);
         println!(
-            " A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
-            self.a, self.x, self.y, self.status, self.sp, self.tmp_total_cyc
+            "{:04X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
+            self.pc, opcode, self.a, self.x, self.y, self.status, self.sp, self.tmp_total_cyc
         );
 
         // TODO dont forget additional clock cycles!
@@ -347,7 +346,7 @@ impl<'a> CPU<'a> {
         self.read(0x0100 + self.sp as u16)
     }
 
-    fn is_flag_set(&mut self, flag: Flag) -> bool {
+    fn is_flag_set(&self, flag: Flag) -> bool {
         (self.status >> flag as u8) & 1 == 1
     }
 
@@ -362,11 +361,16 @@ impl<'a> CPU<'a> {
         (addr1 & 0xFF00) != (addr2 & 0xFF00)
     }
 
-    fn relative_jump(&mut self, operand: i8) {
-        self.cycles_left += 1;
-        let next = (self.pc as i32 + operand as i32) as u16 + 1;
-        self.cycles_left += self.page_crossed(self.pc + 1, next) as u8;
-        self.pc = next;
+    fn relative_jump(&mut self, jump: bool, operand: i8) {
+        match jump {
+            true => {
+                self.cycles_left += 1;
+                let next = (self.pc as i32 + operand as i32) as u16 + 1;
+                self.cycles_left += self.page_crossed(self.pc + 1, next) as u8;
+                self.pc = next;
+            }
+            false => self.pc += 1,
+        }
     }
 
     fn is_negative(&self, operand: u8) -> bool {
@@ -511,27 +515,15 @@ impl<'a> CPU<'a> {
     }
 
     fn bcc(&mut self, address: u16) {
-        let operand = self.read(address) as i8;
-        match self.is_flag_set(Flag::Carry) {
-            false => self.relative_jump(operand),
-            true => self.pc += 1,
-        }
+        self.relative_jump(!self.is_flag_set(Flag::Carry), self.read(address) as i8);
     }
 
     fn bcs(&mut self, address: u16) {
-        let operand = self.read(address) as i8;
-        match self.is_flag_set(Flag::Carry) {
-            true => self.relative_jump(operand),
-            false => self.pc += 1,
-        }
+        self.relative_jump(self.is_flag_set(Flag::Carry), self.read(address) as i8);
     }
 
     fn beq(&mut self, address: u16) {
-        let operand = self.read(address) as i8;
-        match self.is_flag_set(Flag::Zero) {
-            true => self.relative_jump(operand),
-            false => self.pc += 1,
-        }
+        self.relative_jump(self.is_flag_set(Flag::Zero), self.read(address) as i8);
     }
 
     fn bit(&mut self, address: u16) {
@@ -543,27 +535,15 @@ impl<'a> CPU<'a> {
     }
 
     fn bmi(&mut self, address: u16) {
-        let operand = self.read(address) as i8;
-        match self.is_flag_set(Flag::Negative) {
-            true => self.relative_jump(operand),
-            false => self.pc += 1,
-        }
+        self.relative_jump(self.is_flag_set(Flag::Negative), self.read(address) as i8);
     }
 
     fn bne(&mut self, address: u16) {
-        let operand = self.read(address) as i8;
-        match self.is_flag_set(Flag::Zero) {
-            false => self.relative_jump(operand),
-            true => self.pc += 1,
-        }
+        self.relative_jump(!self.is_flag_set(Flag::Zero), self.read(address) as i8);
     }
 
     fn bpl(&mut self, address: u16) {
-        let operand = self.read(address) as i8;
-        match self.is_flag_set(Flag::Negative) {
-            false => self.relative_jump(operand),
-            true => self.pc += 1,
-        }
+        self.relative_jump(!self.is_flag_set(Flag::Negative), self.read(address) as i8);
     }
 
     fn brk(&mut self, _imp: ()) {
@@ -572,19 +552,11 @@ impl<'a> CPU<'a> {
     }
 
     fn bvc(&mut self, address: u16) {
-        let operand = self.read(address) as i8;
-        match self.is_flag_set(Flag::Overflow) {
-            false => self.relative_jump(operand),
-            true => self.pc += 1,
-        }
+        self.relative_jump(!self.is_flag_set(Flag::Overflow), self.read(address) as i8);
     }
 
     fn bvs(&mut self, address: u16) {
-        let operand = self.read(address) as i8;
-        match self.is_flag_set(Flag::Overflow) {
-            true => self.relative_jump(operand),
-            false => self.pc += 1,
-        }
+        self.relative_jump(self.is_flag_set(Flag::Overflow), self.read(address) as i8);
     }
 
     fn clc(&mut self, _imp: ()) {
@@ -641,8 +613,7 @@ impl<'a> CPU<'a> {
     }
 
     fn dec(&mut self, address: u16) {
-        let operand = self.read(address);
-        let operand = operand.wrapping_sub(1);
+        let operand = self.read(address).wrapping_sub(1);
         self.write(address, operand);
         self.set_flag(Flag::Zero, operand == 0);
         self.set_flag(Flag::Negative, self.is_negative(operand));
