@@ -11,10 +11,9 @@ pub struct CPU<'a> {
 
     /// Implementation specific
     cycles_left: u8,
+    total_cycles: usize, // TODO remove ?
     extra_cycles: bool,
     bus: &'a mut Bus<'a>,
-
-    tmp_total_cyc: usize, // TODO remove
 }
 
 enum Flag {
@@ -52,7 +51,7 @@ impl<'a> CPU<'a> {
             cycles_left: 0,
             extra_cycles: true,
             bus: bus,
-            tmp_total_cyc: 7,
+            total_cycles: 7,
         }
     }
 
@@ -65,19 +64,23 @@ impl<'a> CPU<'a> {
     }
 
     pub fn terminated(&self) -> bool {
-        self.tmp_total_cyc > 26554 //|| self.pc == 0xEF0A
+        self.total_cycles > 26554
+    }
+
+    pub fn debug(&self, opcode: u8) {
+        println!(
+            "{:04X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
+            self.pc, opcode, self.a, self.x, self.y, self.status, self.sp, self.total_cycles
+        );
     }
 }
 
 impl<'a> CPU<'a> {
     fn process_opcode(&mut self, opcode: u8) {
-        println!(
-            "{:04X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
-            self.pc, opcode, self.a, self.x, self.y, self.status, self.sp, self.tmp_total_cyc
-        );
+        self.debug(opcode);
 
-        // TODO dont forget additional clock cycles!
         match opcode {
+            // Official Opcodes
             0x00 => self.execute_instruction(CPU::imp, CPU::brk, 7, false),
             0x01 => self.execute_instruction(CPU::indx, CPU::ora, 6, false),
             0x05 => self.execute_instruction(CPU::zp, CPU::ora, 3, false),
@@ -217,6 +220,7 @@ impl<'a> CPU<'a> {
             0xE6 => self.execute_instruction(CPU::zp, CPU::inc, 5, false),
             0xE8 => self.execute_instruction(CPU::imp, CPU::inx, 2, false),
             0xE9 => self.execute_instruction(CPU::imm, CPU::sbc, 2, false),
+            0xEA => self.execute_instruction(CPU::imp, CPU::nop, 2, false),
             0xEC => self.execute_instruction(CPU::abs, CPU::cpx, 4, false),
             0xED => self.execute_instruction(CPU::abs, CPU::sbc, 4, false),
             0xEE => self.execute_instruction(CPU::abs, CPU::inc, 6, false),
@@ -229,7 +233,7 @@ impl<'a> CPU<'a> {
             0xFD => self.execute_instruction(CPU::absx, CPU::sbc, 4, false),
             0xFE => self.execute_instruction(CPU::absx, CPU::inc, 7, false),
 
-            // Unofficial opcodes
+            // Unofficial Opcodes
             0x03 => self.execute_instruction(CPU::indx, CPU::slo, 8, false),
             0x07 => self.execute_instruction(CPU::zp, CPU::slo, 5, false),
             0x0F => self.execute_instruction(CPU::abs, CPU::slo, 6, false),
@@ -237,7 +241,6 @@ impl<'a> CPU<'a> {
             0x17 => self.execute_instruction(CPU::zpx, CPU::slo, 6, false),
             0x1B => self.execute_instruction(CPU::absy, CPU::slo, 7, false),
             0x1F => self.execute_instruction(CPU::absx, CPU::slo, 7, false),
-
             0x23 => self.execute_instruction(CPU::indx, CPU::rla, 8, false),
             0x27 => self.execute_instruction(CPU::zp, CPU::rla, 5, false),
             0x2F => self.execute_instruction(CPU::abs, CPU::rla, 6, false),
@@ -245,7 +248,6 @@ impl<'a> CPU<'a> {
             0x37 => self.execute_instruction(CPU::zpx, CPU::rla, 6, false),
             0x3B => self.execute_instruction(CPU::absy, CPU::rla, 7, false),
             0x3F => self.execute_instruction(CPU::absx, CPU::rla, 7, false),
-
             0x43 => self.execute_instruction(CPU::indx, CPU::sre, 8, false),
             0x47 => self.execute_instruction(CPU::zp, CPU::sre, 5, false),
             0x4F => self.execute_instruction(CPU::abs, CPU::sre, 6, false),
@@ -253,7 +255,6 @@ impl<'a> CPU<'a> {
             0x57 => self.execute_instruction(CPU::zpx, CPU::sre, 6, false),
             0x5B => self.execute_instruction(CPU::absy, CPU::sre, 7, false),
             0x5F => self.execute_instruction(CPU::absx, CPU::sre, 7, false),
-
             0x63 => self.execute_instruction(CPU::indx, CPU::rra, 8, false),
             0x67 => self.execute_instruction(CPU::zp, CPU::rra, 5, false),
             0x6F => self.execute_instruction(CPU::abs, CPU::rra, 6, false),
@@ -261,62 +262,53 @@ impl<'a> CPU<'a> {
             0x77 => self.execute_instruction(CPU::zpx, CPU::rra, 6, false),
             0x7B => self.execute_instruction(CPU::absy, CPU::rra, 7, false),
             0x7F => self.execute_instruction(CPU::absx, CPU::rra, 7, false),
-
             0x83 => self.execute_instruction(CPU::indx, CPU::sax, 6, false),
             0x87 => self.execute_instruction(CPU::zp, CPU::sax, 3, false),
             0x8F => self.execute_instruction(CPU::abs, CPU::sax, 4, false),
             0x97 => self.execute_instruction(CPU::zpy, CPU::sax, 4, false),
-
             0xA3 => self.execute_instruction(CPU::indx, CPU::lax, 6, false),
             0xA7 => self.execute_instruction(CPU::zp, CPU::lax, 3, false),
             0xAB => self.execute_instruction(CPU::imm, CPU::lax, 2, false),
             0xAF => self.execute_instruction(CPU::abs, CPU::lax, 4, false),
-
             0xB3 => self.execute_instruction(CPU::indy, CPU::lax, 5, true),
             0xB7 => self.execute_instruction(CPU::zpy, CPU::lax, 4, false),
             0xBF => self.execute_instruction(CPU::absy, CPU::lax, 4, true),
-
             0xC3 => self.execute_instruction(CPU::indx, CPU::dcp, 8, false),
             0xC7 => self.execute_instruction(CPU::zp, CPU::dcp, 5, false),
             0xCF => self.execute_instruction(CPU::abs, CPU::dcp, 6, false),
-
             0xD3 => self.execute_instruction(CPU::indy, CPU::dcp, 8, false),
             0xD7 => self.execute_instruction(CPU::zpx, CPU::dcp, 6, false),
             0xDB => self.execute_instruction(CPU::absy, CPU::dcp, 7, false),
             0xDF => self.execute_instruction(CPU::absx, CPU::dcp, 7, false),
-
             0xE3 => self.execute_instruction(CPU::indx, CPU::isc, 8, false),
             0xE7 => self.execute_instruction(CPU::zp, CPU::isc, 5, false),
             0xEF => self.execute_instruction(CPU::abs, CPU::isc, 6, false),
-
             0xEB => self.execute_instruction(CPU::imm, CPU::sbc, 2, false),
-
             0xF3 => self.execute_instruction(CPU::indy, CPU::isc, 8, false),
             0xF7 => self.execute_instruction(CPU::zpx, CPU::isc, 6, false),
             0xFB => self.execute_instruction(CPU::absy, CPU::isc, 7, false),
             0xFF => self.execute_instruction(CPU::absx, CPU::isc, 7, false),
 
-            // nops
-            0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xEA | 0xFA => {
-                self.execute_instruction(CPU::imp, CPU::nop, 2, false)
-            }
-            0x80 => self.execute_instruction(CPU::imm, CPU::nop_unoff, 2, false),
-
+            // Unofficial NOPs
+            0x0C => self.execute_instruction(CPU::abs, CPU::nop_unoff, 4, false),
             0x04 | 0x44 | 0x64 => self.execute_instruction(CPU::zp, CPU::nop_unoff, 3, false),
-
             0x14 | 0x34 | 0x54 | 0x74 | 0xD4 | 0xF4 => {
                 self.execute_instruction(CPU::zpx, CPU::nop_unoff, 4, false)
+            }
+            0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xFA => {
+                self.execute_instruction(CPU::imp, CPU::nop, 2, false)
             }
             0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => {
                 self.execute_instruction(CPU::absx, CPU::nop_unoff, 4, true)
             }
-            0x0C => self.execute_instruction(CPU::abs, CPU::nop_unoff, 4, false),
+            0x80 => self.execute_instruction(CPU::imm, CPU::nop_unoff, 2, false),
 
+            // Unknown Opcode
             _ => panic!(format!(
-                "invalid opcode 0x{:0X} at 0x{:0X}",
+                "Unknown opcode 0x{:0X} at 0x{:0X}",
                 opcode, self.pc
             )),
-        }
+        };
     }
 
     fn execute_instruction<T>(
@@ -326,14 +318,14 @@ impl<'a> CPU<'a> {
         cycles: u8,
         extra_cycles: bool,
     ) {
-        let tmp = self.cycles_left;
+        let tmp = self.cycles_left; // TODO remove ?
 
         self.extra_cycles = extra_cycles;
         let address = address_mode_fn(self);
         opcode_fn(self, address);
         self.cycles_left += cycles;
 
-        self.tmp_total_cyc += (self.cycles_left - tmp) as usize;
+        self.total_cycles += (self.cycles_left - tmp) as usize; // TODO remove ?
     }
 
     fn push_stack(&mut self, val: u8) {
@@ -933,6 +925,12 @@ impl<'a> CPU<'a> {
         self.and(address);
     }
 
+    fn rra(&mut self, address: u16) {
+        self.ror_mem(address);
+        self.pc -= 1;
+        self.adc(address);
+    }
+
     fn sax(&mut self, address: u16) {
         self.write(address, self.a & self.x);
         self.pc += 1;
@@ -948,11 +946,5 @@ impl<'a> CPU<'a> {
         self.lsr_mem(address);
         self.pc -= 1;
         self.eor(address);
-    }
-
-    fn rra(&mut self, address: u16) {
-        self.ror_mem(address);
-        self.pc -= 1;
-        self.adc(address);
     }
 }
