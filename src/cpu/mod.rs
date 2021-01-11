@@ -1,5 +1,4 @@
 mod opcodes;
-mod tests;
 
 use super::bus::{Bus, Device};
 
@@ -14,7 +13,7 @@ pub struct CPU<'a> {
 
     /// Implementation specific
     cycles_left: u8,
-    pub total_cycles: usize, // TODO remove ?
+    total_cycles: usize, // TODO remove ?
     extra_cycles: bool,
     bus: &'a mut Bus<'a>,
 }
