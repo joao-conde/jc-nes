@@ -53,12 +53,4 @@ impl<'a> CPU<'a> {
         }
         self.cycles_left -= 1;
     }
-
-    pub fn debug(&self, opcode: u8) {
-        // TODO remove ?
-        println!(
-            "{:04X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
-            self.pc, opcode, self.a, self.x, self.y, self.status, self.sp, self.total_cycles
-        );
-    }
 }
