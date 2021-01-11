@@ -24,7 +24,7 @@ fn main() {
     let mut cpu = CPU::new(&mut bus);
 
     // emulate clock cycle
-    while !cpu.terminated() {
+    while cpu.total_cycles <= 26554 {
         cpu.clock();
     }
 }
