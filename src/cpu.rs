@@ -66,7 +66,7 @@ impl<'a> CPU<'a> {
 
 /// Opcode processing and execution and utility functions
 impl<'a> CPU<'a> {
-    pub fn debug(&self, opcode: u8) {
+    fn debug(&self, opcode: u8) {
         // TODO remove ?
         println!(
             "{:04X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
@@ -74,7 +74,7 @@ impl<'a> CPU<'a> {
         );
     }
 
-    pub fn process_opcode(&mut self, opcode: u8) {
+    fn process_opcode(&mut self, opcode: u8) {
         self.debug(opcode);
         match opcode {
             // Official Opcodes
