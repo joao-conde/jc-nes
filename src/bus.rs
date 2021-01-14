@@ -22,7 +22,7 @@ impl<'a> Bus<'a> {
     pub fn connect(&mut self, addressable_range: RangeInclusive<u16>, device: &'a mut impl Device) {
         match self.addresses.iter().any(|(range, _)| overlaps(range, &addressable_range)) {
             false => self.addresses.insert(addressable_range, device),
-            true => panic!("can not connect device to already existing addressable range"),
+            true => panic!("can not connect device because addressable range already exists"),
         };
     }
 
