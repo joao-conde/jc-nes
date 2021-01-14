@@ -1,4 +1,3 @@
-use crate::bus::Device;
 use crate::cpu::{Flag, CPU};
 
 /// Instructions

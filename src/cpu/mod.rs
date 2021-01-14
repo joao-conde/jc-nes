@@ -1,7 +1,7 @@
 mod addressing;
 mod instructions;
 
-use super::bus::{Bus, Device};
+use super::bus::Bus;
 
 pub struct CPU<'a> {
     /// CPU registers
@@ -28,18 +28,6 @@ pub(in crate::cpu) enum Flag {
     B2 = 5,
     Overflow = 6,
     Negative = 7,
-}
-
-impl<'a> Device for CPU<'a> {
-    fn read(&self, address: u16) -> u8 {
-        self.bus
-            .read(address)
-            .unwrap_or_else(|| panic!("no byte to be read at address 0x{:0x}", address))
-    }
-
-    fn write(&mut self, address: u16, data: u8) {
-        self.bus.write(address, data);
-    }
 }
 
 impl<'a> CPU<'a> {
@@ -292,6 +280,16 @@ impl<'a> CPU<'a> {
             // Unknown Opcode
             _ => panic!(format!("Unknown opcode 0x{:0X} at 0x{:0X}", opcode, self.pc)),
         };
+    }
+
+    fn read(&self, address: u16) -> u8 {
+        self.bus
+            .read(address)
+            .unwrap_or_else(|| panic!("no byte to be read at address 0x{:0x}", address))
+    }
+
+    fn write(&mut self, address: u16, data: u8) {
+        self.bus.write(address, data);
     }
 
     fn execute<T>(&mut self, address_mode_fn: fn(&mut CPU<'a>) -> T, opcode_fn: fn(&mut CPU<'a>, T), cycles: u8, extra_cycles: bool) {
