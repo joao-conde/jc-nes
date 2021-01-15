@@ -21,8 +21,7 @@ fn main() {
     // give bus to CPU to read/write
     let ram = Rc::new(RefCell::new(RAM { mem }));
     let mut bus = Bus::default();
-    bus.connect_r(0x0000..=0xFFFF, &ram);
-    bus.connect_w(0x0000..=0xFFFF, &ram);
+    bus.connect(0x0000..=0xFFFF, &ram);
 
     let mut cpu = CPU::new(&mut bus);
 

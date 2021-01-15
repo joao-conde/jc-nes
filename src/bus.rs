@@ -17,6 +17,11 @@ pub trait Write {
 }
 
 impl<'a> Bus<'a> {
+    pub fn connect<RW: Read + Write + 'a>(&mut self, addressable_range: RangeInclusive<u16>, device: &Rc<RefCell<RW>>) {
+        self.readable.insert(addressable_range.clone(), Rc::<RefCell<RW>>::clone(device));
+        self.writable.insert(addressable_range, Rc::<RefCell<RW>>::clone(device));
+    }
+
     pub fn connect_r<R: Read + 'a>(&mut self, addressable_range: RangeInclusive<u16>, device: &Rc<RefCell<R>>) {
         self.readable.insert(addressable_range, Rc::<RefCell<R>>::clone(device));
     }
