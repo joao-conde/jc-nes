@@ -41,7 +41,7 @@ impl<'a> Bus<'a> {
         device.map(|device| device.borrow().read(address))
     }
 
-    pub fn write(&mut self, address: u16, data: u8) -> Option<()> {
+    pub fn write(&mut self, address: u16, data: u8) -> bool {
         let device = self
             .writable
             .iter_mut()
@@ -49,6 +49,6 @@ impl<'a> Bus<'a> {
             .map(|(_, device)| device)
             .next();
 
-        device.map(|device| device.borrow_mut().write(address, data))
+        device.map(|device| device.borrow_mut().write(address, data)).is_some()
     }
 }
