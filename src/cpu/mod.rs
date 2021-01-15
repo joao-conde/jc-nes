@@ -3,7 +3,7 @@ mod instructions;
 
 use super::bus::Bus;
 
-pub struct CPU<'a> {
+pub struct CPU<'a, 'b> {
     /// CPU registers
     a: u8,
     x: u8,
@@ -16,7 +16,7 @@ pub struct CPU<'a> {
     cycles_left: u8,
     total_cycles: usize, // TODO remove ?
     extra_cycles: bool,
-    bus: &'a mut Bus<'a>,
+    bus: &'a mut Bus<'b>,
 }
 
 pub(in crate::cpu) enum Flag {
@@ -30,8 +30,8 @@ pub(in crate::cpu) enum Flag {
     Negative = 7,
 }
 
-impl<'a> CPU<'a> {
-    pub fn new(bus: &'a mut Bus<'a>) -> CPU<'a> {
+impl<'a, 'b> CPU<'a, 'b> {
+    pub fn new(bus: &'a mut Bus<'b>) -> CPU<'a, 'b> {
         CPU {
             a: 0x00,
             x: 0x00,
@@ -56,7 +56,7 @@ impl<'a> CPU<'a> {
 }
 
 /// Opcode processing and execution and utility functions
-impl<'a> CPU<'a> {
+impl<'a, 'b> CPU<'a, 'b> {
     fn process_opcode(&mut self, opcode: u8) {
         self.debug(opcode);
         match opcode {
@@ -292,7 +292,7 @@ impl<'a> CPU<'a> {
         self.bus.write(address, data);
     }
 
-    fn execute<T>(&mut self, address_mode_fn: fn(&mut CPU<'a>) -> T, opcode_fn: fn(&mut CPU<'a>, T), cycles: u8, extra_cycles: bool) {
+    fn execute<T>(&mut self, address_mode_fn: fn(&mut CPU<'a, 'b>) -> T, opcode_fn: fn(&mut CPU<'a, 'b>, T), cycles: u8, extra_cycles: bool) {
         let tmp = self.cycles_left; // TODO remove ?
 
         self.extra_cycles = extra_cycles;

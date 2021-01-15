@@ -1,9 +1,10 @@
 use jc_nes::bus::Bus;
 use jc_nes::cpu::CPU;
 use jc_nes::ram::RAM;
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
-
+use std::rc::Rc;
 fn main() {
     // read test rom
     let mut rom = File::open("roms/nestest.nes").unwrap();
@@ -18,9 +19,11 @@ fn main() {
 
     // connect ram to the bus
     // give bus to CPU to read/write
-    let mut ram = RAM { mem };
+    let ram = Rc::new(RefCell::new(RAM { mem }));
     let mut bus = Bus::default();
-    bus.connect(0x0000..=0xFFFF, &mut ram);
+    bus.connect_r(0x0000..=0xFFFF, &ram);
+    bus.connect_w(0x0000..=0xFFFF, &ram);
+
     let mut cpu = CPU::new(&mut bus);
 
     // emulate clock cycle
