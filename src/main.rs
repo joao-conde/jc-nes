@@ -5,7 +5,23 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
 use std::rc::Rc;
+
 fn main() {
+    emulate()
+}
+
+fn emulate() {
+    let ram = Rc::new(RefCell::new(RAM::new(2 * 1024)));
+
+    let mut cpu_bus = Bus::default();
+    cpu_bus.connect(0x0000..=0x1FFF, &ram);
+
+    let mut ppu_bus = Bus::default();
+
+    let mut cpu = CPU::new(&mut cpu_bus);
+}
+
+fn nestest() {
     // read test rom
     let mut rom = File::open("roms/nestest.nes").unwrap();
     let mut buffer = [0u8; 64 * 1024];

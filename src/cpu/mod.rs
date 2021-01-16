@@ -283,13 +283,27 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     fn read(&self, address: u16) -> u8 {
+        // mirroring for the RAM
+        let address = self.mirror_address(address);
+
         self.bus
             .read(address)
             .unwrap_or_else(|| panic!("no byte to be read at address 0x{:0x}", address))
     }
 
     fn write(&mut self, address: u16, data: u8) {
+        let address = self.mirror_address(address);
         self.bus.write(address, data);
+    }
+
+    fn mirror_address(&self, address: u16) -> u16 {
+        if address > 0x0000 && address <= 0x1FFF {
+            address & 0x07FF
+        } else if address > 0x2000 && address <= 0x3FFF {
+            address & 0x0007
+        } else {
+            address
+        }
     }
 
     fn execute<T>(&mut self, address_mode_fn: fn(&mut CPU<'a, 'b>) -> T, opcode_fn: fn(&mut CPU<'a, 'b>, T), cycles: u8, extra_cycles: bool) {

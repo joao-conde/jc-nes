@@ -4,6 +4,12 @@ pub struct RAM {
     pub mem: Vec<u8>,
 }
 
+impl RAM {
+    pub fn new(size: usize) -> RAM {
+        RAM { mem: vec![0u8; size] }
+    }
+}
+
 impl Read for RAM {
     fn read(&self, address: u16) -> u8 {
         self.mem[address as usize]
