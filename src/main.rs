@@ -1,4 +1,5 @@
 use jc_nes::bus::Bus;
+use jc_nes::cartridge::Cartridge;
 use jc_nes::cpu::CPU;
 use jc_nes::nametable::NameTable;
 use jc_nes::pattern_mem::PatternMem;
@@ -13,22 +14,32 @@ fn main() {
 }
 
 fn emulate() {
+    // Shared devices
+    let cartridge = Rc::new(RefCell::new(Cartridge::new(64 * 1024)));
+
     // CPU Bus devices
     let ram = Rc::new(RefCell::new(RAM::new(2 * 1024)));
 
     let mut cpu_bus = Bus::default();
     cpu_bus.connect(0x0000..=0x1FFF, &ram);
+    cpu_bus.connect(0x4020..=0xFFFF, &cartridge);
 
     // PPU Bus devices
     let pattern_mem = Rc::new(RefCell::new(PatternMem::new(8 * 1024)));
-    let name_table = Rc::new(RefCell::new(PatternMem::new(2 * 1024)));
+    let name_table = Rc::new(RefCell::new(NameTable::new(2 * 1024)));
 
     let mut ppu_bus = Bus::default();
     ppu_bus.connect(0x0000..=0x1FFF, &pattern_mem);
     ppu_bus.connect(0x2000..=0x2FFF, &name_table);
+    ppu_bus.connect(0x4020..=0xFFFF, &cartridge);
 
     // Passing Bus to who interacts with it (CPU & PPU)
     let mut cpu = CPU::new(&mut cpu_bus);
+
+    // emulate clock cycle
+    for _ in 0..26548 {
+        cpu.clock();
+    }
 }
 
 fn nestest() {
