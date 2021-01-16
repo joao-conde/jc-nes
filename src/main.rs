@@ -1,5 +1,7 @@
 use jc_nes::bus::Bus;
 use jc_nes::cpu::CPU;
+use jc_nes::nametable::NameTable;
+use jc_nes::pattern_mem::PatternMem;
 use jc_nes::ram::RAM;
 use std::cell::RefCell;
 use std::fs::File;
@@ -11,13 +13,21 @@ fn main() {
 }
 
 fn emulate() {
+    // CPU Bus devices
     let ram = Rc::new(RefCell::new(RAM::new(2 * 1024)));
 
     let mut cpu_bus = Bus::default();
     cpu_bus.connect(0x0000..=0x1FFF, &ram);
 
-    let mut ppu_bus = Bus::default();
+    // PPU Bus devices
+    let pattern_mem = Rc::new(RefCell::new(PatternMem::new(8 * 1024)));
+    let name_table = Rc::new(RefCell::new(PatternMem::new(2 * 1024)));
 
+    let mut ppu_bus = Bus::default();
+    ppu_bus.connect(0x0000..=0x1FFF, &pattern_mem);
+    ppu_bus.connect(0x2000..=0x2FFF, &name_table);
+
+    // Passing Bus to who interacts with it (CPU & PPU)
     let mut cpu = CPU::new(&mut cpu_bus);
 }
 
