@@ -4,8 +4,8 @@ use std::{collections::HashMap, ops::RangeInclusive};
 
 #[derive(Default)]
 pub struct Bus<'a> {
-    pub readable: HashMap<RangeInclusive<u16>, Rc<RefCell<dyn BusRead + 'a>>>,
-    pub writable: HashMap<RangeInclusive<u16>, Rc<RefCell<dyn BusWrite + 'a>>>,
+    readable: HashMap<RangeInclusive<u16>, Rc<RefCell<dyn BusRead + 'a>>>,
+    writable: HashMap<RangeInclusive<u16>, Rc<RefCell<dyn BusWrite + 'a>>>,
 }
 
 pub trait BusRead {
@@ -47,26 +47,24 @@ impl<'a> Bus<'a> {
     }
 
     pub fn read(&self, address: u16) -> Option<u8> {
-        let device = self
+        let device_match = self
             .readable
             .iter()
             .filter(|(addressable_range, _)| addressable_range.contains(&address))
-            .map(|(_, device)| device)
             .next();
 
-        device.map(|device| device.borrow().read(address))
+        device_match.map(|(range, device)| device.borrow().read(address - range.start()))
     }
 
     pub fn write(&mut self, address: u16, data: u8) -> bool {
-        let device = self
+        let device_match = self
             .writable
             .iter_mut()
             .filter(|(addressable_range, _)| addressable_range.contains(&address))
-            .map(|(_, device)| device)
             .next();
 
-        device
-            .map(|device| device.borrow_mut().write(address, data))
+        device_match
+            .map(|(range, device)| device.borrow_mut().write(address - range.start(), data))
             .is_some()
     }
 }
