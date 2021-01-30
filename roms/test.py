@@ -1,5 +1,5 @@
-nestestlogs = open("roms/nestest.log")
-mylogs = open("roms/mylogs.txt")
+nestestlogs = open("roms/nestest.log", "r")
+mylogs = open("roms/mylogs.txt", "r")
 
 for (nestest_line, my_line) in zip(nestestlogs, mylogs):
     expected = nestest_line.split(" A:")
