@@ -1,15 +1,14 @@
 use jc_nes::bus::Bus;
 use jc_nes::cpu::CPU;
 use jc_nes::ram::RAM;
-use core::panic;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
+use sdl2::rect::Point;
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
 use std::rc::Rc;
-use sdl2::pixels::Color;
-use sdl2::keyboard::Keycode;
 use std::time::Duration;
-use sdl2::rect::Point;
 
 fn main() {
     dev()
@@ -23,10 +22,14 @@ fn dev() {
     file.read_to_end(&mut rom).unwrap();
     // skip header (16 bytes)
     let mut bytes = rom.bytes().skip(16);
-    // need to copy this to CPU RAM: 
-    let _prg_mem = bytes.by_ref().take(16 * 1024).flatten().collect::<Vec<u8>>(); // 16kB per bank
+    // need to copy this to CPU RAM:
+    let _prg_mem = bytes
+        .by_ref()
+        .take(16 * 1024)
+        .flatten()
+        .collect::<Vec<u8>>(); // 16kB per bank
     let char_mem = bytes.by_ref().take(8 * 1024).flatten().collect::<Vec<u8>>(); // 8kB per bank
-    
+
     let mut vram = vec![0u8; 64 * 1024]; // 64kB VRAM
     vram[0x0000..0x2000].clone_from_slice(&char_mem);
     let vram = Rc::new(RefCell::new(RAM { mem: vram }));
@@ -47,20 +50,20 @@ fn dev() {
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
-    
+
     canvas.clear();
     for r in 0..height {
         for c in 0..width {
             let addr = (r / 8 * 0x100) + (r % 8) + (c / 8) * 0x10;
             let v1 = bus.read(addr as u16).unwrap();
             let v2 = bus.read(addr as u16 + 8).unwrap();
-            let pixel = ((v1 >> (7-(c % 8))) & 0b1) + ((v2 >> (7-(c % 8))) & 0b1) * 2;
+            let pixel = ((v1 >> (7 - (c % 8))) & 0b1) + ((v2 >> (7 - (c % 8))) & 0b1) * 2;
             match pixel {
                 0 => canvas.set_draw_color(Color::RGB(128, 179, 255)),
                 1 => canvas.set_draw_color(Color::RGB(0, 102, 255)),
                 2 => canvas.set_draw_color(Color::RGB(0, 51, 128)),
                 3 => canvas.set_draw_color(Color::RGB(0, 10, 26)),
-                _ => canvas.set_draw_color(Color::RGB(0, 0, 0))
+                _ => canvas.set_draw_color(Color::RGB(0, 0, 0)),
             }
             canvas.draw_point(Point::new(c as i32, r as i32)).unwrap();
         }
@@ -73,9 +76,12 @@ fn dev() {
     while render {
         for event in event_pump.poll_iter() {
             match event {
-                sdl2::event::Event::Quit {..} => render = false,
-                sdl2::event::Event::KeyDown { keycode: Some(Keycode::Escape), .. } => render = false,
-                _ => {},
+                sdl2::event::Event::Quit { .. } => render = false,
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => render = false,
+                _ => {}
             }
         }
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
