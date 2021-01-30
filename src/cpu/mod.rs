@@ -272,13 +272,20 @@ impl<'a, 'b> CPU<'a, 'b> {
             // Unofficial NOPs
             0x0C => self.execute(CPU::abs, CPU::nop_unoff, 4, false),
             0x04 | 0x44 | 0x64 => self.execute(CPU::zp, CPU::nop_unoff, 3, false),
-            0x14 | 0x34 | 0x54 | 0x74 | 0xD4 | 0xF4 => self.execute(CPU::zpx, CPU::nop_unoff, 4, false),
+            0x14 | 0x34 | 0x54 | 0x74 | 0xD4 | 0xF4 => {
+                self.execute(CPU::zpx, CPU::nop_unoff, 4, false)
+            }
             0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xFA => self.execute(CPU::imp, CPU::nop, 2, false),
-            0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => self.execute(CPU::absx, CPU::nop_unoff, 4, true),
+            0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => {
+                self.execute(CPU::absx, CPU::nop_unoff, 4, true)
+            }
             0x80 => self.execute(CPU::imm, CPU::nop_unoff, 2, false),
 
             // Unknown Opcode
-            _ => panic!(format!("Unknown opcode 0x{:0X} at 0x{:0X}", opcode, self.pc)),
+            _ => panic!(format!(
+                "Unknown opcode 0x{:0X} at 0x{:0X}",
+                opcode, self.pc
+            )),
         };
     }
 
@@ -306,7 +313,13 @@ impl<'a, 'b> CPU<'a, 'b> {
         }
     }
 
-    fn execute<T>(&mut self, address_mode_fn: fn(&mut CPU<'a, 'b>) -> T, opcode_fn: fn(&mut CPU<'a, 'b>, T), cycles: u8, extra_cycles: bool) {
+    fn execute<T>(
+        &mut self,
+        address_mode_fn: fn(&mut CPU<'a, 'b>) -> T,
+        opcode_fn: fn(&mut CPU<'a, 'b>, T),
+        cycles: u8,
+        extra_cycles: bool,
+    ) {
         let tmp = self.cycles_left; // TODO remove ?
 
         self.extra_cycles = extra_cycles;

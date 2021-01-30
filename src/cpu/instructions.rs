@@ -115,7 +115,10 @@ impl<'a, 'b> CPU<'a, 'b> {
         let operand = self.read(address);
         self.set_flag(Flag::Carry, self.a >= operand);
         self.set_flag(Flag::Zero, self.a == operand);
-        self.set_flag(Flag::Negative, (self.a.wrapping_sub(operand) & 0x80) >> 7 == 1);
+        self.set_flag(
+            Flag::Negative,
+            (self.a.wrapping_sub(operand) & 0x80) >> 7 == 1,
+        );
         self.pc += 1;
     }
 
@@ -123,7 +126,10 @@ impl<'a, 'b> CPU<'a, 'b> {
         let operand = self.read(address);
         self.set_flag(Flag::Carry, self.x >= operand);
         self.set_flag(Flag::Zero, self.x == operand);
-        self.set_flag(Flag::Negative, (self.x.wrapping_sub(operand) & 0x80) >> 7 == 1);
+        self.set_flag(
+            Flag::Negative,
+            (self.x.wrapping_sub(operand) & 0x80) >> 7 == 1,
+        );
         self.pc += 1;
     }
 
@@ -131,7 +137,10 @@ impl<'a, 'b> CPU<'a, 'b> {
         let operand = self.read(address);
         self.set_flag(Flag::Carry, self.y >= operand);
         self.set_flag(Flag::Zero, self.y == operand);
-        self.set_flag(Flag::Negative, (self.y.wrapping_sub(operand) & 0x80) >> 7 == 1);
+        self.set_flag(
+            Flag::Negative,
+            (self.y.wrapping_sub(operand) & 0x80) >> 7 == 1,
+        );
         self.pc += 1;
     }
 
