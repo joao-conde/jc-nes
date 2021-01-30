@@ -14,8 +14,13 @@ fn main() {
 }
 
 fn emulate() {
+    // read test rom
+    let mut file = File::open("roms/nestest.nes").unwrap();
+    let mut rom = [0u8; 64 * 1024];
+    file.read(&mut rom).expect("buffer overflow");
+
     // Shared devices
-    let cartridge = Rc::new(RefCell::new(Cartridge::new(64 * 1024)));
+    let cartridge = Rc::new(RefCell::new(Cartridge::from_rom(&rom)));
 
     // CPU Bus devices
     let ram = Rc::new(RefCell::new(RAM::new(2 * 1024)));
