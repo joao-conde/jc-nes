@@ -26,52 +26,83 @@ fn dev() {
     let mut bytes = rom.bytes().skip(16);
 
     // need to copy this to CPU RAM:
-    let _prg_mem = bytes
+    let prg_rom = bytes
         .by_ref()
         .take(32 * 1024)
         .flatten()
         .collect::<Vec<u8>>(); // 16kB per bank
 
-    let char_mem = bytes.by_ref().take(8 * 1024).flatten().collect::<Vec<u8>>(); // 8kB per bank
+    let char_rom = bytes.by_ref().take(8 * 1024).flatten().collect::<Vec<u8>>(); // 8kB per bank
 
-    let mut vram_mem = vec![0u8; 64 * 1024]; // 64kB VRAM
-    &vram_mem[0x0000..0x2000].clone_from_slice(&char_mem);
+    let mut ppu_ram = vec![0u8; 64 * 1024]; // 64kB PPU RAM
+    &ppu_ram[0x0000..0x2000].clone_from_slice(&char_rom);
 
-    let width: u32 = 128;
-    let height: u32 = 256;
-    let scaling_factor: u32 = 3;
+    let ppu_ram = Rc::new(RefCell::new(RAM { mem: ppu_ram }));
+
+    let mut ppu_bus = Bus::default();
+    ppu_bus.connect(0x0000..=0xFFFF, &ppu_ram);
+
+    display_pattern_table(&ppu_bus);
+}
+
+fn nestest() {
+    // read test rom
+    let mut rom = File::open("roms/nestest.nes").unwrap();
+    let mut buffer = [0u8; 64 * 1024];
+    rom.read(&mut buffer).expect("buffer overflow");
+
+    // make test rom address start at 0xC000
+    // and discard 16-bit header
+    let mut mem = Vec::new();
+    (0..0xC000).for_each(|_| mem.push(0));
+    buffer[16..0x4F00].iter().for_each(|byte| mem.push(*byte));
+
+    // connect ram to the bus
+    // give bus to CPU to read/write
+    let ram = Rc::new(RefCell::new(RAM { mem }));
+    let mut bus = Bus::default();
+    bus.connect(0x0000..=0xFFFF, &ram);
+
+    let mut cpu = CPU::new(&mut bus);
+
+    // emulate clock cycle
+    for _ in 0..26548 {
+        cpu.clock();
+    }
+}
+
+fn display_pattern_table(ppu_bus: &Bus) {
+    const WIDTH: u32 = 128;
+    const HEIGHT: u32 = 256;
+    const SCALING: u32 = 3;
 
     let sdl = sdl2::init().unwrap();
     let video_subsystem = sdl.video().unwrap();
 
     let window = video_subsystem
-        .window(
-            "Pattern Table",
-            scaling_factor * width,
-            scaling_factor * height,
-        )
+        .window("Pattern Table", SCALING * WIDTH, SCALING * HEIGHT)
         .resizable()
         .build()
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
-    canvas.set_scale(3.0, 3.0).unwrap();
+    canvas.set_scale(SCALING as f32, SCALING as f32).unwrap();
     canvas.clear();
 
     const TILE_PIXEL_WIDTH: u32 = 8;
     const TILE_PIXEL_HEIGHT: u32 = TILE_PIXEL_WIDTH;
     const TILE_BYTE_WIDTH: u32 = 2 * TILE_PIXEL_WIDTH;
-    for y in 0..height {
-        for x in 0..width {
+    for y in 0..HEIGHT {
+        for x in 0..WIDTH {
             // get base address of pixel
             let tile_x = x / TILE_PIXEL_WIDTH;
             let tile_y = y / TILE_PIXEL_HEIGHT;
             let pixel_y = y % 8;
-            let addr = tile_y * height + tile_x * TILE_BYTE_WIDTH + pixel_y;
+            let addr = tile_y * HEIGHT + tile_x * TILE_BYTE_WIDTH + pixel_y;
 
             // get data from both bit planes
-            let mut lsb: u8 = vram_mem[addr as usize];
-            let mut msb: u8 = vram_mem[addr as usize + 8];
+            let mut lsb: u8 = ppu_bus.read(addr as u16).unwrap();
+            let mut msb: u8 = ppu_bus.read(addr as u16 + 8).unwrap();
 
             // join bit plane data
             let mut pixel_help: u16 = 0x0000;
@@ -118,31 +149,5 @@ fn dev() {
             }
         }
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
-    }
-}
-
-fn nestest() {
-    // read test rom
-    let mut rom = File::open("roms/nestest.nes").unwrap();
-    let mut buffer = [0u8; 64 * 1024];
-    rom.read(&mut buffer).expect("buffer overflow");
-
-    // make test rom address start at 0xC000
-    // and discard 16-bit header
-    let mut mem = Vec::new();
-    (0..0xC000).for_each(|_| mem.push(0));
-    buffer[16..0x4F00].iter().for_each(|byte| mem.push(*byte));
-
-    // connect ram to the bus
-    // give bus to CPU to read/write
-    let ram = Rc::new(RefCell::new(RAM { mem }));
-    let mut bus = Bus::default();
-    bus.connect(0x0000..=0xFFFF, &ram);
-
-    let mut cpu = CPU::new(&mut bus);
-
-    // emulate clock cycle
-    for _ in 0..26548 {
-        cpu.clock();
     }
 }
