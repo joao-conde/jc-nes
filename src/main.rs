@@ -13,8 +13,9 @@ use std::rc::Rc;
 use std::time::Duration;
 
 fn main() {
-    nestest();
-    //test_display_pattern()
+    //nestest();
+    //test_display_pattern();
+    emulate();
 }
 
 fn test_display_pattern() {
@@ -23,7 +24,7 @@ fn test_display_pattern() {
     let cartridge = Rc::new(RefCell::new(cartridge));
 
     let mut ppu_bus = Bus::default();
-    ppu_bus.connect_r(0x0000..=0xFFFF, &cartridge);
+    ppu_bus.connect_r(0x0000..=0x1FFF, &cartridge);
 
     display_pattern_table(&ppu_bus);
 }
@@ -133,4 +134,18 @@ fn display_pattern_table(ppu_bus: &Bus) {
         }
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
+}
+
+fn emulate() {
+    let rom_path = "roms/secret/donkey-kong.nes";
+    let cartridge = Cartridge::load_rom(rom_path);
+    let cartridge = Rc::new(RefCell::new(cartridge));
+
+    let mut ppu_bus = Bus::default();
+    ppu_bus.connect(0x0000..=0x1FFF, &cartridge);
+
+    let mut cpu_bus = Bus::default();
+    cpu_bus.connect(0x4020..=0xFFFF, &cartridge);
+
+    display_pattern_table(&ppu_bus);
 }

@@ -1,7 +1,9 @@
 # CPU
 
-http://www.obelisk.me.uk/6502/architecture.html
+## Overview
 
+- [Memory model](http://wiki.nesdev.com/w/index.php/CPU_memory_map)
+- [Architecture](http://www.obelisk.me.uk/6502/architecture.html)
 - based on the MOS6502's processor (lacking decimal mode and with some quirks)
 - runs at approximately 1.79 MHz
 - 64kB addressable range (0x0000 - 0xFFFF)

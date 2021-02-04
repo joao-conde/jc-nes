@@ -1,10 +1,10 @@
 use std::{fs::File, io::Read};
 
-use crate::bus::BusRead;
+use crate::bus::{BusRead, BusWrite};
 
 pub struct Cartridge {
     prg_rom: [u8; 32 * 1024],
-    pattern_table: [u8; 8 * 1024],
+    pattern_tables: [u8; 8 * 1024],
 }
 
 impl Cartridge {
@@ -29,7 +29,7 @@ impl Cartridge {
         let char_mem = bytes.by_ref().take(8 * 1024).flatten().collect::<Vec<u8>>(); // 8kB per bank
 
         cartridge.prg_rom.clone_from_slice(&prg_mem);
-        cartridge.pattern_table.clone_from_slice(&char_mem);
+        cartridge.pattern_tables.clone_from_slice(&char_mem);
 
         cartridge
     }
@@ -39,13 +39,19 @@ impl Default for Cartridge {
     fn default() -> Self {
         Cartridge {
             prg_rom: [0u8; 32 * 1024],
-            pattern_table: [0u8; 8 * 1024],
+            pattern_tables: [0u8; 8 * 1024],
         }
     }
 }
 
 impl BusRead for Cartridge {
     fn read(&self, address: u16) -> u8 {
-        self.pattern_table[address as usize]
+        self.pattern_tables[address as usize]
+    }
+}
+
+impl BusWrite for Cartridge {
+    fn write(&mut self, address: u16, data: u8) {
+        self.prg_rom[address as usize] = data; // TODO mapper intercept
     }
 }
