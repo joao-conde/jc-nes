@@ -52,18 +52,15 @@ impl<'a> Bus<'a> {
             .filter(|(addressable_range, _)| addressable_range.contains(&address))
             .next()
             .map(|(range, device)| device.borrow().read(address - range.start()))
-            .unwrap()
+            .unwrap_or_else(|| panic!("no byte to be read at address 0x{:04X}", address))
     }
 
-    pub fn write(&mut self, address: u16, data: u8) -> bool {
-        let device_match = self
-            .writable
+    pub fn write(&mut self, address: u16, data: u8) {
+        self.writable
             .iter_mut()
             .filter(|(addressable_range, _)| addressable_range.contains(&address))
-            .next();
-
-        device_match
+            .next()
             .map(|(range, device)| device.borrow_mut().write(address - range.start(), data))
-            .is_some()
+            .unwrap_or_else(|| panic!("can not write to address 0x{:04X}", address))
     }
 }
