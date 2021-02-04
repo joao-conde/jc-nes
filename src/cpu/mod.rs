@@ -3,6 +3,8 @@ mod instructions;
 
 use super::bus::Bus;
 
+const STACK_BASE: u16 = 0x0100;
+
 pub struct CPU<'a> {
     /// CPU registers
     a: u8,
@@ -306,13 +308,13 @@ impl<'a> CPU<'a> {
     }
 
     fn push_stack(&mut self, val: u8) {
-        self.bus.write(0x0100 + self.sp as u16, val);
+        self.bus.write(STACK_BASE + self.sp as u16, val);
         self.sp -= 1;
     }
 
     fn pop_stack(&mut self) -> u8 {
         self.sp += 1;
-        self.bus.read(0x0100 + self.sp as u16)
+        self.bus.read(STACK_BASE + self.sp as u16)
     }
 
     fn relative_jump(&mut self, jump: bool, operand: i8) {

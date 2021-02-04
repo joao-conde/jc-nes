@@ -9,8 +9,8 @@ use std::io::Read;
 use std::time::Duration;
 
 fn main() {
-    dev()
-    // nestest()
+    nestest();
+    //dev()
 }
 
 fn dev() {
