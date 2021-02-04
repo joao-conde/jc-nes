@@ -1,3 +1,5 @@
+pub mod ram;
+
 mod addressing;
 mod instructions;
 

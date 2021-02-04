@@ -1,4 +1,4 @@
-use super::bus::{BusRead, BusWrite};
+use crate::bus::{BusRead, BusWrite};
 
 pub struct RAM {
     pub mem: Vec<u8>,
@@ -12,7 +12,6 @@ impl RAM {
     }
 }
 
-// TODO: implement mirroring
 impl BusRead for RAM {
     fn read(&self, address: u16) -> u8 {
         self.mem[address as usize]

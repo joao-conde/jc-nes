@@ -1,8 +1,8 @@
 use core::panic;
 use jc_nes::bus::Bus;
 use jc_nes::cartridge::Cartridge;
-use jc_nes::cpu::CPU;
-use jc_nes::ram::RAM;
+use jc_nes::cpu::{ram::RAM, CPU};
+use jc_nes::ppu::PPU;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::Point;
@@ -13,9 +13,9 @@ use std::rc::Rc;
 use std::time::Duration;
 
 fn main() {
-    //nestest();
-    //test_display_pattern();
+    nestest();
     emulate();
+    //test_display_pattern();
 }
 
 fn test_display_pattern() {
@@ -141,11 +141,17 @@ fn emulate() {
     let cartridge = Cartridge::load_rom(rom_path);
     let cartridge = Rc::new(RefCell::new(cartridge));
 
+    let ppu = PPU::new();
+    let ppu = Rc::new(RefCell::new(ppu));
+
     let mut ppu_bus = Bus::default();
     ppu_bus.connect(0x0000..=0x1FFF, &cartridge);
 
     let mut cpu_bus = Bus::default();
     cpu_bus.connect(0x4020..=0xFFFF, &cartridge);
+    cpu_bus.connect_w(0x2000..=0x3FFF, &ppu);
+
+    let cpu = CPU::new(&mut cpu_bus);
 
     display_pattern_table(&ppu_bus);
 }
