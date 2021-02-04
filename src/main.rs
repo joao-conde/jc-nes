@@ -1,19 +1,16 @@
 use core::panic;
-use jc_nes::{bus::Bus, ppu};
+use jc_nes::bus::Bus;
 use jc_nes::cpu::CPU;
-use jc_nes::ram::RAM;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::Point;
-use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
-use std::rc::Rc;
 use std::time::Duration;
 
 fn main() {
-    // dev()
-    nestest()
+    dev()
+    // nestest()
 }
 
 fn dev() {
@@ -25,8 +22,7 @@ fn dev() {
     // skip header (16 bytes)
     let mut bytes = rom.bytes().skip(16);
 
-    // need to copy this to CPU RAM:
-    let prg_rom = bytes
+    let _prg_rom = bytes
         .by_ref()
         .take(32 * 1024)
         .flatten()
@@ -34,14 +30,10 @@ fn dev() {
 
     let char_rom = bytes.by_ref().take(8 * 1024).flatten().collect::<Vec<u8>>(); // 8kB per bank
 
-    let mut ppu_ram = vec![0u8; 64 * 1024]; // 64kB PPU RAM
-    &ppu_ram[0x0000..0x2000].clone_from_slice(&char_rom);
-    
-    let ppu_ram = Rc::new(RefCell::new(RAM { mem: ppu_ram }));
+    let mut ppu_mem = vec![0u8; 64 * 1024]; // 64kB PPU RAM
+    ppu_mem[0x0000..0x2000].clone_from_slice(&char_rom);
 
-    let mut ppu_bus = Bus::default();
-    ppu_bus.connect(0x0000..=0xFFFF, &ppu_ram);
-
+    let ppu_bus = Bus::new(ppu_mem);
     display_pattern_table(&ppu_bus);
 }
 
@@ -57,12 +49,7 @@ fn nestest() {
     (0..0xC000).for_each(|_| mem.push(0));
     buffer[16..0x4F00].iter().for_each(|byte| mem.push(*byte));
 
-    // connect ram to the bus
-    // give bus to CPU to read/write
-    let ram = Rc::new(RefCell::new(RAM { mem }));
-    let mut bus = Bus::default();
-    bus.connect(0x0000..=0xFFFF, &ram);
-
+    let mut bus = Bus::new(mem);
     let mut cpu = CPU::new(&mut bus);
 
     // emulate clock cycle
@@ -101,8 +88,8 @@ fn display_pattern_table(ppu_bus: &Bus) {
             let addr = tile_y * HEIGHT + tile_x * TILE_BYTE_WIDTH + pixel_y;
 
             // get data from both bit planes
-            let mut lsb: u8 = ppu_bus.read(addr as u16).unwrap();
-            let mut msb: u8 = ppu_bus.read(addr as u16 + 8).unwrap();
+            let mut lsb: u8 = ppu_bus.read(addr as u16);
+            let mut msb: u8 = ppu_bus.read(addr as u16 + 8);
 
             // join bit plane data
             let mut pixel_help: u16 = 0x0000;

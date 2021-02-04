@@ -1,12 +1,12 @@
 use crate::cpu::CPU;
 
 /// Addressing Modes
-impl<'a, 'b> CPU<'a, 'b> {
+impl<'a> CPU<'a> {
     pub(in crate::cpu) fn abs(&mut self) -> u16 {
         self.pc += 1;
-        let lo = self.read(self.pc);
+        let lo = self.bus.read(self.pc);
         self.pc += 1;
-        let hi = self.read(self.pc);
+        let hi = self.bus.read(self.pc);
         ((hi as u16) << 8) | lo as u16
     }
 
@@ -37,34 +37,34 @@ impl<'a, 'b> CPU<'a, 'b> {
 
     pub(in crate::cpu) fn ind(&mut self) -> u16 {
         self.pc += 1;
-        let lo = self.read(self.pc);
+        let lo = self.bus.read(self.pc);
         self.pc += 1;
-        let hi = self.read(self.pc);
+        let hi = self.bus.read(self.pc);
         let address = ((hi as u16) << 8) | lo as u16;
 
         // "ind" is bugged in the original hardware
         // if the low byte is 0xFF then the high byte should be read from the next page
         // the bug is that it does not, and instead just wraps around in the same page
         if lo == 0xFF {
-            ((self.read(address & 0xFF00) as u16) << 8) | self.read(address) as u16
+            ((self.bus.read(address & 0xFF00) as u16) << 8) | self.bus.read(address) as u16
         } else {
-            ((self.read(address + 1) as u16) << 8) | self.read(address) as u16
+            ((self.bus.read(address + 1) as u16) << 8) | self.bus.read(address) as u16
         }
     }
 
     pub(in crate::cpu) fn indx(&mut self) -> u16 {
         self.pc += 1;
-        let address = self.read(self.pc) as u16;
-        let lo = self.read((address + self.x as u16) & 0x00FF);
-        let hi = self.read((address + 1 + self.x as u16) & 0x00FF);
+        let address = self.bus.read(self.pc) as u16;
+        let lo = self.bus.read((address + self.x as u16) & 0x00FF);
+        let hi = self.bus.read((address + 1 + self.x as u16) & 0x00FF);
         ((hi as u16) << 8) + lo as u16
     }
 
     pub(in crate::cpu) fn indy(&mut self) -> u16 {
         self.pc += 1;
-        let address = self.read(self.pc) as u16;
-        let lo = self.read(address & 0x00FF) as u16;
-        let hi = self.read((address + 1) & 0x00FF);
+        let address = self.bus.read(self.pc) as u16;
+        let lo = self.bus.read(address & 0x00FF) as u16;
+        let hi = self.bus.read((address + 1) & 0x00FF);
         let hi = (hi as u16) << 8;
         let address = lo.wrapping_add(hi).wrapping_add(self.y as u16);
         self.cycles_left += (self.extra_cycles && self.page_crossed(address, hi)) as u8;
@@ -78,7 +78,7 @@ impl<'a, 'b> CPU<'a, 'b> {
 
     pub(in crate::cpu) fn zp(&mut self) -> u16 {
         self.pc += 1;
-        self.read(self.pc) as u16
+        self.bus.read(self.pc) as u16
     }
 
     pub(in crate::cpu) fn zpx(&mut self) -> u16 {

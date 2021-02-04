@@ -1,9 +1,9 @@
 use crate::cpu::{Flag, CPU};
 
 /// Instructions
-impl<'a, 'b> CPU<'a, 'b> {
+impl<'a> CPU<'a> {
     pub(in crate::cpu) fn adc(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         let tmp = self.a as u16 + operand as u16 + self.is_flag_set(Flag::Carry) as u16;
         self.set_flag(Flag::Carry, tmp > 0xFF);
         self.set_flag(Flag::Zero, tmp & 0xFF == 0);
@@ -21,7 +21,7 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn and(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         self.a &= operand;
         self.set_flag(Flag::Zero, self.a == 0);
         self.set_flag(Flag::Negative, self.is_negative(self.a));
@@ -37,29 +37,29 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn asl_mem(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         self.set_flag(Flag::Carry, self.is_negative(operand));
         let operand = operand << 1;
         self.set_flag(Flag::Negative, self.is_negative(operand));
         self.set_flag(Flag::Zero, operand == 0);
-        self.write(address, operand);
+        self.bus.write(address, operand);
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn bcc(&mut self, address: u16) {
-        self.relative_jump(!self.is_flag_set(Flag::Carry), self.read(address) as i8);
+        self.relative_jump(!self.is_flag_set(Flag::Carry), self.bus.read(address) as i8);
     }
 
     pub(in crate::cpu) fn bcs(&mut self, address: u16) {
-        self.relative_jump(self.is_flag_set(Flag::Carry), self.read(address) as i8);
+        self.relative_jump(self.is_flag_set(Flag::Carry), self.bus.read(address) as i8);
     }
 
     pub(in crate::cpu) fn beq(&mut self, address: u16) {
-        self.relative_jump(self.is_flag_set(Flag::Zero), self.read(address) as i8);
+        self.relative_jump(self.is_flag_set(Flag::Zero), self.bus.read(address) as i8);
     }
 
     pub(in crate::cpu) fn bit(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         self.set_flag(Flag::Zero, self.a & operand == 0);
         self.set_flag(Flag::Negative, self.is_negative(operand));
         self.set_flag(Flag::Overflow, (operand & 0x40) >> 6 == 1);
@@ -67,15 +67,21 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn bmi(&mut self, address: u16) {
-        self.relative_jump(self.is_flag_set(Flag::Negative), self.read(address) as i8);
+        self.relative_jump(
+            self.is_flag_set(Flag::Negative),
+            self.bus.read(address) as i8,
+        );
     }
 
     pub(in crate::cpu) fn bne(&mut self, address: u16) {
-        self.relative_jump(!self.is_flag_set(Flag::Zero), self.read(address) as i8);
+        self.relative_jump(!self.is_flag_set(Flag::Zero), self.bus.read(address) as i8);
     }
 
     pub(in crate::cpu) fn bpl(&mut self, address: u16) {
-        self.relative_jump(!self.is_flag_set(Flag::Negative), self.read(address) as i8);
+        self.relative_jump(
+            !self.is_flag_set(Flag::Negative),
+            self.bus.read(address) as i8,
+        );
     }
 
     pub(in crate::cpu) fn brk(&mut self, _imp: ()) {
@@ -84,11 +90,17 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn bvc(&mut self, address: u16) {
-        self.relative_jump(!self.is_flag_set(Flag::Overflow), self.read(address) as i8);
+        self.relative_jump(
+            !self.is_flag_set(Flag::Overflow),
+            self.bus.read(address) as i8,
+        );
     }
 
     pub(in crate::cpu) fn bvs(&mut self, address: u16) {
-        self.relative_jump(self.is_flag_set(Flag::Overflow), self.read(address) as i8);
+        self.relative_jump(
+            self.is_flag_set(Flag::Overflow),
+            self.bus.read(address) as i8,
+        );
     }
 
     pub(in crate::cpu) fn clc(&mut self, _imp: ()) {
@@ -112,7 +124,7 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn cmp(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         self.set_flag(Flag::Carry, self.a >= operand);
         self.set_flag(Flag::Zero, self.a == operand);
         self.set_flag(
@@ -123,7 +135,7 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn cpx(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         self.set_flag(Flag::Carry, self.x >= operand);
         self.set_flag(Flag::Zero, self.x == operand);
         self.set_flag(
@@ -134,7 +146,7 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn cpy(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         self.set_flag(Flag::Carry, self.y >= operand);
         self.set_flag(Flag::Zero, self.y == operand);
         self.set_flag(
@@ -145,8 +157,8 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn dec(&mut self, address: u16) {
-        let operand = self.read(address).wrapping_sub(1);
-        self.write(address, operand);
+        let operand = self.bus.read(address).wrapping_sub(1);
+        self.bus.write(address, operand);
         self.set_flag(Flag::Zero, operand == 0);
         self.set_flag(Flag::Negative, self.is_negative(operand));
         self.pc += 1;
@@ -167,7 +179,7 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn eor(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         self.a ^= operand;
         self.set_flag(Flag::Zero, self.a == 0);
         self.set_flag(Flag::Negative, self.is_negative(self.a));
@@ -175,9 +187,9 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn inc(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         let operand = operand.wrapping_add(1);
-        self.write(address, operand);
+        self.bus.write(address, operand);
         self.set_flag(Flag::Zero, operand == 0);
         self.set_flag(Flag::Negative, self.is_negative(operand));
         self.pc += 1;
@@ -210,7 +222,7 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn lda(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         self.a = operand;
         self.set_flag(Flag::Zero, self.a == 0);
         self.set_flag(Flag::Negative, self.is_negative(self.a));
@@ -218,7 +230,7 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn ldx(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         self.x = operand;
         self.set_flag(Flag::Zero, self.x == 0);
         self.set_flag(Flag::Negative, (self.x & 0x80) >> 7 == 1);
@@ -226,7 +238,7 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn ldy(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         self.y = operand;
         self.set_flag(Flag::Zero, self.y == 0);
         self.set_flag(Flag::Negative, (self.y & 0x80) >> 7 == 1);
@@ -242,12 +254,12 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn lsr_mem(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         self.set_flag(Flag::Carry, operand & 0x01 == 1);
         let operand = operand >> 1;
         self.set_flag(Flag::Negative, self.is_negative(operand));
         self.set_flag(Flag::Zero, operand == 0);
-        self.write(address, operand);
+        self.bus.write(address, operand);
         self.pc += 1;
     }
 
@@ -256,7 +268,7 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn ora(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         self.a |= operand;
         self.set_flag(Flag::Zero, self.a == 0);
         self.set_flag(Flag::Negative, self.is_negative(self.a));
@@ -296,12 +308,12 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn rol_mem(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         let bit0 = self.is_flag_set(Flag::Carry) as u8;
         self.set_flag(Flag::Carry, self.is_negative(operand));
         let operand = operand << 1;
         let operand = operand | bit0;
-        self.write(address, operand);
+        self.bus.write(address, operand);
         self.set_flag(Flag::Negative, self.is_negative(operand));
         self.set_flag(Flag::Zero, operand == 0);
         self.pc += 1;
@@ -318,12 +330,12 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn ror_mem(&mut self, address: u16) {
-        let operand = self.read(address);
+        let operand = self.bus.read(address);
         let bit7 = self.is_flag_set(Flag::Carry) as u8;
         self.set_flag(Flag::Carry, operand & 0x01 == 1);
         let operand = operand >> 1;
         let operand = operand | bit7 << 7;
-        self.write(address, operand);
+        self.bus.write(address, operand);
         self.set_flag(Flag::Negative, self.is_negative(operand));
         self.set_flag(Flag::Zero, operand == 0);
         self.pc += 1;
@@ -345,7 +357,7 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn sbc(&mut self, address: u16) {
-        let operand = self.read(address) ^ 0xFF; // 2's complement (+1 nulified by 1-C)
+        let operand = self.bus.read(address) ^ 0xFF; // 2's complement (+1 nulified by 1-C)
 
         // rest is the same as adc
         let tmp = self.a as u16 + operand as u16 + self.is_flag_set(Flag::Carry) as u16;
@@ -380,17 +392,17 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn sta(&mut self, address: u16) {
-        self.write(address, self.a);
+        self.bus.write(address, self.a);
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn stx(&mut self, address: u16) {
-        self.write(address, self.x);
+        self.bus.write(address, self.x);
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn sty(&mut self, address: u16) {
-        self.write(address, self.y);
+        self.bus.write(address, self.y);
         self.pc += 1;
     }
 
@@ -436,16 +448,16 @@ impl<'a, 'b> CPU<'a, 'b> {
 }
 
 /// Unofficial instructions
-impl<'a, 'b> CPU<'a, 'b> {
+impl<'a> CPU<'a> {
     pub(in crate::cpu) fn dcp(&mut self, address: u16) {
-        let operand = self.read(address).wrapping_sub(1);
-        self.write(address, operand);
+        let operand = self.bus.read(address).wrapping_sub(1);
+        self.bus.write(address, operand);
         self.cmp(address);
     }
 
     pub(in crate::cpu) fn isc(&mut self, address: u16) {
-        let operand = self.read(address).wrapping_add(1);
-        self.write(address, operand);
+        let operand = self.bus.read(address).wrapping_add(1);
+        self.bus.write(address, operand);
         self.sbc(address);
     }
 
@@ -472,7 +484,7 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     pub(in crate::cpu) fn sax(&mut self, address: u16) {
-        self.write(address, self.a & self.x);
+        self.bus.write(address, self.a & self.x);
         self.pc += 1;
     }
 

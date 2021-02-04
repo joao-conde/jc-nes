@@ -3,7 +3,7 @@ mod instructions;
 
 use super::bus::Bus;
 
-pub struct CPU<'a, 'b> {
+pub struct CPU<'a> {
     /// CPU registers
     a: u8,
     x: u8,
@@ -16,7 +16,7 @@ pub struct CPU<'a, 'b> {
     cycles_left: u8,
     total_cycles: usize, // TODO remove ?
     extra_cycles: bool,
-    bus: &'a mut Bus<'b>,
+    bus: &'a mut Bus,
 }
 
 pub(in crate::cpu) enum Flag {
@@ -30,8 +30,8 @@ pub(in crate::cpu) enum Flag {
     Negative = 7,
 }
 
-impl<'a, 'b> CPU<'a, 'b> {
-    pub fn new(bus: &'a mut Bus<'b>) -> CPU<'a, 'b> {
+impl<'a> CPU<'a> {
+    pub fn new(bus: &'a mut Bus) -> CPU<'a> {
         CPU {
             a: 0x00,
             x: 0x00,
@@ -41,21 +41,21 @@ impl<'a, 'b> CPU<'a, 'b> {
             status: 0x24,
             cycles_left: 0,
             extra_cycles: true,
-            bus: bus,
             total_cycles: 7,
+            bus,
         }
     }
 
     pub fn clock(&mut self) {
         if self.cycles_left == 0 {
-            self.process_opcode(self.read(self.pc));
+            self.process_opcode(self.bus.read(self.pc));
         }
         self.cycles_left -= 1;
     }
 }
 
 /// Opcode processing and execution and utility functions
-impl<'a, 'b> CPU<'a, 'b> {
+impl<'a> CPU<'a> {
     fn process_opcode(&mut self, opcode: u8) {
         self.debug(opcode);
         match opcode {
@@ -288,20 +288,10 @@ impl<'a, 'b> CPU<'a, 'b> {
         };
     }
 
-    fn read(&self, address: u16) -> u8 {
-        self.bus
-            .read(address)
-            .unwrap_or_else(|| panic!("no byte to be read at address 0x{:0x}", address))
-    }
-
-    fn write(&mut self, address: u16, data: u8) {
-        self.bus.write(address, data);
-    }
-
     fn execute<T>(
         &mut self,
-        address_mode_fn: fn(&mut CPU<'a, 'b>) -> T,
-        opcode_fn: fn(&mut CPU<'a, 'b>, T),
+        address_mode_fn: fn(&mut CPU<'a>) -> T,
+        opcode_fn: fn(&mut CPU<'a>, T),
         cycles: u8,
         extra_cycles: bool,
     ) {
@@ -316,31 +306,31 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     fn push_stack(&mut self, val: u8) {
-        self.write(0x0100 + self.sp as u16, val);
+        self.bus.write(0x0100 + self.sp as u16, val);
         self.sp -= 1;
     }
 
     fn pop_stack(&mut self) -> u8 {
         self.sp += 1;
-        self.read(0x0100 + self.sp as u16)
+        self.bus.read(0x0100 + self.sp as u16)
     }
 
     fn relative_jump(&mut self, jump: bool, operand: i8) {
-        match jump {
-            true => {
-                self.cycles_left += 1;
-                let next = (self.pc as i32 + operand as i32) as u16 + 1;
-                self.cycles_left += self.page_crossed(self.pc + 1, next) as u8;
-                self.pc = next;
-            }
-            false => self.pc += 1,
+        if jump {
+            self.cycles_left += 1;
+            let next = (self.pc as i32 + operand as i32) as u16 + 1;
+            self.cycles_left += self.page_crossed(self.pc + 1, next) as u8;
+            self.pc = next;
+        } else {
+            self.pc += 1
         }
     }
 
     fn set_flag(&mut self, flag: Flag, set_condition: bool) {
-        match set_condition {
-            true => self.status |= 1 << flag as u8,
-            false => self.status &= !(1 << flag as u8),
+        if set_condition {
+            self.status |= 1 << flag as u8
+        } else {
+            self.status &= !(1 << flag as u8)
         }
     }
 

@@ -1,7 +1,4 @@
-
-pub struct PPU {
-    
-}
+pub struct PPU {}
 
 impl PPU {
     pub fn clock(&self) {
