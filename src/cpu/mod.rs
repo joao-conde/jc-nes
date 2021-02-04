@@ -5,7 +5,7 @@ use super::bus::Bus;
 
 const STACK_BASE: u16 = 0x0100;
 
-pub struct CPU<'a> {
+pub struct CPU<'a, 'b> {
     /// CPU registers
     a: u8,
     x: u8,
@@ -18,7 +18,7 @@ pub struct CPU<'a> {
     cycles_left: u8,
     total_cycles: usize, // TODO remove ?
     extra_cycles: bool,
-    bus: &'a mut Bus,
+    bus: &'a mut Bus<'b>,
 }
 
 pub(in crate::cpu) enum Flag {
@@ -32,8 +32,8 @@ pub(in crate::cpu) enum Flag {
     Negative = 7,
 }
 
-impl<'a> CPU<'a> {
-    pub fn new(bus: &'a mut Bus) -> CPU<'a> {
+impl<'a, 'b> CPU<'a, 'b> {
+    pub fn new(bus: &'a mut Bus<'b>) -> CPU<'a, 'b> {
         CPU {
             a: 0x00,
             x: 0x00,
@@ -43,8 +43,8 @@ impl<'a> CPU<'a> {
             status: 0x24,
             cycles_left: 0,
             extra_cycles: true,
+            bus: bus,
             total_cycles: 7,
-            bus,
         }
     }
 
@@ -57,7 +57,7 @@ impl<'a> CPU<'a> {
 }
 
 /// Opcode processing and execution and utility functions
-impl<'a> CPU<'a> {
+impl<'a, 'b> CPU<'a, 'b> {
     fn process_opcode(&mut self, opcode: u8) {
         self.debug(opcode);
         match opcode {
@@ -292,8 +292,8 @@ impl<'a> CPU<'a> {
 
     fn execute<T>(
         &mut self,
-        address_mode_fn: fn(&mut CPU<'a>) -> T,
-        opcode_fn: fn(&mut CPU<'a>, T),
+        address_mode_fn: fn(&mut CPU<'a, 'b>) -> T,
+        opcode_fn: fn(&mut CPU<'a, 'b>, T),
         cycles: u8,
         extra_cycles: bool,
     ) {
@@ -318,21 +318,21 @@ impl<'a> CPU<'a> {
     }
 
     fn relative_jump(&mut self, jump: bool, operand: i8) {
-        if jump {
-            self.cycles_left += 1;
-            let next = (self.pc as i32 + operand as i32) as u16 + 1;
-            self.cycles_left += self.page_crossed(self.pc + 1, next) as u8;
-            self.pc = next;
-        } else {
-            self.pc += 1
+        match jump {
+            true => {
+                self.cycles_left += 1;
+                let next = (self.pc as i32 + operand as i32) as u16 + 1;
+                self.cycles_left += self.page_crossed(self.pc + 1, next) as u8;
+                self.pc = next;
+            }
+            false => self.pc += 1,
         }
     }
 
     fn set_flag(&mut self, flag: Flag, set_condition: bool) {
-        if set_condition {
-            self.status |= 1 << flag as u8
-        } else {
-            self.status &= !(1 << flag as u8)
+        match set_condition {
+            true => self.status |= 1 << flag as u8,
+            false => self.status &= !(1 << flag as u8),
         }
     }
 
