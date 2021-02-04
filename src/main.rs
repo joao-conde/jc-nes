@@ -1,8 +1,9 @@
 use core::panic;
 use jc_nes::bus::Bus;
 use jc_nes::cartridge::Cartridge;
-use jc_nes::cpu::{ram::RAM, CPU};
+use jc_nes::cpu::CPU;
 use jc_nes::ppu::PPU;
+use jc_nes::ram::RAM;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::Point;
@@ -141,15 +142,18 @@ fn emulate() {
     let cartridge = Cartridge::load_rom(rom_path);
     let cartridge = Rc::new(RefCell::new(cartridge));
 
-    let ppu = PPU::new();
-    let ppu = Rc::new(RefCell::new(ppu));
-
+    let ppu = Rc::new(RefCell::new(PPU::new()));
     let mut ppu_bus = Bus::default();
     ppu_bus.connect(0x0000..=0x1FFF, &cartridge);
 
+    let ram = Rc::new(RefCell::new(RAM::new(2 * 1024)));
     let mut cpu_bus = Bus::default();
-    cpu_bus.connect(0x4020..=0xFFFF, &cartridge);
     cpu_bus.connect_w(0x2000..=0x3FFF, &ppu);
+    cpu_bus.connect(0x4020..=0xFFFF, &cartridge);
+    cpu_bus.connect(0x0000..=0x1FFF, &ram);
+
+    cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
+    cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2008);
 
     let cpu = CPU::new(&mut cpu_bus);
 

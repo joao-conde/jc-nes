@@ -6,6 +6,7 @@ use std::{collections::HashMap, ops::RangeInclusive};
 pub struct Bus<'a> {
     readable: HashMap<RangeInclusive<u16>, Rc<RefCell<dyn BusRead + 'a>>>,
     writable: HashMap<RangeInclusive<u16>, Rc<RefCell<dyn BusWrite + 'a>>>,
+    mirrors: HashMap<RangeInclusive<u16>, u16>,
 }
 
 pub trait BusRead {
@@ -46,7 +47,12 @@ impl<'a> Bus<'a> {
             .insert(addressable_range, Rc::<RefCell<W>>::clone(device));
     }
 
+    pub fn add_mirror(&mut self, addressable_range: RangeInclusive<u16>, max: u16) {
+        self.mirrors.insert(addressable_range, max);
+    }
+
     pub fn read(&self, address: u16) -> u8 {
+        let address = self.mirror(address);
         self.readable
             .iter()
             .find(|(addressable_range, _)| addressable_range.contains(&address))
@@ -55,10 +61,21 @@ impl<'a> Bus<'a> {
     }
 
     pub fn write(&mut self, address: u16, data: u8) {
+        let address = self.mirror(address);
         self.writable
             .iter_mut()
             .find(|(addressable_range, _)| addressable_range.contains(&address))
             .map(|(range, device)| device.borrow_mut().write(address - range.start(), data))
             .unwrap_or_else(|| panic!("can not write to address 0x{:04X}", address))
+    }
+
+    fn mirror(&self, address: u16) -> u16 {
+        let mirror = self
+            .mirrors
+            .iter()
+            .find(|(addressable_range, _)| addressable_range.contains(&address))
+            .map(|(_, max)| *max)
+            .unwrap_or(0xFFFF);
+        address & mirror
     }
 }
