@@ -1,5 +1,5 @@
 use core::panic;
-use jc_nes::bus::Bus;
+use jc_nes::{bus::Bus, ppu};
 use jc_nes::cpu::CPU;
 use jc_nes::ram::RAM;
 use sdl2::keyboard::Keycode;
@@ -12,8 +12,8 @@ use std::rc::Rc;
 use std::time::Duration;
 
 fn main() {
-    dev()
-    // nestest()
+    // dev()
+    nestest()
 }
 
 fn dev() {
@@ -36,7 +36,7 @@ fn dev() {
 
     let mut ppu_ram = vec![0u8; 64 * 1024]; // 64kB PPU RAM
     &ppu_ram[0x0000..0x2000].clone_from_slice(&char_rom);
-
+    
     let ppu_ram = Rc::new(RefCell::new(RAM { mem: ppu_ram }));
 
     let mut ppu_bus = Bus::default();
