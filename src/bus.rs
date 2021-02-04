@@ -49,8 +49,7 @@ impl<'a> Bus<'a> {
     pub fn read(&self, address: u16) -> u8 {
         self.readable
             .iter()
-            .filter(|(addressable_range, _)| addressable_range.contains(&address))
-            .next()
+            .find(|(addressable_range, _)| addressable_range.contains(&address))
             .map(|(range, device)| device.borrow().read(address - range.start()))
             .unwrap_or_else(|| panic!("no byte to be read at address 0x{:04X}", address))
     }
@@ -58,8 +57,7 @@ impl<'a> Bus<'a> {
     pub fn write(&mut self, address: u16, data: u8) {
         self.writable
             .iter_mut()
-            .filter(|(addressable_range, _)| addressable_range.contains(&address))
-            .next()
+            .find(|(addressable_range, _)| addressable_range.contains(&address))
             .map(|(range, device)| device.borrow_mut().write(address - range.start(), data))
             .unwrap_or_else(|| panic!("can not write to address 0x{:04X}", address))
     }

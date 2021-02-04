@@ -12,6 +12,7 @@ impl RAM {
     }
 }
 
+// TODO: implement mirroring
 impl BusRead for RAM {
     fn read(&self, address: u16) -> u8 {
         self.mem[address as usize]

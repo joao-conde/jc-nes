@@ -1,5 +1,6 @@
 use core::panic;
 use jc_nes::bus::Bus;
+use jc_nes::cartridge::Cartridge;
 use jc_nes::cpu::CPU;
 use jc_nes::ram::RAM;
 use sdl2::keyboard::Keycode;
@@ -13,34 +14,16 @@ use std::time::Duration;
 
 fn main() {
     nestest();
-    //dev()
+    //test_display_pattern()
 }
 
-fn dev() {
+fn test_display_pattern() {
     let rom_path = "roms/secret/donkey-kong.nes";
-    let mut file = File::open(rom_path).unwrap();
-    let mut rom = Vec::new();
-    file.read_to_end(&mut rom).unwrap();
-
-    // skip header (16 bytes)
-    let mut bytes = rom.bytes().skip(16);
-
-    // need to copy this to CPU RAM:
-    let _prg_rom = bytes
-        .by_ref()
-        .take(32 * 1024)
-        .flatten()
-        .collect::<Vec<u8>>(); // 16kB per bank
-
-    let char_rom = bytes.by_ref().take(8 * 1024).flatten().collect::<Vec<u8>>(); // 8kB per bank
-
-    let mut ppu_ram = vec![0u8; 64 * 1024]; // 64kB PPU RAM
-    &ppu_ram[0x0000..0x2000].clone_from_slice(&char_rom);
-
-    let ppu_ram = Rc::new(RefCell::new(RAM { mem: ppu_ram }));
+    let cartridge = Cartridge::load_rom(rom_path);
+    let cartridge = Rc::new(RefCell::new(cartridge));
 
     let mut ppu_bus = Bus::default();
-    ppu_bus.connect(0x0000..=0xFFFF, &ppu_ram);
+    ppu_bus.connect_r(0x0000..=0xFFFF, &cartridge);
 
     display_pattern_table(&ppu_bus);
 }
@@ -48,8 +31,8 @@ fn dev() {
 fn nestest() {
     // read test rom
     let mut rom = File::open("roms/nestest.nes").unwrap();
-    let mut buffer = [0u8; 64 * 1024];
-    rom.read(&mut buffer).expect("buffer overflow");
+    let mut buffer = Vec::new();
+    rom.read_to_end(&mut buffer).expect("buffer overflow");
 
     // make test rom address start at 0xC000
     // and discard 16-bit header

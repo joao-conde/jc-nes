@@ -1,7 +1,7 @@
 mod addressing;
 mod instructions;
 
-use super::bus::Bus;
+use crate::bus::Bus;
 
 const STACK_BASE: u16 = 0x0100;
 
@@ -43,8 +43,8 @@ impl<'a, 'b> CPU<'a, 'b> {
             status: 0x24,
             cycles_left: 0,
             extra_cycles: true,
-            bus: bus,
             total_cycles: 7,
+            bus,
         }
     }
 
@@ -318,21 +318,21 @@ impl<'a, 'b> CPU<'a, 'b> {
     }
 
     fn relative_jump(&mut self, jump: bool, operand: i8) {
-        match jump {
-            true => {
-                self.cycles_left += 1;
-                let next = (self.pc as i32 + operand as i32) as u16 + 1;
-                self.cycles_left += self.page_crossed(self.pc + 1, next) as u8;
-                self.pc = next;
-            }
-            false => self.pc += 1,
+        if jump {
+            self.cycles_left += 1;
+            let next = (self.pc as i32 + operand as i32) as u16 + 1;
+            self.cycles_left += self.page_crossed(self.pc + 1, next) as u8;
+            self.pc = next;
+        } else {
+            self.pc += 1
         }
     }
 
     fn set_flag(&mut self, flag: Flag, set_condition: bool) {
-        match set_condition {
-            true => self.status |= 1 << flag as u8,
-            false => self.status &= !(1 << flag as u8),
+        if set_condition {
+            self.status |= 1 << flag as u8
+        } else {
+            self.status &= !(1 << flag as u8)
         }
     }
 
