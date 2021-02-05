@@ -70,12 +70,13 @@ impl<'a> Bus<'a> {
     }
 
     fn mirror(&self, address: u16) -> u16 {
-        let mirror = self
+        match self
             .mirrors
             .iter()
             .find(|(addressable_range, _)| addressable_range.contains(&address))
-            .map(|(_, max)| *max)
-            .unwrap_or(0xFFFF);
-        address & mirror
+        {
+            Some((_, max)) => address & max,
+            _ => address,
+        }
     }
 }

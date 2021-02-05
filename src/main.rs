@@ -2,6 +2,7 @@ use core::panic;
 use jc_nes::bus::Bus;
 use jc_nes::cartridge::Cartridge;
 use jc_nes::cpu::CPU;
+use jc_nes::mappers::{mapper000::Mapper000, MapperMemoryPin};
 use jc_nes::ppu::PPU;
 use jc_nes::ram::RAM;
 use sdl2::keyboard::Keycode;
@@ -16,18 +17,6 @@ use std::time::Duration;
 fn main() {
     nestest();
     emulate();
-    //test_display_pattern();
-}
-
-fn test_display_pattern() {
-    let rom_path = "roms/secret/donkey-kong.nes";
-    let cartridge = Cartridge::load_rom(rom_path);
-    let cartridge = Rc::new(RefCell::new(cartridge));
-
-    let mut ppu_bus = Bus::default();
-    ppu_bus.connect_r(0x0000..=0x1FFF, &cartridge);
-
-    display_pattern_table(&ppu_bus);
 }
 
 fn nestest() {
@@ -54,6 +43,35 @@ fn nestest() {
     for _ in 0..26548 {
         cpu.clock();
     }
+}
+
+fn emulate() {
+    let rom_path = "roms/secret/donkey-kong.nes";
+    let cartridge = Cartridge::load_rom(rom_path);
+    let cartridge = Rc::new(RefCell::new(cartridge));
+
+    let mapper_cpu = Mapper000::new(MapperMemoryPin::PrgROM, &cartridge, 2);
+    let mapper_cpu = Rc::new(RefCell::new(mapper_cpu));
+
+    let mapper_ppu = Mapper000::new(MapperMemoryPin::ChrROM, &cartridge, 2);
+    let mapper_ppu = Rc::new(RefCell::new(mapper_ppu));
+
+    let ppu = Rc::new(RefCell::new(PPU::new()));
+    let mut ppu_bus = Bus::default();
+    ppu_bus.connect(0x0000..=0x1FFF, &mapper_ppu);
+
+    let ram = Rc::new(RefCell::new(RAM::new(2 * 1024)));
+    let mut cpu_bus = Bus::default();
+    cpu_bus.connect_w(0x2000..=0x3FFF, &ppu);
+    cpu_bus.connect(0x4020..=0xFFFF, &mapper_cpu);
+    cpu_bus.connect(0x0000..=0x1FFF, &ram);
+
+    cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
+    cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2008);
+
+    // let cpu = CPU::new(&mut cpu_bus);
+
+    display_pattern_table(&ppu_bus);
 }
 
 fn display_pattern_table(ppu_bus: &Bus) {
@@ -135,27 +153,4 @@ fn display_pattern_table(ppu_bus: &Bus) {
         }
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
-}
-
-fn emulate() {
-    let rom_path = "roms/secret/donkey-kong.nes";
-    let cartridge = Cartridge::load_rom(rom_path);
-    let cartridge = Rc::new(RefCell::new(cartridge));
-
-    let ppu = Rc::new(RefCell::new(PPU::new()));
-    let mut ppu_bus = Bus::default();
-    ppu_bus.connect(0x0000..=0x1FFF, &cartridge);
-
-    let ram = Rc::new(RefCell::new(RAM::new(2 * 1024)));
-    let mut cpu_bus = Bus::default();
-    cpu_bus.connect_w(0x2000..=0x3FFF, &ppu);
-    cpu_bus.connect(0x4020..=0xFFFF, &cartridge);
-    cpu_bus.connect(0x0000..=0x1FFF, &ram);
-
-    cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
-    cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2008);
-
-    let cpu = CPU::new(&mut cpu_bus);
-
-    display_pattern_table(&ppu_bus);
 }
