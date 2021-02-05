@@ -1,7 +1,7 @@
 use crate::cpu::CPU;
 
 /// Addressing Modes
-impl<'a, 'b> CPU<'a, 'b> {
+impl<'a> CPU<'a> {
     pub(in crate::cpu) fn abs(&mut self) -> u16 {
         self.pc += 1;
         let lo = self.bus.read(self.pc);

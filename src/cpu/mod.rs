@@ -5,7 +5,7 @@ use crate::bus::Bus;
 
 const STACK_BASE: u16 = 0x0100;
 
-pub struct CPU<'a, 'b> {
+pub struct CPU<'a> {
     /// CPU registers
     a: u8,
     x: u8,
@@ -18,7 +18,7 @@ pub struct CPU<'a, 'b> {
     cycles_left: u8,
     total_cycles: usize, // TODO remove ?
     extra_cycles: bool,
-    bus: &'a mut Bus<'b>,
+    pub(in crate) bus: Bus<'a>,
 }
 
 pub(in crate::cpu) enum Flag {
@@ -32,8 +32,8 @@ pub(in crate::cpu) enum Flag {
     Negative = 7,
 }
 
-impl<'a, 'b> CPU<'a, 'b> {
-    pub fn new(bus: &'a mut Bus<'b>) -> CPU<'a, 'b> {
+impl<'a> CPU<'a> {
+    pub fn new(bus: Bus<'a>) -> CPU<'a> {
         CPU {
             a: 0x00,
             x: 0x00,
@@ -57,7 +57,7 @@ impl<'a, 'b> CPU<'a, 'b> {
 }
 
 /// Opcode processing and execution and utility functions
-impl<'a, 'b> CPU<'a, 'b> {
+impl<'a> CPU<'a> {
     fn process_opcode(&mut self, opcode: u8) {
         self.debug(opcode);
         match opcode {
@@ -292,8 +292,8 @@ impl<'a, 'b> CPU<'a, 'b> {
 
     fn execute<T>(
         &mut self,
-        address_mode_fn: fn(&mut CPU<'a, 'b>) -> T,
-        opcode_fn: fn(&mut CPU<'a, 'b>, T),
+        address_mode_fn: fn(&mut CPU<'a>) -> T,
+        opcode_fn: fn(&mut CPU<'a>, T),
         cycles: u8,
         extra_cycles: bool,
     ) {

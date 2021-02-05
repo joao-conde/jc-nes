@@ -1,7 +1,7 @@
 use crate::cpu::{Flag, CPU};
 
 /// Instructions
-impl<'a, 'b> CPU<'a, 'b> {
+impl<'a> CPU<'a> {
     pub(in crate::cpu) fn adc(&mut self, address: u16) {
         let operand = self.bus.read(address);
         let tmp = self.a as u16 + operand as u16 + self.is_flag_set(Flag::Carry) as u16;
@@ -448,7 +448,7 @@ impl<'a, 'b> CPU<'a, 'b> {
 }
 
 /// Unofficial instructions
-impl<'a, 'b> CPU<'a, 'b> {
+impl<'a> CPU<'a> {
     pub(in crate::cpu) fn dcp(&mut self, address: u16) {
         let operand = self.bus.read(address).wrapping_sub(1);
         self.bus.write(address, operand);

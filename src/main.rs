@@ -37,7 +37,7 @@ fn nestest() {
     let mut bus = Bus::default();
     bus.connect(0x0000..=0xFFFF, &ram);
 
-    let mut cpu = CPU::new(&mut bus);
+    let mut cpu = CPU::new(bus);
 
     // emulate clock cycle
     for _ in 0..26548 {
@@ -69,7 +69,7 @@ fn emulate() {
     cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
     cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2008);
 
-    let mut cpu = CPU::new(&mut cpu_bus);
+    let mut cpu = CPU::new(cpu_bus);
 
     // SDL graphics
     const WIDTH: u32 = 256;
