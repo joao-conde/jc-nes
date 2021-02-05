@@ -1,8 +1,8 @@
 use core::panic;
 use jc_nes::bus::Bus;
+use jc_nes::cartridge::mappers::{mapper000::Mapper000, MapperMemoryPin};
 use jc_nes::cartridge::Cartridge;
 use jc_nes::cpu::CPU;
-use jc_nes::mappers::{mapper000::Mapper000, MapperMemoryPin};
 use jc_nes::ppu::PPU;
 use jc_nes::ram::RAM;
 use sdl2::keyboard::Keycode;

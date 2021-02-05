@@ -1,6 +1,6 @@
 use crate::bus::{BusRead, BusWrite};
+use crate::cartridge::mappers::MapperMemoryPin;
 use crate::cartridge::Cartridge;
-use crate::mappers::MapperMemoryPin;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -9,6 +9,24 @@ pub struct Mapper000 {
     pin: MapperMemoryPin,
     cartridge: Rc<RefCell<Cartridge>>,
     prg_banks: u8,
+}
+
+impl BusRead for Mapper000 {
+    fn read(&self, address: u16) -> u8 {
+        match self.pin {
+            MapperMemoryPin::PrgROM => self.read_cpu(address),
+            MapperMemoryPin::ChrROM => self.read_ppu(address),
+        }
+    }
+}
+
+impl BusWrite for Mapper000 {
+    fn write(&mut self, address: u16, data: u8) {
+        match self.pin {
+            MapperMemoryPin::PrgROM => self.write_cpu(address, data),
+            MapperMemoryPin::ChrROM => (),
+        };
+    }
 }
 
 impl Mapper000 {
@@ -46,23 +64,5 @@ impl Mapper000 {
         };
 
         (*self.cartridge).borrow_mut().write_prg_rom(address, data);
-    }
-}
-
-impl BusRead for Mapper000 {
-    fn read(&self, address: u16) -> u8 {
-        match self.pin {
-            MapperMemoryPin::PrgROM => self.read_cpu(address),
-            MapperMemoryPin::ChrROM => self.read_ppu(address),
-        }
-    }
-}
-
-impl BusWrite for Mapper000 {
-    fn write(&mut self, address: u16, data: u8) {
-        match self.pin {
-            MapperMemoryPin::PrgROM => self.write_cpu(address, data),
-            MapperMemoryPin::ChrROM => (),
-        };
     }
 }

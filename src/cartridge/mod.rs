@@ -1,3 +1,5 @@
+pub mod mappers;
+
 use std::{fs::File, io::Read};
 
 pub struct Cartridge {
