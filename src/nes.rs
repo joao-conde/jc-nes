@@ -1,4 +1,3 @@
-use crate::cpu::CPU;
 use crate::ppu::PPU;
 use crate::ram::RAM;
 use crate::{
@@ -8,6 +7,7 @@ use crate::{
         Cartridge,
     },
 };
+use crate::{cpu::CPU, nametable::NameTable, palette::Palette};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -21,17 +21,25 @@ pub struct Nes<'a> {
 
 impl<'a> Nes<'a> {
     pub fn new() -> Nes<'a> {
+        // PPU bus devices
+        let nametbl = Rc::new(RefCell::new(NameTable::new(vec![0u8; 2 * 1024])));
+        let palette = Rc::new(RefCell::new(Palette::new(vec![0u8; 2 * 1024])));
+
+        // Connect devices to PPU bus
+        let mut ppu_bus = Bus::default();
+        ppu_bus.connect(0x2000..=0x2FFF, &nametbl);
+        ppu_bus.connect(0x3F00..=0x3FFF, &palette);
+        let ppu = Rc::new(RefCell::new(PPU::new(ppu_bus)));
+
+        // CPU bus devices
         let ram = Rc::new(RefCell::new(RAM::new(vec![0u8; 2 * 1024])));
 
+        // Connect devices to CPU bus
         let mut cpu_bus = Bus::default();
-        let ppu_bus = Bus::default();
         cpu_bus.connect(0x0000..=0x1FFF, &ram);
-
-        let ppu = Rc::new(RefCell::new(PPU::new(ppu_bus)));
         cpu_bus.connect_w(0x2000..=0x3FFF, &ppu);
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2008);
-
         let cpu = CPU::new(cpu_bus);
 
         Nes { cpu, ppu, ticks: 0 }
