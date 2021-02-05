@@ -69,17 +69,45 @@ fn emulate() {
     cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
     cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2008);
 
-    display_pattern_table(&ppu_bus);
-
     let mut cpu = CPU::new(&mut cpu_bus);
+
+    // SDL graphics
+    const WIDTH: u32 = 256;
+    const HEIGHT: u32 = 240;
+    const SCALING: u32 = 3;
+
+    let sdl = sdl2::init().unwrap();
+    let video_subsystem = sdl.video().unwrap();
+    let window = video_subsystem
+        .window(rom_path, SCALING * WIDTH, SCALING * HEIGHT)
+        .resizable()
+        .build()
+        .unwrap();
+    let mut canvas = window.into_canvas().build().unwrap();
+    canvas.set_scale(SCALING as f32, SCALING as f32).unwrap();
+    canvas.clear();
+    canvas.present();
 
     // emulate clock ticks, CPU 3x slower than PPU
     let mut i: usize = 0;
-    loop {
+    let mut event_pump = sdl.event_pump().unwrap();
+    'main: loop {
         ppu.borrow().clock();
         if i % 3 == 0 {
             cpu.clock();
         }
+
+        for event in event_pump.poll_iter() {
+            match event {
+                sdl2::event::Event::Quit { .. } => break 'main,
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'main,
+                _ => {}
+            }
+        }
+
         i += 1;
     }
 }
