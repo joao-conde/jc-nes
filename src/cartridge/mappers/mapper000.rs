@@ -1,13 +1,15 @@
-use crate::bus::{BusRead, BusWrite};
 use crate::cartridge::mappers::MapperMemoryPin;
 use crate::cartridge::Cartridge;
-use std::cell::RefCell;
+use crate::{
+    bus::{BusRead, BusWrite},
+    nes::SharedMut,
+};
 use std::rc::Rc;
 
 // DK SPECIFIC
 pub struct Mapper000 {
     pin: MapperMemoryPin,
-    cartridge: Rc<RefCell<Cartridge>>,
+    cartridge: SharedMut<Cartridge>,
     prg_banks: u8,
 }
 
@@ -24,17 +26,13 @@ impl BusWrite for Mapper000 {
     fn write(&mut self, address: u16, data: u8) {
         match self.pin {
             MapperMemoryPin::PrgROM => self.write_prg_rom(address, data),
-            MapperMemoryPin::ChrROM => (),
+            MapperMemoryPin::ChrROM => self.write_chr_rom(address, data),
         };
     }
 }
 
 impl Mapper000 {
-    pub fn new(
-        pin: MapperMemoryPin,
-        cartridge: &Rc<RefCell<Cartridge>>,
-        prg_banks: u8,
-    ) -> Mapper000 {
+    pub fn new(pin: MapperMemoryPin, cartridge: &SharedMut<Cartridge>, prg_banks: u8) -> Mapper000 {
         Mapper000 {
             pin,
             cartridge: Rc::clone(cartridge),
@@ -64,5 +62,9 @@ impl Mapper000 {
         };
 
         (*self.cartridge).borrow_mut().write_prg_rom(address, data);
+    }
+
+    fn write_chr_rom(&mut self, address: u16, data: u8) {
+        (*self.cartridge).borrow_mut().write_chr_rom(address, data);
     }
 }

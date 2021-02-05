@@ -2,10 +2,12 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::{collections::HashMap, ops::RangeInclusive};
 
+use crate::nes::SharedMut;
+
 #[derive(Default)]
 pub struct Bus<'a> {
-    readable: HashMap<RangeInclusive<u16>, Rc<RefCell<dyn BusRead + 'a>>>,
-    writable: HashMap<RangeInclusive<u16>, Rc<RefCell<dyn BusWrite + 'a>>>,
+    readable: HashMap<RangeInclusive<u16>, SharedMut<dyn BusRead + 'a>>,
+    writable: HashMap<RangeInclusive<u16>, SharedMut<dyn BusWrite + 'a>>,
     mirrors: HashMap<RangeInclusive<u16>, u16>,
 }
 
@@ -21,7 +23,7 @@ impl<'a> Bus<'a> {
     pub fn connect<RW: BusRead + BusWrite + 'a>(
         &mut self,
         addressable_range: RangeInclusive<u16>,
-        device: &Rc<RefCell<RW>>,
+        device: &SharedMut<RW>,
     ) {
         self.readable
             .insert(addressable_range.clone(), Rc::<RefCell<RW>>::clone(device));
@@ -32,7 +34,7 @@ impl<'a> Bus<'a> {
     pub fn connect_r<R: BusRead + 'a>(
         &mut self,
         addressable_range: RangeInclusive<u16>,
-        device: &Rc<RefCell<R>>,
+        device: &SharedMut<R>,
     ) {
         self.readable
             .insert(addressable_range, Rc::<RefCell<R>>::clone(device));
@@ -41,7 +43,7 @@ impl<'a> Bus<'a> {
     pub fn connect_w<W: BusWrite + 'a>(
         &mut self,
         addressable_range: RangeInclusive<u16>,
-        device: &Rc<RefCell<W>>,
+        device: &SharedMut<W>,
     ) {
         self.writable
             .insert(addressable_range, Rc::<RefCell<W>>::clone(device));

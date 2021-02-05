@@ -1,10 +1,10 @@
 use core::panic;
-use jc_nes::bus::Bus;
 use jc_nes::cartridge::mappers::{mapper000::Mapper000, MapperMemoryPin};
 use jc_nes::cartridge::Cartridge;
 use jc_nes::cpu::CPU;
 use jc_nes::ppu::PPU;
 use jc_nes::ram::RAM;
+use jc_nes::{bus::Bus, nes::Nes};
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::Point;
@@ -15,8 +15,9 @@ use std::rc::Rc;
 use std::time::Duration;
 
 fn main() {
-    // nestest();
-    emulate();
+    nestest();
+    //emulate();
+    play();
 }
 
 fn nestest() {
@@ -45,6 +46,46 @@ fn nestest() {
     }
 }
 
+fn play() {
+    let rom_path = "roms/secret/donkey-kong.nes";
+
+    let mut nes = Nes::new();
+    nes.load_rom(rom_path);
+
+    // SDL graphics
+    const WIDTH: u32 = 256;
+    const HEIGHT: u32 = 240;
+    const SCALING: u32 = 3;
+
+    let sdl = sdl2::init().unwrap();
+    let video_subsystem = sdl.video().unwrap();
+    let window = video_subsystem
+        .window(rom_path, SCALING * WIDTH, SCALING * HEIGHT)
+        .resizable()
+        .build()
+        .unwrap();
+    let mut canvas = window.into_canvas().build().unwrap();
+    canvas.set_scale(SCALING as f32, SCALING as f32).unwrap();
+    canvas.clear();
+    canvas.present();
+
+    // emulate clock ticks, CPU 3x slower than PPU
+    let mut event_pump = sdl.event_pump().unwrap();
+    'main: loop {
+        nes.clock();
+        for event in event_pump.poll_iter() {
+            match event {
+                sdl2::event::Event::Quit { .. } => break 'main,
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'main,
+                _ => {}
+            }
+        }
+    }
+}
+
 fn emulate() {
     let rom_path = "roms/secret/donkey-kong.nes";
     let cartridge = Cartridge::load_rom(rom_path);
@@ -56,9 +97,10 @@ fn emulate() {
     let mapper_ppu = Mapper000::new(MapperMemoryPin::ChrROM, &cartridge, 2);
     let mapper_ppu = Rc::new(RefCell::new(mapper_ppu));
 
-    let ppu = Rc::new(RefCell::new(PPU::new()));
     let mut ppu_bus = Bus::default();
     ppu_bus.connect(0x0000..=0x1FFF, &mapper_ppu);
+
+    let ppu = Rc::new(RefCell::new(PPU::new(ppu_bus)));
 
     let ram = Rc::new(RefCell::new(RAM::new(vec![0u8; 2 * 1024])));
     let mut cpu_bus = Bus::default();
@@ -92,7 +134,7 @@ fn emulate() {
     let mut i: usize = 0;
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
-        ppu.borrow().clock();
+        ppu.borrow_mut().clock();
         if i % 3 == 0 {
             cpu.clock();
         }

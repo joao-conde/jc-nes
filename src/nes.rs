@@ -1,37 +1,76 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-use crate::{bus::Bus, cartridge::Cartridge};
 use crate::cpu::CPU;
 use crate::ppu::PPU;
 use crate::ram::RAM;
+use crate::{
+    bus::Bus,
+    cartridge::{
+        mappers::{mapper000::Mapper000, MapperMemoryPin},
+        Cartridge,
+    },
+};
+use std::cell::RefCell;
+use std::rc::Rc;
 
-struct Nes<'a> {
+pub type SharedMut<T> = Rc<RefCell<T>>;
+
+pub struct Nes<'a> {
     cpu: CPU<'a>,
-    ppu: Rc<RefCell<PPU>>,
+    ppu: SharedMut<PPU<'a>>,
+    ticks: usize,
 }
 
 impl<'a> Nes<'a> {
     pub fn new() -> Nes<'a> {
-        
         let ram = Rc::new(RefCell::new(RAM::new(vec![0u8; 2 * 1024])));
-        
+
         let mut cpu_bus = Bus::default();
-        let _ppu_bus = Bus::default();
+        let ppu_bus = Bus::default();
         cpu_bus.connect(0x0000..=0x1FFF, &ram);
-            
-        let ppu = Rc::new(RefCell::new(PPU::new()));
+
+        let ppu = Rc::new(RefCell::new(PPU::new(ppu_bus)));
         cpu_bus.connect_w(0x2000..=0x3FFF, &ppu);
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2008);
 
         let cpu = CPU::new(cpu_bus);
 
-        Nes { cpu, ppu }
+        Nes { cpu, ppu, ticks: 0 }
     }
 
-    pub fn load_rom(&self, rom_path: &str) {
+    pub fn load_rom(&mut self, rom_path: &str) {
+        let cartridge = Cartridge::load_rom(rom_path);
+        let cartridge = Rc::new(RefCell::new(cartridge));
 
-        let cartridge = Rc::new(RefCell::new(Cartridge::load_rom(rom_path)));
+        let header = cartridge.borrow().header;
 
+        match header.mapper_id {
+            0 => {
+                let mapper_cpu = Mapper000::new(MapperMemoryPin::PrgROM, &cartridge, 2);
+                let mapper_cpu = Rc::new(RefCell::new(mapper_cpu));
+                self.cpu.bus.connect(0x4020..=0xFFFF, &mapper_cpu);
+
+                let mapper_ppu = Mapper000::new(MapperMemoryPin::ChrROM, &cartridge, 2);
+                let mapper_ppu = Rc::new(RefCell::new(mapper_ppu));
+                self.ppu
+                    .borrow_mut()
+                    .bus
+                    .connect(0x0000..=0x1FFF, &mapper_ppu);
+            }
+            _ => panic!("unknown mapper!"),
+        }
+    }
+
+    pub fn clock(&mut self) {
+        self.ppu.borrow_mut().clock();
+        if self.ticks % 3 == 0 {
+            self.cpu.clock();
+        }
+        self.ticks += 1;
+    }
+}
+
+impl<'a> Default for Nes<'a> {
+    fn default() -> Self {
+        Self::new()
     }
 }
