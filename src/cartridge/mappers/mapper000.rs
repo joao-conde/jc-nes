@@ -47,11 +47,11 @@ impl Mapper000 {
             address
         };
 
-        (*self.cartridge).borrow().read_prg_rom(address)
+        (*self.cartridge).borrow().prg_rom[address as usize]
     }
 
     fn read_chr_rom(&self, address: u16) -> u8 {
-        (*self.cartridge).borrow().read_chr_rom(address)
+        (*self.cartridge).borrow().chr_rom[address as usize]
     }
 
     fn write_prg_rom(&mut self, address: u16, data: u8) {
@@ -61,10 +61,10 @@ impl Mapper000 {
             address
         };
 
-        (*self.cartridge).borrow_mut().write_prg_rom(address, data);
+        (*self.cartridge).borrow_mut().prg_rom[address as usize] = data;
     }
 
     fn write_chr_rom(&mut self, address: u16, data: u8) {
-        (*self.cartridge).borrow_mut().write_chr_rom(address, data);
+        (*self.cartridge).borrow_mut().chr_rom[address as usize] = data;
     }
 }

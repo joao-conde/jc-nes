@@ -31,7 +31,7 @@ impl<'a> Bus<'a> {
             .insert(addressable_range, Rc::<RefCell<RW>>::clone(device));
     }
 
-    pub fn connect_r<R: BusRead + 'a>(
+    pub fn connect_readable<R: BusRead + 'a>(
         &mut self,
         addressable_range: RangeInclusive<u16>,
         device: &SharedMut<R>,
@@ -40,7 +40,7 @@ impl<'a> Bus<'a> {
             .insert(addressable_range, Rc::<RefCell<R>>::clone(device));
     }
 
-    pub fn connect_w<W: BusWrite + 'a>(
+    pub fn connect_writable<W: BusWrite + 'a>(
         &mut self,
         addressable_range: RangeInclusive<u16>,
         device: &SharedMut<W>,

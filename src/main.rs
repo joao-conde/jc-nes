@@ -104,7 +104,7 @@ fn emulate() {
 
     let ram = Rc::new(RefCell::new(RAM::new(vec![0u8; 2 * 1024])));
     let mut cpu_bus = Bus::default();
-    cpu_bus.connect_w(0x2000..=0x3FFF, &ppu);
+    cpu_bus.connect_writable(0x2000..=0x3FFF, &ppu);
     cpu_bus.connect(0x4020..=0xFFFF, &mapper_cpu);
     cpu_bus.connect(0x0000..=0x1FFF, &ram);
 
