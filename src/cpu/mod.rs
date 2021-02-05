@@ -38,7 +38,7 @@ impl<'a> CPU<'a> {
             a: 0x00,
             x: 0x00,
             y: 0x00,
-            pc: 0xC000,
+            pc: 0x0000,
             sp: 0xFD,
             status: 0x24,
             cycles_left: 0,

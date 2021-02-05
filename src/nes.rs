@@ -37,9 +37,9 @@ impl<'a> Nes<'a> {
         // Connect devices to CPU bus
         let mut cpu_bus = Bus::default();
         cpu_bus.connect(0x0000..=0x1FFF, &ram);
-        cpu_bus.connect_w(0x2000..=0x3FFF, &ppu);
+        cpu_bus.connect(0x2000..=0x3FFF, &ppu);
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
-        cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2008);
+        cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
         let cpu = CPU::new(cpu_bus);
 
         Nes { cpu, ppu, ticks: 0 }
