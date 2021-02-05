@@ -1,21 +1,21 @@
 use super::Mapper;
 
 // DK SPECIFIC
-struct Mapper0 {
+struct Mapper000 {
     prg_banks: u8,
     chr_banks: u8,
 }
 
-impl Mapper0 {
-    pub fn new(prg_banks: u8, chr_banks: u8) -> Mapper0 {
-        Mapper0 {
+impl Mapper000 {
+    pub fn new(prg_banks: u8, chr_banks: u8) -> Mapper000 {
+        Mapper000 {
             prg_banks,
             chr_banks,
         }
     }
 }
 
-impl Mapper for Mapper0 {
+impl Mapper for Mapper000 {
     fn map_cpu_read(address: u16) -> u16 {
         todo!()
     }
