@@ -14,8 +14,8 @@ pub struct Mapper000 {
 impl BusRead for Mapper000 {
     fn read(&self, address: u16) -> u8 {
         match self.pin {
-            MapperMemoryPin::PrgROM => self.read_cpu(address),
-            MapperMemoryPin::ChrROM => self.read_ppu(address),
+            MapperMemoryPin::PrgROM => self.read_prg_rom(address),
+            MapperMemoryPin::ChrROM => self.read_chr_rom(address),
         }
     }
 }
@@ -23,7 +23,7 @@ impl BusRead for Mapper000 {
 impl BusWrite for Mapper000 {
     fn write(&mut self, address: u16, data: u8) {
         match self.pin {
-            MapperMemoryPin::PrgROM => self.write_cpu(address, data),
+            MapperMemoryPin::PrgROM => self.write_prg_rom(address, data),
             MapperMemoryPin::ChrROM => (),
         };
     }
@@ -42,7 +42,7 @@ impl Mapper000 {
         }
     }
 
-    fn read_cpu(&self, address: u16) -> u8 {
+    fn read_prg_rom(&self, address: u16) -> u8 {
         let address = if address >= 0x8000 && address < 0xFFFF {
             address & if self.prg_banks > 1 { 0x7FFF } else { 0x3FFF }
         } else {
@@ -52,11 +52,11 @@ impl Mapper000 {
         (*self.cartridge).borrow().read_prg_rom(address)
     }
 
-    fn read_ppu(&self, address: u16) -> u8 {
+    fn read_chr_rom(&self, address: u16) -> u8 {
         (*self.cartridge).borrow().read_chr_rom(address)
     }
 
-    fn write_cpu(&mut self, address: u16, data: u8) {
+    fn write_prg_rom(&mut self, address: u16, data: u8) {
         let address = if address >= 0x8000 && address < 0xFFFF {
             address & if self.prg_banks > 1 { 0x7FFF } else { 0x3FFF }
         } else {

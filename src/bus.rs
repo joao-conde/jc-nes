@@ -47,6 +47,9 @@ impl<'a> Bus<'a> {
             .insert(addressable_range, Rc::<RefCell<W>>::clone(device));
     }
 
+    // TODO: change mirroring -> adding a 0x0000-0x1FFF RAM with 0x07FF mirroring is the same as
+    // adding 0x0000-0x07FF RAM + 0x07FF-2*0x07FF RAM + ...
+    // this prevents having the extra search for mirrors in the begin of read/write
     pub fn add_mirror(&mut self, addressable_range: RangeInclusive<u16>, max: u16) {
         self.mirrors.insert(addressable_range, max);
     }

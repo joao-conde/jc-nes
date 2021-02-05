@@ -2,6 +2,7 @@ pub mod mappers;
 
 use std::{fs::File, io::Read};
 
+#[derive(Default)]
 pub struct Cartridge {
     prg_rom: Vec<u8>,
     chr_rom: Vec<u8>,
@@ -29,15 +30,15 @@ impl Cartridge {
         Cartridge { prg_rom, chr_rom }
     }
 
-    pub fn read_prg_rom(&self, address: u16) -> u8 {
+    pub(in crate::cartridge) fn read_prg_rom(&self, address: u16) -> u8 {
         self.prg_rom[address as usize]
     }
 
-    pub fn read_chr_rom(&self, address: u16) -> u8 {
+    pub(in crate::cartridge) fn read_chr_rom(&self, address: u16) -> u8 {
         self.chr_rom[address as usize]
     }
 
-    pub fn write_prg_rom(&mut self, address: u16, data: u8) {
+    pub(in crate::cartridge) fn write_prg_rom(&mut self, address: u16, data: u8) {
         self.prg_rom[address as usize] = data;
     }
 }

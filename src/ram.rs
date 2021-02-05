@@ -1,14 +1,12 @@
 use crate::bus::{BusRead, BusWrite};
 
 pub struct RAM {
-    pub mem: Vec<u8>,
+    mem: Vec<u8>,
 }
 
 impl RAM {
-    pub fn new(size: usize) -> RAM {
-        RAM {
-            mem: vec![0u8; size],
-        }
+    pub fn new(mem: Vec<u8>) -> RAM {
+        RAM { mem }
     }
 }
 

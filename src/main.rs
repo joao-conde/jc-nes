@@ -15,7 +15,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 fn main() {
-    nestest();
+    // nestest();
     emulate();
 }
 
@@ -33,7 +33,7 @@ fn nestest() {
 
     // connect ram to the bus
     // give bus to CPU to read/write
-    let ram = Rc::new(RefCell::new(RAM { mem }));
+    let ram = Rc::new(RefCell::new(RAM::new(mem)));
     let mut bus = Bus::default();
     bus.connect(0x0000..=0xFFFF, &ram);
 
@@ -60,7 +60,7 @@ fn emulate() {
     let mut ppu_bus = Bus::default();
     ppu_bus.connect(0x0000..=0x1FFF, &mapper_ppu);
 
-    let ram = Rc::new(RefCell::new(RAM::new(2 * 1024)));
+    let ram = Rc::new(RefCell::new(RAM::new(vec![0u8; 2 * 1024])));
     let mut cpu_bus = Bus::default();
     cpu_bus.connect_w(0x2000..=0x3FFF, &ppu);
     cpu_bus.connect(0x4020..=0xFFFF, &mapper_cpu);
@@ -69,9 +69,19 @@ fn emulate() {
     cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
     cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2008);
 
-    // let cpu = CPU::new(&mut cpu_bus);
-
     display_pattern_table(&ppu_bus);
+
+    let mut cpu = CPU::new(&mut cpu_bus);
+
+    // emulate clock ticks, CPU 3x slower than PPU
+    let mut i: usize = 0;
+    loop {
+        ppu.borrow().clock();
+        if i % 3 == 0 {
+            cpu.clock();
+        }
+        i += 1;
+    }
 }
 
 fn display_pattern_table(ppu_bus: &Bus) {
