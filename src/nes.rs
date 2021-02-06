@@ -86,12 +86,13 @@ impl<'a> Nes<'a> {
         self.cpu.reset()
     }
 
-    pub fn draw_pattern_table(&self, canvas: &mut Canvas<Window>) {
+    pub fn draw_pattern_table(&self, canvas: &mut Canvas<Window>, width: u32, height: u32) {
+        canvas.clear();
+
         const TILE_PIXEL_WIDTH: u32 = 8;
         const TILE_PIXEL_HEIGHT: u32 = TILE_PIXEL_WIDTH;
         const TILE_BYTE_WIDTH: u32 = 2 * TILE_PIXEL_WIDTH;
 
-        let (width, height) = canvas.window().size();
         for y in 0..height {
             for x in 0..width {
                 // get base address of pixel
@@ -133,6 +134,7 @@ impl<'a> Nes<'a> {
                 canvas.draw_point(Point::new(x as i32, y as i32)).unwrap();
             }
         }
+        canvas.present();
     }
 }
 

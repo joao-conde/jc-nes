@@ -74,7 +74,7 @@ fn play() {
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
         nes.clock();
-        nes.draw_pattern_table(&mut canvas);
+        nes.draw_pattern_table(&mut canvas, WIDTH, HEIGHT);
         for event in event_pump.poll_iter() {
             match event {
                 sdl2::event::Event::Quit { .. } => break 'main,
