@@ -32,17 +32,17 @@ impl BusWrite for Mapper000 {
 }
 
 impl Mapper000 {
-    pub fn new(pin: MapperMemoryPin, cartridge: &SharedMut<Cartridge>, prg_banks: u8) -> Mapper000 {
+    pub fn new(pin: MapperMemoryPin, cartridge: &SharedMut<Cartridge>) -> Mapper000 {
         Mapper000 {
             pin,
+            prg_banks: cartridge.borrow().meta.prg_banks,
             cartridge: Rc::clone(cartridge),
-            prg_banks,
         }
     }
 
     fn read_prg_rom(&self, address: u16) -> u8 {
-        let address = if address >= 0x8000 && address < 0xFFFF {
-            address & if self.prg_banks > 1 { 0x7FFF } else { 0x3FFF }
+        let address = if self.prg_banks == 1 {
+            address & 0x3FFF
         } else {
             address
         };
@@ -55,8 +55,8 @@ impl Mapper000 {
     }
 
     fn write_prg_rom(&mut self, address: u16, data: u8) {
-        let address = if address >= 0x8000 && address < 0xFFFF {
-            address & if self.prg_banks > 1 { 0x7FFF } else { 0x3FFF }
+        let address = if self.prg_banks == 1 {
+            address & 0x3FFF
         } else {
             address
         };

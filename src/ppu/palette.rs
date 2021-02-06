@@ -1,11 +1,11 @@
 use crate::bus::{BusRead, BusWrite};
 
 pub struct Palette {
-    mem: Vec<u8>,
+    mem: [u8; 64],
 }
 
 impl Palette {
-    pub fn new(mem: Vec<u8>) -> Palette {
+    pub fn new() -> Palette {
         Palette { mem }
     }
 }

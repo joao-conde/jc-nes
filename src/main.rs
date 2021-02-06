@@ -47,10 +47,11 @@ fn nestest() {
 }
 
 fn play() {
-    let rom_path = "roms/secret/donkey-kong.nes";
-
+    // let rom_path = "roms/secret/donkey-kong.nes";
+    let rom_path = "roms/nestest.nes";
     let mut nes = Nes::new();
     nes.load_rom(rom_path);
+    nes.reset();
 
     // SDL graphics
     const WIDTH: u32 = 256;
@@ -83,6 +84,9 @@ fn play() {
                 _ => {}
             }
         }
+        // let mut buffer = String::new();
+        // let stdin = std::io::stdin();
+        // stdin.read_line(&mut buffer).unwrap();
     }
 }
 
@@ -91,10 +95,10 @@ fn emulate() {
     let cartridge = Cartridge::load_rom(rom_path);
     let cartridge = Rc::new(RefCell::new(cartridge));
 
-    let mapper_cpu = Mapper000::new(MapperMemoryPin::PrgROM, &cartridge, 2);
+    let mapper_cpu = Mapper000::new(MapperMemoryPin::PrgROM, &cartridge);
     let mapper_cpu = Rc::new(RefCell::new(mapper_cpu));
 
-    let mapper_ppu = Mapper000::new(MapperMemoryPin::ChrROM, &cartridge, 2);
+    let mapper_ppu = Mapper000::new(MapperMemoryPin::ChrROM, &cartridge);
     let mapper_ppu = Rc::new(RefCell::new(mapper_ppu));
 
     let mut ppu_bus = Bus::default();
@@ -104,7 +108,7 @@ fn emulate() {
 
     let ram = Rc::new(RefCell::new(RAM::new(vec![0u8; 2 * 1024])));
     let mut cpu_bus = Bus::default();
-    cpu_bus.connect_writable(0x2000..=0x3FFF, &ppu);
+    cpu_bus.connect(0x2000..=0x3FFF, &ppu);
     cpu_bus.connect(0x4020..=0xFFFF, &mapper_cpu);
     cpu_bus.connect(0x0000..=0x1FFF, &ram);
 

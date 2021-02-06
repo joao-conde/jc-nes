@@ -40,6 +40,7 @@ impl<'a> Nes<'a> {
         cpu_bus.connect(0x2000..=0x3FFF, &ppu);
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
+
         let cpu = CPU::new(cpu_bus);
 
         Nes { cpu, ppu, ticks: 0 }
@@ -49,15 +50,14 @@ impl<'a> Nes<'a> {
         let cartridge = Cartridge::load_rom(rom_path);
         let cartridge = Rc::new(RefCell::new(cartridge));
 
-        let header = cartridge.borrow().header;
-
-        match header.mapper_id {
+        let meta = cartridge.borrow().meta.clone();
+        match meta.mapper_id {
             0 => {
-                let mapper_cpu = Mapper000::new(MapperMemoryPin::PrgROM, &cartridge, 2);
+                let mapper_cpu = Mapper000::new(MapperMemoryPin::PrgROM, &cartridge);
                 let mapper_cpu = Rc::new(RefCell::new(mapper_cpu));
-                self.cpu.bus.connect(0x4020..=0xFFFF, &mapper_cpu);
+                self.cpu.bus.connect(0x8000..=0xFFFF, &mapper_cpu);
 
-                let mapper_ppu = Mapper000::new(MapperMemoryPin::ChrROM, &cartridge, 2);
+                let mapper_ppu = Mapper000::new(MapperMemoryPin::ChrROM, &cartridge);
                 let mapper_ppu = Rc::new(RefCell::new(mapper_ppu));
                 self.ppu
                     .borrow_mut()
@@ -74,6 +74,10 @@ impl<'a> Nes<'a> {
             self.cpu.clock();
         }
         self.ticks += 1;
+    }
+
+    pub fn reset(&mut self) {
+        self.cpu.reset()
     }
 }
 

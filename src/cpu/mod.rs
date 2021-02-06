@@ -5,6 +5,7 @@ use crate::bus::Bus;
 
 const STACK_BASE: u16 = 0x0100;
 
+#[derive(Default)]
 pub struct CPU<'a> {
     /// CPU registers
     a: u8,
@@ -15,7 +16,7 @@ pub struct CPU<'a> {
     status: u8,
 
     /// Implementation specific
-    cycles_left: u8,
+    cycles: u8,
     total_cycles: usize, // TODO remove ?
     extra_cycles: bool,
     pub(in crate) bus: Bus<'a>,
@@ -34,25 +35,35 @@ pub(in crate::cpu) enum Flag {
 
 impl<'a> CPU<'a> {
     pub fn new(bus: Bus<'a>) -> CPU<'a> {
-        CPU {
-            a: 0x00,
-            x: 0x00,
-            y: 0x00,
-            pc: 0x0000,
-            sp: 0xFD,
-            status: 0x24,
-            cycles_left: 0,
-            extra_cycles: true,
-            total_cycles: 7,
-            bus,
-        }
+        let mut cpu = CPU::default();
+        cpu.bus = bus;
+        // // nestest.nes
+        // cpu.pc = 0xC000;
+        // cpu.status = 0x24;
+        // cpu.total_cycles = 7;
+        // cpu.cycles = 0;
+        cpu
     }
 
     pub fn clock(&mut self) {
-        if self.cycles_left == 0 {
+        if self.cycles == 0 {
             self.process_opcode(self.bus.read(self.pc));
         }
-        self.cycles_left -= 1;
+        self.cycles -= 1;
+    }
+
+    pub fn reset(&mut self) {
+        let pcl = self.bus.read(0xFFFC);
+        let pch = self.bus.read(0xFFFD);
+        self.pc = ((pch as u16) << 8) | pcl as u16;
+
+        self.a = 0;
+        self.x = 0;
+        self.y = 0;
+        self.sp = 0xFD;
+        self.status = 0x00;
+
+        self.cycles = 8;
     }
 }
 
@@ -297,14 +308,14 @@ impl<'a> CPU<'a> {
         cycles: u8,
         extra_cycles: bool,
     ) {
-        let tmp = self.cycles_left; // TODO remove ?
+        let tmp = self.cycles; // TODO remove ?
 
         self.extra_cycles = extra_cycles;
         let address = address_mode_fn(self);
         opcode_fn(self, address);
-        self.cycles_left += cycles;
+        self.cycles += cycles;
 
-        self.total_cycles += (self.cycles_left - tmp) as usize; // TODO remove ?
+        self.total_cycles += (self.cycles - tmp) as usize; // TODO remove ?
     }
 
     fn push_stack(&mut self, val: u8) {
@@ -319,9 +330,9 @@ impl<'a> CPU<'a> {
 
     fn relative_jump(&mut self, jump: bool, operand: i8) {
         if jump {
-            self.cycles_left += 1;
+            self.cycles += 1;
             let next = (self.pc as i32 + operand as i32) as u16 + 1;
-            self.cycles_left += self.page_crossed(self.pc + 1, next) as u8;
+            self.cycles += self.page_crossed(self.pc + 1, next) as u8;
             self.pc = next;
         } else {
             self.pc += 1
