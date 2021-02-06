@@ -40,8 +40,16 @@ impl<'a> BusWrite for PPU<'a> {
 
 impl<'a> BusRead for PPU<'a> {
     fn read(&self, address: u16) -> u8 {
-        println!("trying to read from 0x{:04X}", address);
+        println!("PPU STATUS read from 0x{:04X}", address);
         match address {
+            0x0000 => 0x00,
+            0x0001 => 0x00,
+            0x0002 => 0x00,
+            0x0003 => 0x00,
+            0x0004 => 0x00,
+            0x0005 => 0x00,
+            0x0006 => 0x00,
+            0x0007 => 0x00,
             _ => panic!("unknown PPU register"),
         }
     }
