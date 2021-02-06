@@ -16,7 +16,7 @@ pub struct CPU<'a> {
     status: u8,
 
     /// Implementation specific
-    cycles: u8,
+    cycle: u8,
     total_cycles: usize, // TODO remove ?
     extra_cycles: bool,
     pub(in crate) bus: Bus<'a>,
@@ -46,10 +46,10 @@ impl<'a> CPU<'a> {
     }
 
     pub fn clock(&mut self) {
-        if self.cycles == 0 {
+        if self.cycle == 0 {
             self.process_opcode(self.bus.read(self.pc));
         }
-        self.cycles -= 1;
+        self.cycle -= 1;
     }
 
     pub fn reset(&mut self) {
@@ -63,8 +63,10 @@ impl<'a> CPU<'a> {
         self.sp = 0xFD;
         self.status = 0x00;
 
-        self.cycles = 8;
+        self.cycle = 8;
     }
+
+    pub fn nmi(&mut self) {}
 }
 
 /// Opcode processing and execution and utility functions
@@ -308,14 +310,14 @@ impl<'a> CPU<'a> {
         cycles: u8,
         extra_cycles: bool,
     ) {
-        let tmp = self.cycles; // TODO remove ?
+        let tmp = self.cycle; // TODO remove ?
 
         self.extra_cycles = extra_cycles;
         let address = address_mode_fn(self);
         opcode_fn(self, address);
-        self.cycles += cycles;
+        self.cycle += cycles;
 
-        self.total_cycles += (self.cycles - tmp) as usize; // TODO remove ?
+        self.total_cycles += (self.cycle - tmp) as usize; // TODO remove ?
     }
 
     fn push_stack(&mut self, val: u8) {
@@ -330,9 +332,9 @@ impl<'a> CPU<'a> {
 
     fn relative_jump(&mut self, jump: bool, operand: i8) {
         if jump {
-            self.cycles += 1;
+            self.cycle += 1;
             let next = (self.pc as i32 + operand as i32) as u16 + 1;
-            self.cycles += self.page_crossed(self.pc + 1, next) as u8;
+            self.cycle += self.page_crossed(self.pc + 1, next) as u8;
             self.pc = next;
         } else {
             self.pc += 1

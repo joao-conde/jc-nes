@@ -14,7 +14,7 @@ impl<'a> CPU<'a> {
         let address = self.abs();
         let hi = address & 0xFF00;
         let address = address.wrapping_add(self.x as u16);
-        self.cycles += (self.extra_cycles && self.page_crossed(hi, address)) as u8;
+        self.cycle += (self.extra_cycles && self.page_crossed(hi, address)) as u8;
         address
     }
 
@@ -22,7 +22,7 @@ impl<'a> CPU<'a> {
         let address = self.abs();
         let hi = address & 0xFF00;
         let address = address.wrapping_add(self.y as u16);
-        self.cycles += (self.extra_cycles && self.page_crossed(hi, address)) as u8;
+        self.cycle += (self.extra_cycles && self.page_crossed(hi, address)) as u8;
         address
     }
 
@@ -67,7 +67,7 @@ impl<'a> CPU<'a> {
         let hi = self.bus.read((address + 1) & 0x00FF);
         let hi = (hi as u16) << 8;
         let address = lo.wrapping_add(hi).wrapping_add(self.y as u16);
-        self.cycles += (self.extra_cycles && self.page_crossed(address, hi)) as u8;
+        self.cycle += (self.extra_cycles && self.page_crossed(address, hi)) as u8;
         address
     }
 

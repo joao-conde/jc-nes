@@ -1,7 +1,7 @@
 use crate::bus::{Bus, BusRead, BusWrite};
 
 pub struct PPU<'a> {
-    cycles: u16,
+    cycle: u16,
     scanline: u16,
     render: bool,
 
@@ -9,22 +9,26 @@ pub struct PPU<'a> {
     mask: u8,
     control: u8,
 
+    ppu_address_hi: bool,
+    ppu_address: u16,
+
+    pub(in crate) raise_nmi: bool,
     pub(in crate) bus: Bus<'a>,
 }
 
-pub(in crate::ppu) enum BitRegister {
+enum BitRegister {
     Status,
     Mask,
     Control,
 }
 
-pub(in crate::ppu) enum Status {
+enum Status {
     SpriteOverflow = 0,
     SpriteZeroHit = 1,
     VerticalBlank = 2,
 }
 
-pub(in crate::ppu) enum Mask {
+enum Mask {
     GrayScale = 0,
     RenderBackGroundLeft = 1,
     RenderSpritesLeft = 2,
@@ -35,7 +39,7 @@ pub(in crate::ppu) enum Mask {
     EnhanceBlue = 7,
 }
 
-pub(in crate::ppu) enum Control {
+enum Control {
     NameTableX = 0,
     NameTableY = 1,
     IncrementMode = 2,
@@ -49,21 +53,36 @@ pub(in crate::ppu) enum Control {
 impl<'a> PPU<'a> {
     pub fn new(bus: Bus<'a>) -> PPU<'a> {
         PPU {
-            cycles: 0,
+            cycle: 0,
             scanline: 0,
             render: false,
             status: 0x00,
             mask: 0x00,
             control: 0x00,
+            ppu_address_hi: true,
+            ppu_address: 0x0000,
+            raise_nmi: false,
             bus,
         }
     }
 
     pub fn clock(&mut self) {
-        self.cycles += 1;
+        if self.scanline == 0 && self.cycle == 1 {
+            self.set_register_bit(BitRegister::Status, Status::VerticalBlank as u8, false);
+        }
 
-        if self.cycles >= 341 {
-            self.cycles = 0;
+        if self.scanline == 241 && self.cycle == 1 {
+            self.set_register_bit(BitRegister::Status, Status::VerticalBlank as u8, true);
+
+            if self.is_set(BitRegister::Control, Control::EnableNMI as u8) {
+                self.raise_nmi = true
+            }
+        }
+
+        self.cycle += 1;
+
+        if self.cycle >= 341 {
+            self.cycle = 0;
             self.scanline += 1;
             if self.scanline >= 261 {
                 self.scanline = 0; // -1?
@@ -100,18 +119,41 @@ impl<'a> PPU<'a> {
 }
 
 impl<'a> BusWrite for PPU<'a> {
-    fn write(&mut self, _address: u16, _data: u8) {
-        todo!()
+    fn write(&mut self, address: u16, data: u8) {
+        println!("PPU STATUS write from 0x{:04X}", address);
+        match address {
+            0x0000 => self.control = data,
+            0x0001 => self.mask = data,
+            0x0002 => (),
+            0x0003 => (),
+            0x0004 => (),
+            0x0005 => (),
+            0x0006 => {
+                if self.ppu_address_hi {
+                    self.ppu_address = (self.ppu_address & 0x00FF) | (data << 8) as u16;
+                    self.ppu_address_hi = false;
+                } else {
+                    self.ppu_address = (self.ppu_address & 0xFF00) | data as u16;
+                    self.ppu_address_hi = true;
+                }
+            }
+            0x0007 => self.bus.write(self.ppu_address, data),
+            _ => panic!("unknown PPU register"),
+        }
     }
 }
 
 impl<'a> BusRead for PPU<'a> {
-    fn read(&self, address: u16) -> u8 {
-        println!("PPU STATUS read from 0x{:04X}", address);
+    fn read(&mut self, address: u16) -> u8 {
         match address {
             0x0000 => 0x00,
             0x0001 => 0x00,
-            0x0002 => 0x00,
+            0x0002 => {
+                let status = self.status;
+                self.set_register_bit(BitRegister::Status, Status::VerticalBlank as u8, false);
+                self.ppu_address_hi = true;
+                status & 0xE0
+            }
             0x0003 => 0x00,
             0x0004 => 0x00,
             0x0005 => 0x00,

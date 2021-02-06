@@ -14,7 +14,7 @@ pub struct Mapper000 {
 }
 
 impl BusRead for Mapper000 {
-    fn read(&self, address: u16) -> u8 {
+    fn read(&mut self, address: u16) -> u8 {
         match self.pin {
             MapperMemoryPin::PrgROM => self.read_prg_rom(address),
             MapperMemoryPin::ChrROM => self.read_chr_rom(address),

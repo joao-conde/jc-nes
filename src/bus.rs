@@ -12,7 +12,7 @@ pub struct Bus<'a> {
 }
 
 pub trait BusRead {
-    fn read(&self, address: u16) -> u8;
+    fn read(&mut self, address: u16) -> u8;
 }
 
 pub trait BusWrite {
@@ -61,7 +61,7 @@ impl<'a> Bus<'a> {
         self.readable
             .iter()
             .find(|(addressable_range, _)| addressable_range.contains(&address))
-            .map(|(range, device)| device.borrow().read(address - range.start()))
+            .map(|(range, device)| device.borrow_mut().read(address - range.start()))
             .unwrap_or_else(|| panic!("no byte to be read at address 0x{:04X}", address))
     }
 

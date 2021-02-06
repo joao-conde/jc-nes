@@ -56,7 +56,7 @@ fn play() {
     // SDL graphics
     const WIDTH: u32 = 256;
     const HEIGHT: u32 = 240;
-    const SCALING: u32 = 3;
+    const SCALING: u32 = 4;
 
     let sdl = sdl2::init().unwrap();
     let video_subsystem = sdl.video().unwrap();
@@ -74,6 +74,7 @@ fn play() {
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
         nes.clock();
+        nes.draw_pattern_table(&mut canvas);
         for event in event_pump.poll_iter() {
             match event {
                 sdl2::event::Event::Quit { .. } => break 'main,
@@ -84,9 +85,6 @@ fn play() {
                 _ => {}
             }
         }
-        // let mut buffer = String::new();
-        // let stdin = std::io::stdin();
-        // stdin.read_line(&mut buffer).unwrap();
     }
 }
 
@@ -120,7 +118,7 @@ fn emulate() {
     // SDL graphics
     const WIDTH: u32 = 256;
     const HEIGHT: u32 = 240;
-    const SCALING: u32 = 3;
+    const SCALING: u32 = 4;
 
     let sdl = sdl2::init().unwrap();
     let video_subsystem = sdl.video().unwrap();

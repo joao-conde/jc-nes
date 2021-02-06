@@ -1,13 +1,13 @@
+use sdl2::{pixels::Color, rect::Point, render::Canvas, video::Window};
+
+use crate::bus::{Bus, BusRead};
+use crate::cartridge::{
+    mappers::{mapper000::Mapper000, MapperMemoryPin},
+    Cartridge,
+};
 use crate::cpu::CPU;
 use crate::ppu::PPU;
 use crate::ram::RAM;
-use crate::{
-    bus::Bus,
-    cartridge::{
-        mappers::{mapper000::Mapper000, MapperMemoryPin},
-        Cartridge,
-    },
-};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -73,11 +73,66 @@ impl<'a> Nes<'a> {
         if self.ticks % 3 == 0 {
             self.cpu.clock();
         }
+
+        if self.ppu.borrow().raise_nmi {
+            self.ppu.borrow_mut().raise_nmi = false;
+            self.cpu.nmi();
+        }
+
         self.ticks += 1;
     }
 
     pub fn reset(&mut self) {
         self.cpu.reset()
+    }
+
+    pub fn draw_pattern_table(&self, canvas: &mut Canvas<Window>) {
+        const TILE_PIXEL_WIDTH: u32 = 8;
+        const TILE_PIXEL_HEIGHT: u32 = TILE_PIXEL_WIDTH;
+        const TILE_BYTE_WIDTH: u32 = 2 * TILE_PIXEL_WIDTH;
+
+        let (width, height) = canvas.window().size();
+        for y in 0..height {
+            for x in 0..width {
+                // get base address of pixel
+                let tile_x = x / TILE_PIXEL_WIDTH;
+                let tile_y = y / TILE_PIXEL_HEIGHT;
+                let pixel_y = y % 8;
+                let addr = tile_y * height + tile_x * TILE_BYTE_WIDTH + pixel_y;
+
+                // get data from both bit planes
+                let mut lsb: u8 = self.ppu.borrow_mut().bus.read(addr as u16);
+                let mut msb: u8 = self.ppu.borrow_mut().bus.read(addr as u16 + 8);
+
+                // join bit plane data
+                let mut pixel_help: u16 = 0x0000;
+                for i in 0..8 {
+                    let bit0: u8 = lsb & 0x01;
+                    let bit1: u8 = msb & 0x01;
+
+                    pixel_help |= (bit0 as u16) << (i * 2);
+                    pixel_help |= (bit1 as u16) << (i * 2 + 1);
+
+                    lsb >>= 1;
+                    msb >>= 1;
+                }
+
+                // compute pixel number (from 0 to 3)
+                let pos = 7 - (x % 8);
+                let opt = pos * 2;
+                let pixel = (pixel_help & (0x3 << opt)) >> opt;
+
+                // draw
+                match pixel {
+                    0 => canvas.set_draw_color(Color::RGB(0, 0, 0)),
+                    1 => canvas.set_draw_color(Color::RGB(0, 102, 255)),
+                    2 => canvas.set_draw_color(Color::RGB(0, 51, 128)),
+                    3 => canvas.set_draw_color(Color::RGB(0, 10, 26)),
+                    _ => panic!("unexpected pixel value"),
+                }
+                canvas.draw_point(Point::new(x as i32, y as i32)).unwrap();
+            }
+        }
     }
 }
 
