@@ -22,7 +22,7 @@ pub struct CPU<'a> {
     pub(in crate) bus: Bus<'a>,
 }
 
-pub(in crate::cpu) enum Flag {
+pub(in crate::cpu) enum Status {
     Carry = 0,
     Zero = 1,
     Interrupt = 2,
@@ -339,16 +339,16 @@ impl<'a> CPU<'a> {
         }
     }
 
-    fn set_flag(&mut self, flag: Flag, set_condition: bool) {
+    fn set_status_bit(&mut self, bit: Status, set_condition: bool) {
         if set_condition {
-            self.status |= 1 << flag as u8
+            self.status |= 1 << bit as u8
         } else {
-            self.status &= !(1 << flag as u8)
+            self.status &= !(1 << bit as u8)
         }
     }
 
-    fn is_flag_set(&self, flag: Flag) -> bool {
-        (self.status >> flag as u8) & 1 == 1
+    fn is_set(&self, bit: Status) -> bool {
+        (self.status >> bit as u8) & 1 == 1
     }
 
     fn page_crossed(&self, addr1: u16, addr2: u16) -> bool {
