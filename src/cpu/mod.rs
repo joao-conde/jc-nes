@@ -72,7 +72,7 @@ impl<'a> CPU<'a> {
 /// Opcode processing and execution and utility functions
 impl<'a> CPU<'a> {
     fn process_opcode(&mut self, opcode: u8) {
-        self.debug(opcode);
+        // self.debug(opcode);
         match opcode {
             // Official Opcodes
             0x00 => self.execute(CPU::imp, CPU::brk, 7, false),

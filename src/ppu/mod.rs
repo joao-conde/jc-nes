@@ -1,3 +1,6 @@
+pub mod nametable;
+pub mod palette;
+
 use crate::bus::{Bus, BusRead, BusWrite};
 
 pub struct PPU<'a> {
@@ -149,16 +152,16 @@ impl<'a> BusRead for PPU<'a> {
             0x0000 => 0x00,
             0x0001 => 0x00,
             0x0002 => {
-                let status = self.status;
+                let data = self.status & 0xE0;
                 self.set_register_bit(BitRegister::Status, Status::VerticalBlank as u8, false);
                 self.ppu_address_hi = true;
-                status & 0xE0
+                data
             }
             0x0003 => 0x00,
             0x0004 => 0x00,
             0x0005 => 0x00,
             0x0006 => 0x00,
-            0x0007 => 0x00,
+            0x0007 => self.bus.read(address),
             _ => panic!("unknown PPU register"),
         }
     }

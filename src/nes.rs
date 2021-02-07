@@ -1,6 +1,5 @@
 use sdl2::{pixels::Color, rect::Point, render::Canvas, video::Window};
 
-use crate::bus::{Bus, BusRead};
 use crate::cartridge::{
     mappers::{mapper000::Mapper000, MapperMemoryPin},
     Cartridge,
@@ -8,6 +7,10 @@ use crate::cartridge::{
 use crate::cpu::CPU;
 use crate::ppu::PPU;
 use crate::ram::RAM;
+use crate::{
+    bus::{Bus, BusRead},
+    ppu::{self, nametable::NameTable, palette::Palette},
+};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -22,13 +25,22 @@ pub struct Nes<'a> {
 impl<'a> Nes<'a> {
     pub fn new() -> Nes<'a> {
         // PPU bus devices
-        // let nametbl = Rc::new(RefCell::new(NameTable::new(vec![0u8; 2 * 1024])));
-        // let palette = Rc::new(RefCell::new(Palette::new(vec![0u8; 2 * 1024])));
+        let nametbl1 = Rc::new(RefCell::new(NameTable::new()));
+        let nametbl2 = Rc::new(RefCell::new(NameTable::new()));
+        let nametbl3 = Rc::new(RefCell::new(NameTable::new()));
+        let nametbl4 = Rc::new(RefCell::new(NameTable::new()));
+
+        let palette = Rc::new(RefCell::new(Palette::new()));
 
         // Connect devices to PPU bus
         let mut ppu_bus = Bus::default();
-        // ppu_bus.connect(0x2000..=0x2FFF, &nametbl);
-        // ppu_bus.connect(0x3F00..=0x3FFF, &palette);
+        ppu_bus.connect(0x2000..=0x23FF, &nametbl1);
+        ppu_bus.connect(0x2400..=0x27FF, &nametbl2);
+        ppu_bus.connect(0x2800..=0x2BFF, &nametbl3);
+        ppu_bus.connect(0x2C00..=0x2FFF, &nametbl4);
+        ppu_bus.connect(0x3F00..=0x3FFF, &palette);
+        ppu_bus.add_mirror(0x3000..=0x3EFF, 0x2EFF);
+
         let ppu = Rc::new(RefCell::new(PPU::new(ppu_bus)));
 
         // CPU bus devices
@@ -84,6 +96,32 @@ impl<'a> Nes<'a> {
 
     pub fn reset(&mut self) {
         self.cpu.reset()
+    }
+
+    pub fn draw_name_table(
+        &self,
+        table: usize,
+        canvas: &mut Canvas<Window>,
+        width: u32,
+        height: u32,
+    ) {
+        canvas.clear();
+
+        // ppu_bus.connect(0x2000..=0x23FF, &nametbl1);
+        // ppu_bus.connect(0x2400..=0x27FF, &nametbl2);
+        // ppu_bus.connect(0x2800..=0x2BFF, &nametbl3);
+        // ppu_bus.connect(0x2C00..=0x2FFF, &nametbl4);
+
+        for y in 0..30 {
+            for x in 0..32 {
+                let address = (0x2000 + 0x400 * table) + x + y * 32;
+                let byte = self.ppu.borrow().bus.read(address as u16);
+                print!("{:02X}", byte);
+            }
+            println!()
+        }
+
+        canvas.present();
     }
 
     pub fn draw_pattern_table(&self, canvas: &mut Canvas<Window>, width: u32, height: u32) {

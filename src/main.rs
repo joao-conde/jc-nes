@@ -74,7 +74,6 @@ fn play() {
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
         nes.clock();
-        nes.draw_pattern_table(&mut canvas, WIDTH, HEIGHT);
         for event in event_pump.poll_iter() {
             match event {
                 sdl2::event::Event::Quit { .. } => break 'main,
@@ -82,6 +81,32 @@ fn play() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'main,
+
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::Num0),
+                    ..
+                } => nes.draw_name_table(0, &mut canvas, WIDTH, HEIGHT),
+
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::Num1),
+                    ..
+                } => nes.draw_name_table(1, &mut canvas, WIDTH, HEIGHT),
+
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::Num2),
+                    ..
+                } => nes.draw_name_table(2, &mut canvas, WIDTH, HEIGHT),
+
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::Num3),
+                    ..
+                } => nes.draw_name_table(3, &mut canvas, WIDTH, HEIGHT),
+
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::P),
+                    ..
+                } => nes.draw_pattern_table(&mut canvas, WIDTH, HEIGHT),
+
                 _ => {}
             }
         }
