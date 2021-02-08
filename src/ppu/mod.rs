@@ -12,8 +12,9 @@ pub struct PPU<'a> {
     mask: u8,
     control: u8,
 
-    ppu_address_hi: bool,
-    ppu_address: u16,
+    address_latch_hi: bool,
+    buffer: u8,
+    address: u16,
 
     pub(in crate) raise_nmi: bool,
     pub(in crate) bus: Bus<'a>,
@@ -26,9 +27,9 @@ enum BitRegister {
 }
 
 enum Status {
-    SpriteOverflow = 0,
-    SpriteZeroHit = 1,
-    VerticalBlank = 2,
+    SpriteOverflow = 5,
+    SpriteZeroHit = 6,
+    VerticalBlank = 7,
 }
 
 enum Mask {
@@ -62,13 +63,15 @@ impl<'a> PPU<'a> {
             status: 0x00,
             mask: 0x00,
             control: 0x00,
-            ppu_address_hi: true,
-            ppu_address: 0x0000,
+            address_latch_hi: true,
+            address: 0x0000,
+            buffer: 0x00,
             raise_nmi: false,
             bus,
         }
     }
 
+    // https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     pub fn clock(&mut self) {
         if self.scanline == 0 && self.cycle == 1 {
             self.set_register_bit(BitRegister::Status, Status::VerticalBlank as u8, false);
@@ -123,7 +126,7 @@ impl<'a> PPU<'a> {
 
 impl<'a> BusWrite for PPU<'a> {
     fn write(&mut self, address: u16, data: u8) {
-        println!("PPU STATUS write from 0x{:04X}", address);
+        // println!("PPU STATUS write to 0x{:04X}", address);
         match address {
             0x0000 => self.control = data,
             0x0001 => self.mask = data,
@@ -132,15 +135,18 @@ impl<'a> BusWrite for PPU<'a> {
             0x0004 => (),
             0x0005 => (),
             0x0006 => {
-                if self.ppu_address_hi {
-                    self.ppu_address = (self.ppu_address & 0x00FF) | (data << 8) as u16;
-                    self.ppu_address_hi = false;
+                if self.address_latch_hi {
+                    self.address = (self.address & 0x00FF) | (data as u16) << 8;
+                    self.address_latch_hi = false;
                 } else {
-                    self.ppu_address = (self.ppu_address & 0xFF00) | data as u16;
-                    self.ppu_address_hi = true;
+                    self.address = (self.address & 0xFF00) | data as u16;
+                    self.address_latch_hi = true;
                 }
             }
-            0x0007 => self.bus.write(self.ppu_address, data),
+            0x0007 => {
+                self.bus.write(self.address, data);
+                self.address += 1;
+            }
             _ => panic!("unknown PPU register"),
         }
     }
@@ -152,16 +158,23 @@ impl<'a> BusRead for PPU<'a> {
             0x0000 => 0x00,
             0x0001 => 0x00,
             0x0002 => {
-                let data = self.status & 0xE0;
+                self.set_register_bit(BitRegister::Status, Status::VerticalBlank as u8, true); //hack
+                let data = self.status & 0xE0 | (self.buffer & 0x1F);
                 self.set_register_bit(BitRegister::Status, Status::VerticalBlank as u8, false);
-                self.ppu_address_hi = true;
+                self.address_latch_hi = true;
                 data
             }
             0x0003 => 0x00,
             0x0004 => 0x00,
             0x0005 => 0x00,
             0x0006 => 0x00,
-            0x0007 => self.bus.read(address),
+            0x0007 => {
+                let data = self.buffer;
+                self.buffer = self.bus.read(self.address);
+                // TODO immediate for palette
+                self.address += 1;
+                data
+            }
             _ => panic!("unknown PPU register"),
         }
     }

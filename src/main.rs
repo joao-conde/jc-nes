@@ -83,24 +83,24 @@ fn play() {
                 } => break 'main,
 
                 sdl2::event::Event::KeyDown {
-                    keycode: Some(Keycode::Num0),
-                    ..
-                } => nes.draw_name_table(0, &mut canvas, WIDTH, HEIGHT),
-
-                sdl2::event::Event::KeyDown {
                     keycode: Some(Keycode::Num1),
                     ..
-                } => nes.draw_name_table(1, &mut canvas, WIDTH, HEIGHT),
+                } => nes.draw_name_table(0, &mut canvas, 32, 30),
 
                 sdl2::event::Event::KeyDown {
                     keycode: Some(Keycode::Num2),
                     ..
-                } => nes.draw_name_table(2, &mut canvas, WIDTH, HEIGHT),
+                } => nes.draw_name_table(1, &mut canvas, 32, 30),
 
                 sdl2::event::Event::KeyDown {
                     keycode: Some(Keycode::Num3),
                     ..
-                } => nes.draw_name_table(3, &mut canvas, WIDTH, HEIGHT),
+                } => nes.draw_name_table(2, &mut canvas, 32, 30),
+
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::Num4),
+                    ..
+                } => nes.draw_name_table(3, &mut canvas, 32, 30),
 
                 sdl2::event::Event::KeyDown {
                     keycode: Some(Keycode::P),

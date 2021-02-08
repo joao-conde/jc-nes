@@ -40,16 +40,20 @@ impl<'a> Nes<'a> {
         ppu_bus.connect(0x2C00..=0x2FFF, &nametbl4);
         ppu_bus.connect(0x3F00..=0x3FFF, &palette);
         ppu_bus.add_mirror(0x3000..=0x3EFF, 0x2EFF);
+        ppu_bus.add_mirror(0x4000..=0xFFFF, 0x3FFF);
 
         let ppu = Rc::new(RefCell::new(PPU::new(ppu_bus)));
 
         // CPU bus devices
         let ram = Rc::new(RefCell::new(RAM::new(vec![0u8; 2 * 1024])));
 
+        let TMP_IO_APU = Rc::new(RefCell::new(RAM::new(vec![0u8; 32]))); // TODO: remove tmp hack
+
         // Connect devices to CPU bus
         let mut cpu_bus = Bus::default();
         cpu_bus.connect(0x0000..=0x1FFF, &ram);
         cpu_bus.connect(0x2000..=0x3FFF, &ppu);
+        cpu_bus.connect(0x4000..=0x401F, &TMP_IO_APU);
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
 
@@ -102,21 +106,17 @@ impl<'a> Nes<'a> {
         &self,
         table: usize,
         canvas: &mut Canvas<Window>,
-        width: u32,
-        height: u32,
+        width: usize,
+        height: usize,
     ) {
         canvas.clear();
 
-        // ppu_bus.connect(0x2000..=0x23FF, &nametbl1);
-        // ppu_bus.connect(0x2400..=0x27FF, &nametbl2);
-        // ppu_bus.connect(0x2800..=0x2BFF, &nametbl3);
-        // ppu_bus.connect(0x2C00..=0x2FFF, &nametbl4);
-
-        for y in 0..30 {
-            for x in 0..32 {
-                let address = (0x2000 + 0x400 * table) + x + y * 32;
+        for y in 0..height {
+            for x in 0..width {
+                let address = (0x2000 + 0x400 * table) + x + y * width;
                 let byte = self.ppu.borrow().bus.read(address as u16);
                 print!("{:02X}", byte);
+                self.draw_tile(canvas, byte, x as i32 * 8, y as i32 * 8);
             }
             println!()
         }
@@ -136,6 +136,7 @@ impl<'a> Nes<'a> {
                 // get base address of pixel
                 let tile_x = x / TILE_PIXEL_WIDTH;
                 let tile_y = y / TILE_PIXEL_HEIGHT;
+
                 let pixel_y = y % 8;
                 let addr = tile_y * height + tile_x * TILE_BYTE_WIDTH + pixel_y;
 
@@ -173,6 +174,40 @@ impl<'a> Nes<'a> {
             }
         }
         canvas.present();
+    }
+
+    fn draw_tile(&self, canvas: &mut Canvas<Window>, tile_idx: u8, x: i32, y: i32) {
+        const PATTERN_TABLE_PIXEL_WIDTH: u32 = 256;
+        const TILE_BYTE_WIDTH: u32 = 16;
+
+        let tile_y = ((tile_idx & 0xF0) >> 4) as u32;
+        let tile_x = (tile_idx & 0x0F) as u32;
+        let base = tile_y * PATTERN_TABLE_PIXEL_WIDTH + tile_x * TILE_BYTE_WIDTH;
+
+        for row in 0..8 {
+            // get data from both bit planes
+            let addr = base + row;
+            let mut lsb: u8 = self.ppu.borrow_mut().bus.read(addr as u16);
+            let mut msb: u8 = self.ppu.borrow_mut().bus.read(addr as u16 + 8);
+
+            for col in 0..8 {
+                let pixel = (lsb & 0x01) + (msb & 0x01);
+                lsb >>= 1;
+                msb >>= 1;
+
+                // draw
+                match pixel {
+                    0 => canvas.set_draw_color(Color::RGB(0, 0, 0)),
+                    1 => canvas.set_draw_color(Color::RGB(0, 102, 255)),
+                    2 => canvas.set_draw_color(Color::RGB(0, 51, 128)),
+                    3 => canvas.set_draw_color(Color::RGB(0, 10, 26)),
+                    _ => panic!("unexpected pixel value"),
+                }
+                canvas
+                    .draw_point(Point::new(x + (7 - col) as i32, y + row as i32))
+                    .unwrap();
+            }
+        }
     }
 }
 

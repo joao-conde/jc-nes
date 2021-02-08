@@ -66,13 +66,31 @@ impl<'a> CPU<'a> {
         self.cycle = 8;
     }
 
-    pub fn nmi(&mut self) {}
+    pub fn nmi(&mut self) {
+        let pch = (self.pc >> 8) & 0xFF;
+        let pcl = self.pc & 0x00FF;
+
+        self.push_stack(pch as u8);
+        self.push_stack(pcl as u8);
+
+        self.set_status_bit(Status::B1, false);
+        self.set_status_bit(Status::B2, true);
+        self.set_status_bit(Status::Interrupt, true);
+
+        self.push_stack(self.status);
+
+        let pcl = self.bus.read(0xFFFA);
+        let pch = self.bus.read(0xFFFB);
+        self.pc = ((pch as u16) << 8) | pcl as u16;
+
+        self.cycle = 8;
+    }
 }
 
 /// Opcode processing and execution and utility functions
 impl<'a> CPU<'a> {
     fn process_opcode(&mut self, opcode: u8) {
-        // self.debug(opcode);
+        //self.debug(opcode);
         match opcode {
             // Official Opcodes
             0x00 => self.execute(CPU::imp, CPU::brk, 7, false),
@@ -366,5 +384,10 @@ impl<'a> CPU<'a> {
             "{:04X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
             self.pc, opcode, self.a, self.x, self.y, self.status, self.sp, self.total_cycles
         );
+        use std::io::stdin;
+        let mut s = String::new();
+        stdin()
+            .read_line(&mut s)
+            .expect("Did not enter a correct string");
     }
 }
