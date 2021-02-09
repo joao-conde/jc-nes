@@ -3,6 +3,9 @@ pub mod palette;
 
 use crate::bus::{Bus, BusRead, BusWrite};
 
+/// nesdev.com/loopyppu.zip
+/// https://wiki.nesdev.com/w/index.php/PPU_scrolling#Summary
+
 pub struct PPU<'a> {
     cycle: u16,
     scanline: u16,
