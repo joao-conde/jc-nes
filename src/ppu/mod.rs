@@ -2,6 +2,7 @@ pub mod nametable;
 pub mod palette;
 
 use crate::bus::{Bus, BusRead, BusWrite};
+use bitflags::bitflags;
 
 /// nesdev.com/loopyppu.zip
 /// https://wiki.nesdev.com/w/index.php/PPU_scrolling#Summary
@@ -11,9 +12,9 @@ pub struct PPU<'a> {
     scanline: u16,
     render: bool,
 
-    status: u8,
-    mask: u8,
-    control: u8,
+    status: Status,
+    mask: Mask,
+    control: Control,
 
     address_latch_hi: bool,
     buffer: u8,
@@ -23,38 +24,38 @@ pub struct PPU<'a> {
     pub(in crate) bus: Bus<'a>,
 }
 
-enum BitRegister {
-    Status,
-    Mask,
-    Control,
+bitflags! {
+    struct Status: u8 {
+        const SPRITE_OVERFLOW = 0b00100000;
+        const SPRITE_ZERO_HIT = 0b01000000;
+        const VERTICAL_BLANK = 0b10000000;
+    }
 }
 
-enum Status {
-    SpriteOVERFLOW = 5,
-    SpriteZEROHit = 6,
-    VerticalBlank = 7,
+bitflags! {
+    struct Mask: u8 {
+        const GRAY_SCALE = 0b00000001;
+        const RENDER_BACKGROUND_LEFT = 0b00000010;
+        const RENDER_SPRITES_LEFT = 0b00000100;
+        const RENDER_BACKGROUND = 0b00001000;
+        const RENDER_SPRITES = 0b00010000;
+        const ENHANCE_RED = 0b00100000;
+        const ENHANCE_GREEN = 0b01000000;
+        const ENHANCE_BLUE = 0b10000000;
+    }
 }
 
-enum Mask {
-    GrayScale = 0,
-    RenderBackGroundLeft = 1,
-    RenderSpritesLeft = 2,
-    RenderBackGround = 3,
-    RenderSprites = 4,
-    EnhanceRed = 5,
-    EnhanceGreen = 6,
-    EnhanceBlue = 7,
-}
-
-enum Control {
-    NameTableX = 0,
-    NameTableY = 1,
-    IncrementMode = 2,
-    PatternSprite = 3,
-    PatternBackground = 4,
-    SpriteSize = 5,
-    SlaveMode = 6,
-    EnableNMI = 7,
+bitflags! {
+    struct Control: u8 {
+        const NAMETABLE_X = 0b00000001;
+        const NAMETABLE_Y = 0b00000010;
+        const INCREMENT_MODE = 0b00000100;
+        const PATTERN_SPRITE = 0b00001000;
+        const PATTERN_BACKGROUND = 0b00010000;
+        const SPRITE_SIZE = 0b00100000;
+        const SLAVE_MODE = 0b01000000;
+        const ENABLE_NMI = 0b10000000;
+    }
 }
 
 impl<'a> PPU<'a> {
@@ -63,9 +64,9 @@ impl<'a> PPU<'a> {
             cycle: 0,
             scanline: 0,
             render: false,
-            status: 0x00,
-            mask: 0x00,
-            control: 0x00,
+            status: Status::from_bits_truncate(0x00),
+            mask: Mask::from_bits_truncate(0x00),
+            control: Control::from_bits_truncate(0x00),
             address_latch_hi: true,
             address: 0x0000,
             buffer: 0x00,
@@ -77,13 +78,13 @@ impl<'a> PPU<'a> {
     // https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     pub fn clock(&mut self) {
         if self.scanline == 0 && self.cycle == 1 {
-            self.set_register_bit(BitRegister::Status, Status::VerticalBlank as u8, false);
+            self.status.set(Status::VERTICAL_BLANK, false);
         }
 
         if self.scanline == 241 && self.cycle == 1 {
-            self.set_register_bit(BitRegister::Status, Status::VerticalBlank as u8, true);
+            self.status.set(Status::VERTICAL_BLANK, true);
 
-            if self.is_set(BitRegister::Control, Control::EnableNMI as u8) {
+            if (self.control & Control::ENABLE_NMI).bits() != 0 {
                 self.raise_nmi = true
             }
         }
@@ -94,45 +95,18 @@ impl<'a> PPU<'a> {
             self.cycle = 0;
             self.scanline += 1;
             if self.scanline >= 261 {
-                self.scanline = 0; // -1?
+                self.scanline = 0;
                 self.render = true;
             }
         }
     }
 }
 
-impl<'a> PPU<'a> {
-    fn set_register_bit(&mut self, reg: BitRegister, bit: u8, set_condition: bool) {
-        if set_condition {
-            match reg {
-                BitRegister::Status => self.status |= 1 << bit as u8,
-                BitRegister::Mask => self.mask |= 1 << bit as u8,
-                BitRegister::Control => self.control |= 1 << bit as u8,
-            }
-        } else {
-            match reg {
-                BitRegister::Status => self.status &= !(1 << bit as u8),
-                BitRegister::Mask => self.mask &= !(1 << bit as u8),
-                BitRegister::Control => self.control &= !(1 << bit as u8),
-            }
-        }
-    }
-
-    fn is_set(&self, reg: BitRegister, bit: u8) -> bool {
-        match reg {
-            BitRegister::Status => (self.status >> bit as u8) & 1 == 1,
-            BitRegister::Mask => (self.mask >> bit as u8) & 1 == 1,
-            BitRegister::Control => (self.control >> bit as u8) & 1 == 1,
-        }
-    }
-}
-
 impl<'a> BusWrite for PPU<'a> {
     fn write(&mut self, address: u16, data: u8) {
-        // println!("PPU STATUS write to 0x{:04X}", address);
         match address {
-            0x0000 => self.control = data,
-            0x0001 => self.mask = data,
+            0x0000 => self.control = Control::from_bits_truncate(data),
+            0x0001 => self.mask = Mask::from_bits_truncate(data),
             0x0002 => (),
             0x0003 => (),
             0x0004 => (),
@@ -161,9 +135,9 @@ impl<'a> BusRead for PPU<'a> {
             0x0000 => 0x00,
             0x0001 => 0x00,
             0x0002 => {
-                self.set_register_bit(BitRegister::Status, Status::VerticalBlank as u8, true); //hack
-                let data = self.status & 0xE0 | (self.buffer & 0x1F);
-                self.set_register_bit(BitRegister::Status, Status::VerticalBlank as u8, false);
+                self.status.set(Status::VERTICAL_BLANK, true); //hack
+                let data = self.status.bits() & 0xE0 | (self.buffer & 0x1F);
+                self.status.set(Status::VERTICAL_BLANK, false);
                 self.address_latch_hi = true;
                 data
             }

@@ -42,11 +42,11 @@ impl<'a> CPU<'a> {
         let mut cpu = CPU::default();
         cpu.bus = bus;
         // // nestest.nes
-        cpu.pc = 0xC000;
-        cpu.status = Status::from_bits_truncate(0x24);
-        cpu.total_cycles = 7;
-        cpu.sp = 0xFD;
-        cpu.cycle = 0;
+        // cpu.pc = 0xC000;
+        // cpu.status = Status::from_bits_truncate(0x24);
+        // cpu.total_cycles = 7;
+        // cpu.sp = 0xFD;
+        // cpu.cycle = 0;
         cpu
     }
 
@@ -95,7 +95,7 @@ impl<'a> CPU<'a> {
 /// Opcode processing and execution and utility functions
 impl<'a> CPU<'a> {
     fn process_opcode(&mut self, opcode: u8) {
-        self.debug(opcode);
+        //self.debug(opcode);
         //self.pause();
         match opcode {
             // Official Opcodes

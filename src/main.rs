@@ -3,13 +3,19 @@ use jc_nes::ram::RAM;
 use jc_nes::{bus::Bus, nes::Nes};
 use sdl2::keyboard::Keycode;
 use std::cell::RefCell;
+use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::rc::Rc;
 
 fn main() {
-    nestest();
-    //play();
+    if let Some(mode) = env::args().nth(1) {
+        if mode == "nestest" {
+            nestest()
+        } else if mode == "play" {
+            play()
+        }
+    }
 }
 
 fn nestest() {
