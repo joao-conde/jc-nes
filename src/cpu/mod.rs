@@ -2,6 +2,7 @@ mod addressing;
 mod instructions;
 
 use crate::bus::Bus;
+use bitflags::bitflags;
 
 const STACK_BASE: u16 = 0x0100;
 
@@ -13,7 +14,7 @@ pub struct CPU<'a> {
     y: u8,
     pc: u16,
     sp: u8,
-    status: u8,
+    status: Status,
 
     /// Implementation specific
     cycle: u8,
@@ -22,15 +23,18 @@ pub struct CPU<'a> {
     pub(in crate) bus: Bus<'a>,
 }
 
-pub(in crate::cpu) enum Status {
-    Carry = 0,
-    Zero = 1,
-    Interrupt = 2,
-    Decimal = 3,
-    B1 = 4,
-    B2 = 5,
-    Overflow = 6,
-    Negative = 7,
+bitflags! {
+    #[derive(Default)]
+    pub(in crate::cpu) struct Status: u8 {
+        const Carry = 0b00000001;
+        const Zero = 0b00000010;
+        const Interrupt = 0b00000100;
+        const Decimal = 0b00001000;
+        const B1 = 0b00010000;
+        const B2 = 0b00100000;
+        const Overflow = 0b01000000;
+        const Negative = 0b10000000;
+    }
 }
 
 impl<'a> CPU<'a> {
@@ -39,9 +43,10 @@ impl<'a> CPU<'a> {
         cpu.bus = bus;
         // // nestest.nes
         // cpu.pc = 0xC000;
-        // cpu.status = 0x24;
+        // cpu.status = Status::from_bits_truncate(0x24);
         // cpu.total_cycles = 7;
-        // cpu.cycles = 0;
+        // cpu.sp = 0xFD;
+        // cpu.cycle = 0;
         cpu
     }
 
@@ -61,7 +66,7 @@ impl<'a> CPU<'a> {
         self.x = 0;
         self.y = 0;
         self.sp = 0xFD;
-        self.status = 0x00;
+        self.status = Status::from_bits_truncate(0x00);
 
         self.cycle = 8;
     }
@@ -73,11 +78,11 @@ impl<'a> CPU<'a> {
         self.push_stack(pch as u8);
         self.push_stack(pcl as u8);
 
-        self.set_status_bit(Status::B1, false);
-        self.set_status_bit(Status::B2, true);
-        self.set_status_bit(Status::Interrupt, true);
+        self.status.set(Status::B1, false);
+        self.status.set(Status::B2, true);
+        self.status.set(Status::Interrupt, true);
 
-        self.push_stack(self.status);
+        self.push_stack(self.status.bits());
 
         let pcl = self.bus.read(0xFFFA);
         let pch = self.bus.read(0xFFFB);
@@ -91,6 +96,7 @@ impl<'a> CPU<'a> {
 impl<'a> CPU<'a> {
     fn process_opcode(&mut self, opcode: u8) {
         //self.debug(opcode);
+        //self.pause();
         match opcode {
             // Official Opcodes
             0x00 => self.execute(CPU::imp, CPU::brk, 7, false),
@@ -359,18 +365,6 @@ impl<'a> CPU<'a> {
         }
     }
 
-    fn set_status_bit(&mut self, bit: Status, set_condition: bool) {
-        if set_condition {
-            self.status |= 1 << bit as u8
-        } else {
-            self.status &= !(1 << bit as u8)
-        }
-    }
-
-    fn is_set(&self, bit: Status) -> bool {
-        (self.status >> bit as u8) & 1 == 1
-    }
-
     fn page_crossed(&self, addr1: u16, addr2: u16) -> bool {
         (addr1 & 0xFF00) != (addr2 & 0xFF00)
     }
@@ -384,6 +378,9 @@ impl<'a> CPU<'a> {
             "{:04X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
             self.pc, opcode, self.a, self.x, self.y, self.status, self.sp, self.total_cycles
         );
+    }
+
+    fn pause(&self) {
         use std::io::stdin;
         let mut s = String::new();
         stdin()
