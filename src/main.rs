@@ -8,15 +8,15 @@ use std::io::Read;
 use std::rc::Rc;
 
 fn main() {
-    //nestest();
-    play();
+    nestest();
+    //play();
 }
 
 fn nestest() {
     // read test rom
     let mut rom = File::open("roms/nestest.nes").unwrap();
     let mut buffer = Vec::new();
-    rom.read_to_end(&mut buffer).expect("buffer overflow");
+    rom.read_to_end(&mut buffer).expect("buffer OVERFLOW");
 
     // make test rom address start at 0xC000
     // and discard 16-bit header

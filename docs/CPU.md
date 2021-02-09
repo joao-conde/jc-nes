@@ -4,7 +4,7 @@
 
 - [Memory model](http://wiki.nesdev.com/w/index.php/CPU_memory_map)
 - [Architecture](http://www.obelisk.me.uk/6502/architecture.html)
-- based on the MOS6502's processor (lacking decimal mode and with some quirks)
+- based on the MOS6502's processor (lacking DECIMAL mode and with some quirks)
 - runs at approximately 1.79 MHz
 - 64kB addressable range (0x0000 - 0xFFFF)
 - can read/write 1 byte at a time
@@ -65,7 +65,7 @@ After (or while) you implement the addressing modes and instructions:
 
 The NES CPU is based on a 6502 yet it is not the same:
 
-- besides lacking decimal mode, the behavior of the status bits 4 and 5 (from 0 to 7) is quite bizarre; check https://wiki.nesdev.com/w/index.php/Status_flags#The_B_flag and pay close attention to the PHP/PLP instructions
+- besides lacking DECIMAL mode, the behavior of the status bits 4 and 5 (from 0 to 7) is quite bizarre; check https://wiki.nesdev.com/w/index.php/Status_flags#The_B_flag and pay close attention to the PHP/PLP instructions
 - the indirect (IND) addressing mode was bugged in the original hardware; to mimic the original behavior, you have to reproduce the bug behavior in this addressing mode (it should cross page boundaries, instead it just wraps around)
 
 ## Other References

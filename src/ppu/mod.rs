@@ -30,8 +30,8 @@ enum BitRegister {
 }
 
 enum Status {
-    SpriteOverflow = 5,
-    SpriteZeroHit = 6,
+    SpriteOVERFLOW = 5,
+    SpriteZEROHit = 6,
     VerticalBlank = 7,
 }
 
