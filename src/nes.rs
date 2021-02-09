@@ -8,8 +8,8 @@ use crate::cpu::CPU;
 use crate::ppu::PPU;
 use crate::ram::RAM;
 use crate::{
-    bus::{Bus, BusRead},
-    ppu::{self, nametable::NameTable, palette::Palette},
+    bus::Bus,
+    ppu::{nametable::NameTable, palette::Palette},
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -115,10 +115,10 @@ impl<'a> Nes<'a> {
             for x in 0..width {
                 let address = (0x2000 + 0x400 * table) + x + y * width;
                 let byte = self.ppu.borrow().bus.read(address as u16);
-                print!("{:02X}", byte);
+                // print!("{:02X}", byte);
                 self.draw_tile(canvas, byte, x as i32 * 8, y as i32 * 8);
             }
-            println!()
+            // println!()
         }
 
         canvas.present();
