@@ -26,14 +26,14 @@ pub struct CPU<'a> {
 bitflags! {
     #[derive(Default)]
     pub(in crate::cpu) struct Status: u8 {
-        const CARRY = 0b00000001;
-        const ZERO = 0b00000010;
-        const INTERRUPT = 0b00000100;
-        const DECIMAL = 0b00001000;
-        const B1 = 0b00010000;
-        const B2 = 0b00100000;
-        const OVERFLOW = 0b01000000;
-        const NEGATIVE = 0b10000000;
+        const CARRY = 0x01;
+        const ZERO = 0x02;
+        const INTERRUPT = 0x04;
+        const DECIMAL = 0x08;
+        const B1 = 0x10;
+        const B2 = 0x20;
+        const OVERFLOW = 0x40;
+        const NEGATIVE = 0x80;
     }
 }
 
@@ -41,7 +41,7 @@ impl<'a> CPU<'a> {
     pub fn new(bus: Bus<'a>) -> CPU<'a> {
         let mut cpu = CPU::default();
         cpu.bus = bus;
-        // // nestest.nes
+        // nestest.nes
         // cpu.pc = 0xC000;
         // cpu.status = Status::from_bits_truncate(0x24);
         // cpu.total_cycles = 7;
@@ -95,7 +95,7 @@ impl<'a> CPU<'a> {
 /// Opcode processing and execution and utility functions
 impl<'a> CPU<'a> {
     fn process_opcode(&mut self, opcode: u8) {
-        //self.debug(opcode);
+        // self.debug(opcode);
         //self.pause();
         match opcode {
             // Official Opcodes

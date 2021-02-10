@@ -5,7 +5,7 @@ impl<'a> CPU<'a> {
     pub(in crate::cpu) fn adc(&mut self, address: u16) {
         let operand = self.bus.read(address);
         let tmp =
-            self.a as u16 + operand as u16 + ((self.status & Status::CARRY).bits() != 0) as u16;
+            self.a as u16 + operand as u16 + self.status.contains(Status::CARRY) as u16;
 
         self.status.set(Status::CARRY, tmp > 0xFF);
         self.status.set(Status::ZERO, tmp & 0xFF == 0);
@@ -51,21 +51,21 @@ impl<'a> CPU<'a> {
 
     pub(in crate::cpu) fn bcc(&mut self, address: u16) {
         self.relative_jump(
-            (self.status & Status::CARRY).bits() == 0,
+            !self.status.contains(Status::CARRY),
             self.bus.read(address) as i8,
         );
     }
 
     pub(in crate::cpu) fn bcs(&mut self, address: u16) {
         self.relative_jump(
-            (self.status & Status::CARRY).bits() != 0,
+            self.status.contains(Status::CARRY),
             self.bus.read(address) as i8,
         );
     }
 
     pub(in crate::cpu) fn beq(&mut self, address: u16) {
         self.relative_jump(
-            (self.status & Status::ZERO).bits() != 0,
+            self.status.contains(Status::ZERO),
             self.bus.read(address) as i8,
         );
     }
@@ -81,21 +81,21 @@ impl<'a> CPU<'a> {
 
     pub(in crate::cpu) fn bmi(&mut self, address: u16) {
         self.relative_jump(
-            (self.status & Status::NEGATIVE).bits() != 0,
+            self.status.contains(Status::NEGATIVE),
             self.bus.read(address) as i8,
         );
     }
 
     pub(in crate::cpu) fn bne(&mut self, address: u16) {
         self.relative_jump(
-            (self.status & Status::ZERO).bits() == 0,
+            !self.status.contains(Status::ZERO),
             self.bus.read(address) as i8,
         );
     }
 
     pub(in crate::cpu) fn bpl(&mut self, address: u16) {
         self.relative_jump(
-            (self.status & Status::NEGATIVE).bits() == 0,
+            !self.status.contains(Status::NEGATIVE),
             self.bus.read(address) as i8,
         );
     }
@@ -107,14 +107,14 @@ impl<'a> CPU<'a> {
 
     pub(in crate::cpu) fn bvc(&mut self, address: u16) {
         self.relative_jump(
-            (self.status & Status::OVERFLOW).bits() == 0,
+            !self.status.contains(Status::OVERFLOW),
             self.bus.read(address) as i8,
         );
     }
 
     pub(in crate::cpu) fn bvs(&mut self, address: u16) {
         self.relative_jump(
-            (self.status & Status::OVERFLOW).bits() != 0,
+            self.status.contains(Status::OVERFLOW),
             self.bus.read(address) as i8,
         );
     }
@@ -314,7 +314,7 @@ impl<'a> CPU<'a> {
     }
 
     pub(in crate::cpu) fn rol_acc(&mut self, _imp: ()) {
-        let bit0 = ((self.status & Status::CARRY).bits() != 0) as u8;
+        let bit0 = self.status.contains(Status::CARRY) as u8;
         self.status.set(Status::CARRY, self.is_negative(self.a));
         self.a <<= 1;
         self.a |= bit0;
@@ -325,7 +325,7 @@ impl<'a> CPU<'a> {
 
     pub(in crate::cpu) fn rol_mem(&mut self, address: u16) {
         let operand = self.bus.read(address);
-        let bit0 = ((self.status & Status::CARRY).bits() != 0) as u8;
+        let bit0 = self.status.contains(Status::CARRY) as u8;
         self.status.set(Status::CARRY, self.is_negative(operand));
         let operand = operand << 1;
         let operand = operand | bit0;
@@ -336,7 +336,7 @@ impl<'a> CPU<'a> {
     }
 
     pub(in crate::cpu) fn ror_acc(&mut self, _imp: ()) {
-        let bit7 = ((self.status & Status::CARRY).bits() != 0) as u8;
+        let bit7 = self.status.contains(Status::CARRY) as u8;
         self.status.set(Status::CARRY, self.a & 0x01 == 1);
         self.a >>= 1;
         self.a |= bit7 << 7;
@@ -347,7 +347,7 @@ impl<'a> CPU<'a> {
 
     pub(in crate::cpu) fn ror_mem(&mut self, address: u16) {
         let operand = self.bus.read(address);
-        let bit7 = ((self.status & Status::CARRY).bits() != 0) as u8;
+        let bit7 = self.status.contains(Status::CARRY) as u8;
         self.status.set(Status::CARRY, operand & 0x01 == 1);
         let operand = operand >> 1;
         let operand = operand | bit7 << 7;
@@ -377,7 +377,7 @@ impl<'a> CPU<'a> {
 
         // rest is the same as adc
         let tmp =
-            self.a as u16 + operand as u16 + ((self.status & Status::CARRY).bits() != 0) as u16;
+            self.a as u16 + operand as u16 + self.status.contains(Status::CARRY) as u16;
         self.status.set(Status::CARRY, tmp > 0xFF);
         self.status.set(Status::ZERO, tmp & 0xFF == 0);
         self.status.set(Status::NEGATIVE, (tmp & 0x80) >> 7 == 1);
