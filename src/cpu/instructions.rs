@@ -4,8 +4,7 @@ use crate::cpu::{Status, CPU};
 impl<'a> CPU<'a> {
     pub(in crate::cpu) fn adc(&mut self, address: u16) {
         let operand = self.bus.read(address);
-        let tmp =
-            self.a as u16 + operand as u16 + self.status.contains(Status::CARRY) as u16;
+        let tmp = self.a as u16 + operand as u16 + self.status.contains(Status::CARRY) as u16;
 
         self.status.set(Status::CARRY, tmp > 0xFF);
         self.status.set(Status::ZERO, tmp & 0xFF == 0);
@@ -376,8 +375,7 @@ impl<'a> CPU<'a> {
         let operand = self.bus.read(address) ^ 0xFF; // 2's complement (+1 nulified by 1-C)
 
         // rest is the same as adc
-        let tmp =
-            self.a as u16 + operand as u16 + self.status.contains(Status::CARRY) as u16;
+        let tmp = self.a as u16 + operand as u16 + self.status.contains(Status::CARRY) as u16;
         self.status.set(Status::CARRY, tmp > 0xFF);
         self.status.set(Status::ZERO, tmp & 0xFF == 0);
         self.status.set(Status::NEGATIVE, (tmp & 0x80) >> 7 == 1);

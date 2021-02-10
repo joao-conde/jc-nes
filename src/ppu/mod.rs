@@ -19,10 +19,10 @@ pub struct PPU<'a> {
     buffer: u8,
 
     // loopy registers (nesdev.com/loopyppu.zip)
-    vram_address: VRAMAddress,
-    tram_address: VRAMAddress,
+    vram_address: Address,
+    tram_address: Address,
     tile_offset_x: u8,
-    
+
     pub(in crate) raise_nmi: bool,
     pub(in crate) bus: Bus<'a>,
 }
@@ -61,13 +61,34 @@ bitflags! {
     }
 }
 
-bitflags! {
-    struct VRAMAddress: u16 {
-        const COARSE_X = 0x001F;
-        const COARSE_Y = 0x03E0;
-        const NAMETABLE_X = 0x0400;
-        const NAMETABLE_Y = 0x0800;
-        const FINE_Y = 0x7000;
+#[derive(Clone, Copy, Default)]
+struct Address {
+    coarse_x: u8,
+    coarse_y: u8,
+    nametable_x: u8,
+    nametable_y: u8,
+    fine_y: u8,
+}
+
+impl From<u16> for Address {
+    fn from(word: u16) -> Address {
+        Address {
+            coarse_x: (word & 0x001F) as u8,
+            coarse_y: (word & 0x03E0) as u8,
+            nametable_x: (word & 0x0400) as u8,
+            nametable_y: (word & 0x0800) as u8,
+            fine_y: (word & 0x7000) as u8,
+        }
+    }
+}
+
+impl From<Address> for u16 {
+    fn from(address: Address) -> u16 {
+        (address.coarse_x
+            | address.coarse_y << 5
+            | address.nametable_x << 10
+            | address.nametable_y << 11
+            | address.fine_y << 12) as u16
     }
 }
 
@@ -83,8 +104,8 @@ impl<'a> PPU<'a> {
             write_flip_flop: true,
             buffer: 0x00,
             raise_nmi: false,
-            vram_address: VRAMAddress::from_bits_truncate(0x0000),
-            tram_address: VRAMAddress::from_bits_truncate(0x0000),
+            vram_address: Address::default(),
+            tram_address: Address::default(),
             tile_offset_x: 0,
             bus,
         }
@@ -117,6 +138,35 @@ impl<'a> PPU<'a> {
     }
 }
 
+impl<'a> PPU<'a> {
+    fn inc_x(&mut self) {
+        self.vram_address.coarse_x += 1;
+        if self.vram_address.coarse_x == 32 {
+            self.vram_address.coarse_x = 0;
+            self.vram_address.nametable_x = !self.vram_address.nametable_x;
+        }
+    }
+
+    fn inc_y(&mut self) {
+        self.vram_address.fine_y += 1;
+        if self.vram_address.fine_y == 8 {
+            self.vram_address.fine_y = 0;
+
+            self.vram_address.nametable_y = !self.vram_address.nametable_y;
+        }
+    }
+
+    fn reset_x(&mut self) {
+        self.vram_address.nametable_x = self.tram_address.nametable_x;
+        self.vram_address.coarse_x = self.tram_address.coarse_x;
+    }
+
+    fn reset_y(&mut self) {
+        self.vram_address.nametable_y = self.tram_address.nametable_y;
+        self.vram_address.coarse_y = self.tram_address.coarse_y;
+    }
+}
+
 impl<'a> BusWrite for PPU<'a> {
     fn write(&mut self, address: u16, data: u8) {
         match address {
@@ -128,17 +178,19 @@ impl<'a> BusWrite for PPU<'a> {
             0x0005 => (),
             0x0006 => {
                 if self.write_flip_flop {
-                    self.tram_address = VRAMAddress::from_bits_truncate((self.tram_address.bits() & 0x00FF) | (data as u16) << 8);
+                    self.tram_address =
+                        (u16::from(self.tram_address) & 0x00FF | (data as u16) << 8).into();
                     self.write_flip_flop = false;
                 } else {
-                    self.tram_address = VRAMAddress::from_bits_truncate((self.tram_address.bits() & 0xFF00) | data as u16);
+                    self.tram_address =
+                        (u16::from(self.tram_address) & 0xFF00 | data as u16).into();
                     self.vram_address = self.tram_address;
                     self.write_flip_flop = true;
                 }
             }
             0x0007 => {
-                self.bus.write(self.vram_address.bits(), data);
-                self.vram_address = VRAMAddress::from_bits_truncate(self.vram_address.bits() + 1);
+                self.bus.write(self.vram_address.into(), data);
+                self.vram_address = (u16::from(self.tram_address) + 1).into();
             }
             _ => panic!("unknown PPU register"),
         }
@@ -163,10 +215,14 @@ impl<'a> BusRead for PPU<'a> {
             0x0006 => 0x00,
             0x0007 => {
                 let data = self.buffer;
-                self.buffer = self.bus.read(self.vram_address.bits());
+                self.buffer = self.bus.read(self.vram_address.into());
                 // TODO immediate for palette
-                let increment =  if self.control.contains(Control::INCREMENT_MODE) {32} else {1};
-                self.vram_address = VRAMAddress::from_bits_truncate(self.vram_address.bits() + increment);
+                let increment = if self.control.contains(Control::INCREMENT_MODE) {
+                    32
+                } else {
+                    1
+                } as u16;
+                self.vram_address = (u16::from(self.vram_address) + increment).into();
                 data
             }
             _ => panic!("unknown PPU register"),
