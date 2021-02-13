@@ -15,6 +15,8 @@ fn main() {
         } else if mode == "play" {
             play()
         }
+    } else {
+        play()
     }
 }
 
@@ -46,7 +48,10 @@ fn nestest() {
 
 fn play() {
     let rom_path = "roms/secret/donkey-kong.nes";
+    // let rom_path = "roms/full_palette.nes";
+    // let rom_path = "roms/full_palette_alt.nes";
     // let rom_path = "roms/nestest.nes";
+
     let mut nes = Nes::new();
     nes.load_rom(rom_path);
     nes.reset();
@@ -71,7 +76,7 @@ fn play() {
     // emulate clock ticks, CPU 3x slower than PPU
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
-        nes.clock();
+        nes.clock(&mut canvas);
         for event in event_pump.poll_iter() {
             match event {
                 sdl2::event::Event::Quit { .. } => break 'main,
@@ -104,6 +109,11 @@ fn play() {
                     keycode: Some(Keycode::P),
                     ..
                 } => nes.draw_pattern_table(&mut canvas, WIDTH, HEIGHT),
+
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::D),
+                    ..
+                } => nes.draw_screen(&mut canvas, WIDTH as usize, HEIGHT as usize),
 
                 _ => {}
             }

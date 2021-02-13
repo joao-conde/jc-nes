@@ -84,7 +84,7 @@ impl<'a> Nes<'a> {
         }
     }
 
-    pub fn clock(&mut self) {
+    pub fn clock(&mut self, canvas: &mut Canvas<Window>) {
         self.ppu.borrow_mut().clock();
         if self.ticks % 3 == 0 {
             self.cpu.clock();
@@ -95,11 +95,27 @@ impl<'a> Nes<'a> {
             self.cpu.nmi();
         }
 
+        if self.ppu.borrow().render {
+            self.draw_screen(canvas, 256, 240);
+        }
+
         self.ticks += 1;
     }
 
     pub fn reset(&mut self) {
         self.cpu.reset()
+    }
+
+    pub fn draw_screen(&self, canvas: &mut Canvas<Window>, width: usize, height: usize) {
+        canvas.clear();
+        for y in 0..height {
+            for x in 0..width {
+                let (r, g, b) = self.ppu.borrow().screen[y][x];
+                canvas.set_draw_color(Color::RGB(r, g, b));
+                canvas.draw_point(Point::new(x as i32, y as i32)).unwrap();
+            }
+        }
+        canvas.present();
     }
 
     pub fn draw_name_table(

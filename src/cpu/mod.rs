@@ -95,8 +95,11 @@ impl<'a> CPU<'a> {
 /// Opcode processing and execution and utility functions
 impl<'a> CPU<'a> {
     fn process_opcode(&mut self, opcode: u8) {
-        // self.debug(opcode);
-        //self.pause();
+        // if self.total_cycles >= 27691 {
+        //     self.debug(opcode);
+        //     self.pause();
+        // }
+        self.debug(opcode);
         match opcode {
             // Official Opcodes
             0x00 => self.execute(CPU::imp, CPU::brk, 7, false),

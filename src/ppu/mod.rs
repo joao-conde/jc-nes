@@ -1,15 +1,16 @@
+mod address;
 pub mod nametable;
 pub mod palette;
 
 use crate::bus::{Bus, BusRead, BusWrite};
+use crate::ppu::address::Address;
 use bitflags::bitflags;
-
-/// https://wiki.nesdev.com/w/index.php/PPU_scrolling#Explanation
 
 pub struct PPU<'a> {
     cycle: u16,
     scanline: u16,
-    render: bool,
+
+    pub render: bool,
 
     status: Status,
     mask: Mask,
@@ -18,10 +19,25 @@ pub struct PPU<'a> {
     write_flip_flop: bool,
     buffer: u8,
 
-    // loopy registers (nesdev.com/loopyppu.zip)
+    pub screen: [[(u8, u8, u8); 256]; 240],
+
+    // address registers (nesdev.com/loopyppu.zip)
+    // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Explanation
     vram_address: Address,
     tram_address: Address,
-    tile_offset_x: u8,
+    fine_x: u8,
+
+    // background buffered data (pre-load)
+    bg_next_tile_id: u8,
+    bg_next_tile_attrib: u8,
+    bg_next_tile_lsb: u8,
+    bg_next_tile_msb: u8,
+
+    // background shifters
+    bg_shifter_pattern_lo: u16,
+    bg_shifter_pattern_hi: u16,
+    bg_shifter_attrib_lo: u16,
+    bg_shifter_attrib_hi: u16,
 
     pub(in crate) raise_nmi: bool,
     pub(in crate) bus: Bus<'a>,
@@ -61,37 +77,6 @@ bitflags! {
     }
 }
 
-#[derive(Clone, Copy, Default)]
-struct Address {
-    coarse_x: u8,
-    coarse_y: u8,
-    nametable_x: u8,
-    nametable_y: u8,
-    fine_y: u8,
-}
-
-impl From<u16> for Address {
-    fn from(word: u16) -> Address {
-        Address {
-            coarse_x: (word & 0x001F) as u8,
-            coarse_y: (word & 0x03E0) as u8,
-            nametable_x: (word & 0x0400) as u8,
-            nametable_y: (word & 0x0800) as u8,
-            fine_y: (word & 0x7000) as u8,
-        }
-    }
-}
-
-impl From<Address> for u16 {
-    fn from(address: Address) -> u16 {
-        (address.coarse_x
-            | address.coarse_y << 5
-            | address.nametable_x << 10
-            | address.nametable_y << 11
-            | address.fine_y << 12) as u16
-    }
-}
-
 impl<'a> PPU<'a> {
     pub fn new(bus: Bus<'a>) -> PPU<'a> {
         PPU {
@@ -103,94 +88,274 @@ impl<'a> PPU<'a> {
             control: Control::from_bits_truncate(0x00),
             write_flip_flop: true,
             buffer: 0x00,
+            screen: [[(0, 0, 0); 256]; 240],
             raise_nmi: false,
             vram_address: Address::default(),
             tram_address: Address::default(),
-            tile_offset_x: 0,
+            fine_x: 0x00,
+            bg_next_tile_id: 0x00,
+            bg_next_tile_attrib: 0x00,
+            bg_next_tile_lsb: 0x00,
+            bg_next_tile_msb: 0x00,
+            bg_shifter_pattern_lo: 0x0000,
+            bg_shifter_pattern_hi: 0x0000,
+            bg_shifter_attrib_lo: 0x0000,
+            bg_shifter_attrib_hi: 0x0000,
             bus,
         }
     }
 
     // https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     pub fn clock(&mut self) {
-        if self.scanline == 0 && self.cycle == 1 {
-            self.status.set(Status::VERTICAL_BLANK, false);
+        // visible frame
+        if self.scanline > 0 && self.scanline < 240 {
+            // odd frame skip
+            if self.scanline == 0 && self.cycle == 0 {
+                self.cycle = 1;
+            }
+
+            // new frame
+            if self.scanline == 0 && self.cycle == 1 {
+                self.status.set(Status::VERTICAL_BLANK, false);
+                self.render = false;
+            }
+
+            if (self.cycle >= 2 && self.cycle < 258) || (self.cycle >= 321 && self.cycle < 338) {
+                self.shift_background_shifters();
+
+                match (self.cycle - 1) % 8 {
+                    0 => {
+                        self.load_background_shifters();
+                        self.bg_next_tile_id = self
+                            .bus
+                            .read(0x2000 | (u16::from(self.vram_address) & 0x0FFF));
+                    }
+                    2 => {
+                        self.bg_next_tile_attrib = self.bus.read(
+                            0x23C0
+                                | ((self.vram_address.nametable_y as u16) << 11)
+                                | ((self.vram_address.nametable_x as u16) << 10)
+                                | (((self.vram_address.coarse_y as u16) >> 2) << 3)
+                                | (self.vram_address.coarse_x as u16) >> 2,
+                        );
+
+                        if (self.vram_address.coarse_y & 0x0002) != 0 {
+                            self.bg_next_tile_attrib >>= 4;
+                        }
+
+                        if (self.vram_address.coarse_x & 0x0002) != 0 {
+                            self.bg_next_tile_attrib >>= 2;
+                        }
+
+                        self.bg_next_tile_attrib &= 0x03;
+                    }
+                    4 => {
+                        self.bg_next_tile_lsb = self.bus.read(
+                            (((self.control & Control::PATTERN_BACKGROUND).bits() as u16) << 12)
+                                + (self.bg_next_tile_id << 4) as u16
+                                + self.vram_address.fine_y as u16,
+                        );
+                    }
+                    6 => {
+                        self.bg_next_tile_msb = self.bus.read(
+                            (((self.control & Control::PATTERN_BACKGROUND).bits() as u16) << 12)
+                                + (self.bg_next_tile_id << 4) as u16
+                                + self.vram_address.fine_y as u16
+                                + 8,
+                        );
+                    }
+                    7 => self.inc_x(),
+                    _ => (),
+                }
+            }
+
+            if self.cycle == 256 {
+                self.inc_y();
+            }
+
+            if self.cycle == 257 {
+                // load bg shifters
+                self.reset_x();
+            }
+
+            if self.scanline == 0 && self.cycle >= 280 && self.cycle < 305 {
+                self.reset_y();
+            }
+        }
+        // post-render
+        else if self.scanline >= 241 && self.scanline < 261 {
+            if self.scanline == 241 && self.cycle == 1 {
+                self.status.set(Status::VERTICAL_BLANK, true);
+                self.render = true;
+                if self.control.contains(Control::ENABLE_NMI) {
+                    self.raise_nmi = true;
+                }
+            }
         }
 
-        if self.scanline == 241 && self.cycle == 1 {
-            self.status.set(Status::VERTICAL_BLANK, true);
+        // println!("{}", self.mask.contains(Mask::RENDER_BACKGROUND));
+        // println!("0b{:b}", self.mask);
 
-            if (self.control & Control::ENABLE_NMI).bits() != 0 {
-                self.raise_nmi = true
+        if self.mask.contains(Mask::RENDER_BACKGROUND) {
+            println!("SET RENDER BACKGROUND");
+            let bit_offset = 0x8000 >> self.fine_x;
+
+            let p0_pixel = (self.bg_shifter_pattern_lo & bit_offset) > 0;
+            let p1_pixel = (self.bg_shifter_pattern_hi & bit_offset) > 0;
+            let bg_pixel = ((p1_pixel as u8) << 1) | p0_pixel as u8;
+
+            let color = match bg_pixel {
+                0 => (255, 0, 0),
+                1 => (0, 102, 255),
+                2 => (0, 51, 128),
+                3 => (0, 10, 26),
+                _ => panic!("unexpected pixel value"),
+            };
+
+            if self.cycle > 0 && self.scanline > 0 && self.cycle <= 256 && self.scanline < 240 {
+                self.screen[self.scanline as usize][self.cycle as usize - 1] = color;
             }
         }
 
         self.cycle += 1;
 
+        // reset cycle
         if self.cycle >= 341 {
             self.cycle = 0;
             self.scanline += 1;
-            if self.scanline >= 261 {
-                self.scanline = 0;
-                self.render = true;
-            }
+        }
+
+        // reset scanlines
+        if self.scanline >= 261 {
+            self.scanline = 0;
         }
     }
 }
 
 impl<'a> PPU<'a> {
     fn inc_x(&mut self) {
-        self.vram_address.coarse_x += 1;
-        if self.vram_address.coarse_x == 32 {
-            self.vram_address.coarse_x = 0;
-            self.vram_address.nametable_x = !self.vram_address.nametable_x;
+        if self.mask.contains(Mask::RENDER_BACKGROUND) || self.mask.contains(Mask::RENDER_SPRITES) {
+            self.vram_address.coarse_x += 1;
+            if self.vram_address.coarse_x == 32 {
+                self.vram_address.coarse_x = 0;
+                self.vram_address.nametable_x = if self.vram_address.nametable_x == 0 {
+                    1
+                } else {
+                    0
+                };
+            }
         }
     }
 
     fn inc_y(&mut self) {
-        self.vram_address.fine_y += 1;
-        if self.vram_address.fine_y == 8 {
-            self.vram_address.fine_y = 0;
+        if self.mask.contains(Mask::RENDER_BACKGROUND) || self.mask.contains(Mask::RENDER_SPRITES) {
+            self.vram_address.fine_y += 1;
 
-            self.vram_address.nametable_y = !self.vram_address.nametable_y;
+            if self.vram_address.fine_y == 8 {
+                self.vram_address.fine_y = 0;
+
+                if self.vram_address.coarse_y == 29 {
+                    self.vram_address.coarse_y = 0;
+                    self.vram_address.nametable_y = if self.vram_address.nametable_y == 0 {
+                        1
+                    } else {
+                        0
+                    };
+                } else if self.vram_address.coarse_y == 31 {
+                    self.vram_address.coarse_y = 0;
+                } else {
+                    self.vram_address.coarse_y += 1;
+                }
+            }
         }
     }
 
     fn reset_x(&mut self) {
-        self.vram_address.nametable_x = self.tram_address.nametable_x;
-        self.vram_address.coarse_x = self.tram_address.coarse_x;
+        if self.mask.contains(Mask::RENDER_BACKGROUND) || self.mask.contains(Mask::RENDER_SPRITES) {
+            self.vram_address.nametable_x = self.tram_address.nametable_x;
+            self.vram_address.coarse_x = self.tram_address.coarse_x;
+        }
     }
 
     fn reset_y(&mut self) {
-        self.vram_address.nametable_y = self.tram_address.nametable_y;
-        self.vram_address.coarse_y = self.tram_address.coarse_y;
+        if self.mask.contains(Mask::RENDER_BACKGROUND) || self.mask.contains(Mask::RENDER_SPRITES) {
+            self.vram_address.nametable_y = self.tram_address.nametable_y;
+            self.vram_address.coarse_y = self.tram_address.coarse_y;
+            self.vram_address.fine_y = self.tram_address.fine_y;
+        }
+    }
+
+    fn shift_background_shifters(&mut self) {
+        if self.mask.contains(Mask::RENDER_BACKGROUND) {
+            self.bg_shifter_pattern_lo <<= 1;
+            self.bg_shifter_pattern_hi <<= 1;
+            self.bg_shifter_attrib_lo <<= 1;
+            self.bg_shifter_attrib_hi <<= 1;
+        }
+    }
+
+    fn load_background_shifters(&mut self) {
+        self.bg_shifter_pattern_lo =
+            (self.bg_shifter_pattern_lo & 0xFF00) | self.bg_next_tile_lsb as u16;
+        self.bg_shifter_pattern_hi =
+            (self.bg_shifter_pattern_hi & 0xFF00) | self.bg_next_tile_msb as u16;
+        self.bg_shifter_attrib_lo =
+            (self.bg_shifter_attrib_lo & 0xFF00) | ((self.bg_next_tile_attrib & 0b01) as u16);
+        self.bg_shifter_attrib_hi =
+            (self.bg_shifter_attrib_hi & 0xFF00) | ((self.bg_next_tile_attrib & 0b10) as u16);
     }
 }
 
 impl<'a> BusWrite for PPU<'a> {
     fn write(&mut self, address: u16, data: u8) {
         match address {
-            0x0000 => self.control = Control::from_bits_truncate(data),
-            0x0001 => self.mask = Mask::from_bits_truncate(data),
+            0x0000 => {
+                self.control = Control::from_bits_truncate(data);
+                self.tram_address.nametable_x = (self.control & Control::NAMETABLE_X).bits();
+                self.tram_address.nametable_y = (self.control & Control::NAMETABLE_Y).bits();
+            }
+            0x0001 => {
+                println!("Writing to mask the byte 0b{:b}", data);
+                self.mask = Mask::from_bits_truncate(data);
+
+                // println!("0b{:b}", self.mask);
+                // println!("{}", self.mask.contains(Mask::RENDER_BACKGROUND));
+            }
             0x0002 => (),
             0x0003 => (),
             0x0004 => (),
-            0x0005 => (),
+            0x0005 => {
+                if self.write_flip_flop {
+                    self.fine_x = data & 0x07;
+                    self.tram_address.coarse_x = data >> 3;
+                    self.write_flip_flop = false;
+                } else {
+                    self.tram_address.fine_y = data & 0x07;
+                    self.tram_address.coarse_y = data >> 3;
+                    self.write_flip_flop = true;
+                }
+            }
             0x0006 => {
                 if self.write_flip_flop {
-                    self.tram_address =
-                        (u16::from(self.tram_address) & 0x00FF | (data as u16) << 8).into();
+                    self.tram_address = ((((data & 0x3F) as u16) << 8)
+                        | (u16::from(self.tram_address) & 0x00FF))
+                        .into();
                     self.write_flip_flop = false;
                 } else {
                     self.tram_address =
-                        (u16::from(self.tram_address) & 0xFF00 | data as u16).into();
+                        ((u16::from(self.tram_address) & 0xFF00) | data as u16).into();
                     self.vram_address = self.tram_address;
                     self.write_flip_flop = true;
                 }
             }
             0x0007 => {
                 self.bus.write(self.vram_address.into(), data);
-                self.vram_address = (u16::from(self.tram_address) + 1).into();
+                let increment = if self.control.contains(Control::INCREMENT_MODE) {
+                    32
+                } else {
+                    1
+                } as u16;
+                self.vram_address = (u16::from(self.vram_address) + increment).into();
             }
             _ => panic!("unknown PPU register"),
         }
@@ -203,9 +368,9 @@ impl<'a> BusRead for PPU<'a> {
             0x0000 => 0x00,
             0x0001 => 0x00,
             0x0002 => {
-                self.status.set(Status::VERTICAL_BLANK, true); //hack
                 let data = self.status.bits() & 0xE0 | (self.buffer & 0x1F);
                 self.status.set(Status::VERTICAL_BLANK, false);
+                self.render = false;
                 self.write_flip_flop = true;
                 data
             }
@@ -214,9 +379,13 @@ impl<'a> BusRead for PPU<'a> {
             0x0005 => 0x00,
             0x0006 => 0x00,
             0x0007 => {
-                let data = self.buffer;
+                let mut data = self.buffer;
                 self.buffer = self.bus.read(self.vram_address.into());
-                // TODO immediate for palette
+
+                if u16::from(self.vram_address) >= 0x3F00 {
+                    data = self.buffer
+                };
+
                 let increment = if self.control.contains(Control::INCREMENT_MODE) {
                     32
                 } else {
