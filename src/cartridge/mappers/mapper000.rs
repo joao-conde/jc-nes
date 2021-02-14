@@ -3,7 +3,6 @@ use crate::cartridge::Cartridge;
 use crate::{bus::Device, nes::SharedMut};
 use std::rc::Rc;
 
-// DK SPECIFIC
 pub struct Mapper000 {
     pin: MapperMemoryPin,
     cartridge: SharedMut<Cartridge>,

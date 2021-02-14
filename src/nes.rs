@@ -235,9 +235,3 @@ impl<'a> Nes<'a> {
         }
     }
 }
-
-impl<'a> Default for Nes<'a> {
-    fn default() -> Self {
-        Self::new()
-    }
-}

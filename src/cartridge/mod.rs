@@ -52,7 +52,7 @@ impl Cartridge {
         cartridge.meta.mapper_id = ((mapper2 >> 4) << 4) | (mapper1 >> 4);
         cartridge.meta.mirror = mapper1 & 0x01 == 1;
 
-        let file_type = 1; // TODO not hard-code
+        let file_type = 1; // TODO not hard-code (works for DK and nestest)
         match file_type {
             1 => {
                 let prg_len = cartridge.meta.prg_banks as usize * 16 * 1024;
