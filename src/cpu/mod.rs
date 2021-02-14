@@ -12,13 +12,13 @@ pub struct CPU<'a> {
     a: u8,
     x: u8,
     y: u8,
-    pc: u16,
+    pub pc: u16,
     sp: u8,
     status: Status,
 
     /// Implementation specific
     cycle: u8,
-    total_cycles: usize, // TODO remove ?
+    pub total_cycles: usize, // TODO remove ?
     extra_cycles: bool,
     pub(in crate) bus: Bus<'a>,
 }
@@ -95,11 +95,6 @@ impl<'a> CPU<'a> {
 /// Opcode processing and execution and utility functions
 impl<'a> CPU<'a> {
     fn process_opcode(&mut self, opcode: u8) {
-        // if self.total_cycles >= 27691 {
-        //     self.debug(opcode);
-        //     self.pause();
-        // }
-        self.debug(opcode);
         match opcode {
             // Official Opcodes
             0x00 => self.execute(CPU::imp, CPU::brk, 7, false),
@@ -376,14 +371,14 @@ impl<'a> CPU<'a> {
         (operand & 0x80) >> 7 == 1
     }
 
-    fn debug(&self, opcode: u8) {
+    pub fn debug(&self, opcode: u8) {
         println!(
             "{:04X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
             self.pc, opcode, self.a, self.x, self.y, self.status, self.sp, self.total_cycles
         );
     }
 
-    fn pause(&self) {
+    pub fn pause(&self) {
         use std::io::stdin;
         let mut s = String::new();
         stdin()

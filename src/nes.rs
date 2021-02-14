@@ -85,6 +85,12 @@ impl<'a> Nes<'a> {
     }
 
     pub fn clock(&mut self, canvas: &mut Canvas<Window>) {
+        // if self.cpu.total_cycles >= 86950 {
+        //     self.cpu.debug(0x00);
+        //     self.ppu.borrow().debug();
+        //     self.cpu.pause();
+        // }
+
         self.ppu.borrow_mut().clock();
         if self.ticks % 3 == 0 {
             self.cpu.clock();
@@ -93,10 +99,13 @@ impl<'a> Nes<'a> {
         if self.ppu.borrow().raise_nmi {
             self.ppu.borrow_mut().raise_nmi = false;
             self.cpu.nmi();
+            // self.cpu.debug(0x00);
+            // self.cpu.pause();
         }
 
         if self.ppu.borrow().render {
             self.draw_screen(canvas, 256, 240);
+            self.ppu.borrow_mut().render = false;
         }
 
         self.ticks += 1;

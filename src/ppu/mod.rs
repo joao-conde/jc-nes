@@ -8,7 +8,7 @@ use bitflags::bitflags;
 
 pub struct PPU<'a> {
     cycle: u16,
-    scanline: u16,
+    scanline: i16,
 
     pub render: bool,
 
@@ -108,14 +108,14 @@ impl<'a> PPU<'a> {
     // https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     pub fn clock(&mut self) {
         // visible frame
-        if self.scanline > 0 && self.scanline < 240 {
+        if self.scanline >= -1 && self.scanline < 240 {
             // odd frame skip
             if self.scanline == 0 && self.cycle == 0 {
                 self.cycle = 1;
             }
 
             // new frame
-            if self.scanline == 0 && self.cycle == 1 {
+            if self.scanline == -1 && self.cycle == 1 {
                 self.status.set(Status::VERTICAL_BLANK, false);
                 self.render = false;
             }
@@ -152,14 +152,14 @@ impl<'a> PPU<'a> {
                     4 => {
                         self.bg_next_tile_lsb = self.bus.read(
                             (((self.control & Control::PATTERN_BACKGROUND).bits() as u16) << 12)
-                                + (self.bg_next_tile_id << 4) as u16
+                                + ((self.bg_next_tile_id as u16) << 4)
                                 + self.vram_address.fine_y as u16,
                         );
                     }
                     6 => {
                         self.bg_next_tile_msb = self.bus.read(
                             (((self.control & Control::PATTERN_BACKGROUND).bits() as u16) << 12)
-                                + (self.bg_next_tile_id << 4) as u16
+                                + ((self.bg_next_tile_id as u16) << 4)
                                 + self.vram_address.fine_y as u16
                                 + 8,
                         );
@@ -174,11 +174,11 @@ impl<'a> PPU<'a> {
             }
 
             if self.cycle == 257 {
-                // load bg shifters
+                self.load_background_shifters();
                 self.reset_x();
             }
 
-            if self.scanline == 0 && self.cycle >= 280 && self.cycle < 305 {
+            if self.scanline == -1 && self.cycle >= 280 && self.cycle < 305 {
                 self.reset_y();
             }
         }
@@ -193,11 +193,7 @@ impl<'a> PPU<'a> {
             }
         }
 
-        // println!("{}", self.mask.contains(Mask::RENDER_BACKGROUND));
-        // println!("0b{:b}", self.mask);
-
         if self.mask.contains(Mask::RENDER_BACKGROUND) {
-            println!("SET RENDER BACKGROUND");
             let bit_offset = 0x8000 >> self.fine_x;
 
             let p0_pixel = (self.bg_shifter_pattern_lo & bit_offset) > 0;
@@ -227,8 +223,24 @@ impl<'a> PPU<'a> {
 
         // reset scanlines
         if self.scanline >= 261 {
-            self.scanline = 0;
+            self.scanline = -1;
+            self.render = true;
         }
+    }
+
+    pub fn debug(&self) {
+        println!(
+            "nmi:{} cyc:{} scan:{} mask:{:?} ctrl:{:?} stat:{:?}",
+            self.raise_nmi, self.cycle, self.scanline, self.mask, self.control, self.status
+        );
+    }
+
+    pub fn pause(&self) {
+        use std::io::stdin;
+        let mut s = String::new();
+        stdin()
+            .read_line(&mut s)
+            .expect("Did not enter a correct string");
     }
 }
 
@@ -315,11 +327,7 @@ impl<'a> BusWrite for PPU<'a> {
                 self.tram_address.nametable_y = (self.control & Control::NAMETABLE_Y).bits();
             }
             0x0001 => {
-                println!("Writing to mask the byte 0b{:b}", data);
                 self.mask = Mask::from_bits_truncate(data);
-
-                // println!("0b{:b}", self.mask);
-                // println!("{}", self.mask.contains(Mask::RENDER_BACKGROUND));
             }
             0x0002 => (),
             0x0003 => (),
