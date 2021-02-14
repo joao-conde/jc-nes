@@ -18,7 +18,7 @@ impl BusRead for NameTable {
 
 impl BusWrite for NameTable {
     fn write(&mut self, address: u16, data: u8) {
-        // println!("wrote to nametable");
+        // println!("Writing to nametable addr:0x{:X} with data:0x{:X}", address, data);
         self.mem[address as usize] = data;
     }
 }

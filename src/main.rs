@@ -47,10 +47,10 @@ fn nestest() {
 }
 
 fn play() {
-    let rom_path = "roms/secret/donkey-kong.nes";
+    // let rom_path = "roms/secret/donkey-kong.nes";
     // let rom_path = "roms/full_palette.nes";
     // let rom_path = "roms/full_palette_alt.nes";
-    // let rom_path = "roms/nestest.nes";
+    let rom_path = "roms/nestest.nes";
 
     let mut nes = Nes::new();
     nes.load_rom(rom_path);

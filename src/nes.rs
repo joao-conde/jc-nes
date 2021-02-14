@@ -104,7 +104,7 @@ impl<'a> Nes<'a> {
         }
 
         if self.ppu.borrow().render {
-            self.draw_screen(canvas, 256, 240);
+            // self.draw_screen(canvas, 256, 240);
             self.ppu.borrow_mut().render = false;
         }
 
@@ -140,10 +140,10 @@ impl<'a> Nes<'a> {
             for x in 0..width {
                 let address = (0x2000 + 0x400 * table) + x + y * width;
                 let byte = self.ppu.borrow().bus.read(address as u16);
-                // print!("{:02X}", byte);
+                print!("{:02X}", byte);
                 self.draw_tile(canvas, byte, x as i32 * 8, y as i32 * 8);
             }
-            // println!()
+            println!()
         }
 
         canvas.present();

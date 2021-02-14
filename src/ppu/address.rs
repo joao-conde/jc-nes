@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub(in crate::ppu) struct Address {
     pub(in crate::ppu) coarse_x: u8,
     pub(in crate::ppu) coarse_y: u8,

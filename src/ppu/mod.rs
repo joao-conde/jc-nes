@@ -178,6 +178,12 @@ impl<'a> PPU<'a> {
                 self.reset_x();
             }
 
+            if self.cycle == 338 || self.cycle == 340 {
+                self.bg_next_tile_id = self
+                    .bus
+                    .read(0x2000 | (u16::from(self.vram_address) & 0x0FFF));
+            }
+
             if self.scanline == -1 && self.cycle >= 280 && self.cycle < 305 {
                 self.reset_y();
             }
@@ -193,6 +199,7 @@ impl<'a> PPU<'a> {
             }
         }
 
+        let mut color = (0, 0, 0);
         if self.mask.contains(Mask::RENDER_BACKGROUND) {
             let bit_offset = 0x8000 >> self.fine_x;
 
@@ -200,17 +207,17 @@ impl<'a> PPU<'a> {
             let p1_pixel = (self.bg_shifter_pattern_hi & bit_offset) > 0;
             let bg_pixel = ((p1_pixel as u8) << 1) | p0_pixel as u8;
 
-            let color = match bg_pixel {
-                0 => (255, 0, 0),
+            color = match bg_pixel {
+                0 => (0, 0, 0),
                 1 => (0, 102, 255),
                 2 => (0, 51, 128),
                 3 => (0, 10, 26),
                 _ => panic!("unexpected pixel value"),
             };
+        }
 
-            if self.cycle > 0 && self.scanline > 0 && self.cycle <= 256 && self.scanline < 240 {
-                self.screen[self.scanline as usize][self.cycle as usize - 1] = color;
-            }
+        if self.cycle > 0 && self.cycle < 256 && self.scanline >= 0 && self.scanline < 240 {
+            self.screen[self.scanline as usize][self.cycle as usize - 1] = color;
         }
 
         self.cycle += 1;
@@ -261,11 +268,10 @@ impl<'a> PPU<'a> {
 
     fn inc_y(&mut self) {
         if self.mask.contains(Mask::RENDER_BACKGROUND) || self.mask.contains(Mask::RENDER_SPRITES) {
-            self.vram_address.fine_y += 1;
-
-            if self.vram_address.fine_y == 8 {
+            if self.vram_address.fine_y < 7 {
+                self.vram_address.fine_y += 1;
+            } else {
                 self.vram_address.fine_y = 0;
-
                 if self.vram_address.coarse_y == 29 {
                     self.vram_address.coarse_y = 0;
                     self.vram_address.nametable_y = if self.vram_address.nametable_y == 0 {
@@ -357,7 +363,11 @@ impl<'a> BusWrite for PPU<'a> {
                 }
             }
             0x0007 => {
-                self.bus.write(self.vram_address.into(), data);
+                // self.debug();
+                // println!("v: {:?}", self.vram_address);
+                // println!("t: {:?}", self.tram_address);
+
+                self.bus.write(0x2000 | u16::from(self.vram_address), data);
                 let increment = if self.control.contains(Control::INCREMENT_MODE) {
                     32
                 } else {
