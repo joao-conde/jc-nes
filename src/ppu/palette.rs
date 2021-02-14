@@ -1,4 +1,4 @@
-use crate::bus::{BusRead, BusWrite};
+use crate::bus::Device;
 
 pub struct Palette {
     mem: [u8; 256],
@@ -10,13 +10,11 @@ impl Palette {
     }
 }
 
-impl BusRead for Palette {
+impl Device for Palette {
     fn read(&mut self, address: u16) -> u8 {
         self.mem[address as usize]
     }
-}
 
-impl BusWrite for Palette {
     fn write(&mut self, address: u16, data: u8) {
         self.mem[address as usize] = data;
     }

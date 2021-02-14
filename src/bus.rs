@@ -6,47 +6,23 @@ use crate::nes::SharedMut;
 
 #[derive(Default)]
 pub struct Bus<'a> {
-    readable: HashMap<RangeInclusive<u16>, SharedMut<dyn BusRead + 'a>>,
-    writable: HashMap<RangeInclusive<u16>, SharedMut<dyn BusWrite + 'a>>,
+    devices: HashMap<RangeInclusive<u16>, SharedMut<dyn Device + 'a>>,
     mirrors: HashMap<RangeInclusive<u16>, u16>,
 }
 
-pub trait BusRead {
+pub trait Device {
     fn read(&mut self, address: u16) -> u8;
-}
-
-pub trait BusWrite {
     fn write(&mut self, address: u16, data: u8);
 }
 
 impl<'a> Bus<'a> {
-    pub fn connect<RW: BusRead + BusWrite + 'a>(
+    pub fn connect<D: Device + 'a>(
         &mut self,
         addressable_range: RangeInclusive<u16>,
-        device: &SharedMut<RW>,
+        device: &SharedMut<D>,
     ) {
-        self.readable
-            .insert(addressable_range.clone(), Rc::<RefCell<RW>>::clone(device));
-        self.writable
-            .insert(addressable_range, Rc::<RefCell<RW>>::clone(device));
-    }
-
-    pub fn connect_readable<R: BusRead + 'a>(
-        &mut self,
-        addressable_range: RangeInclusive<u16>,
-        device: &SharedMut<R>,
-    ) {
-        self.readable
-            .insert(addressable_range, Rc::<RefCell<R>>::clone(device));
-    }
-
-    pub fn connect_writable<W: BusWrite + 'a>(
-        &mut self,
-        addressable_range: RangeInclusive<u16>,
-        device: &SharedMut<W>,
-    ) {
-        self.writable
-            .insert(addressable_range, Rc::<RefCell<W>>::clone(device));
+        self.devices
+            .insert(addressable_range.clone(), Rc::<RefCell<D>>::clone(device));
     }
 
     // TODO: change mirroring -> adding a 0x0000-0x1FFF RAM with 0x07FF mirroring is the same as
@@ -58,7 +34,7 @@ impl<'a> Bus<'a> {
 
     pub fn read(&self, address: u16) -> u8 {
         let address = self.mirror(address);
-        self.readable
+        self.devices
             .iter()
             .find(|(addressable_range, _)| addressable_range.contains(&address))
             .map(|(range, device)| device.borrow_mut().read(address - range.start()))
@@ -67,7 +43,7 @@ impl<'a> Bus<'a> {
 
     pub fn write(&mut self, address: u16, data: u8) {
         let address = self.mirror(address);
-        self.writable
+        self.devices
             .iter_mut()
             .find(|(addressable_range, _)| addressable_range.contains(&address))
             .map(|(range, device)| device.borrow_mut().write(address - range.start(), data))

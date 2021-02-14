@@ -1,9 +1,6 @@
 use crate::cartridge::mappers::MapperMemoryPin;
 use crate::cartridge::Cartridge;
-use crate::{
-    bus::{BusRead, BusWrite},
-    nes::SharedMut,
-};
+use crate::{bus::Device, nes::SharedMut};
 use std::rc::Rc;
 
 // DK SPECIFIC
@@ -13,16 +10,14 @@ pub struct Mapper000 {
     prg_banks: u8,
 }
 
-impl BusRead for Mapper000 {
+impl Device for Mapper000 {
     fn read(&mut self, address: u16) -> u8 {
         match self.pin {
             MapperMemoryPin::PrgROM => self.read_prg_rom(address),
             MapperMemoryPin::ChrROM => self.read_chr_rom(address),
         }
     }
-}
 
-impl BusWrite for Mapper000 {
     fn write(&mut self, address: u16, data: u8) {
         match self.pin {
             MapperMemoryPin::PrgROM => self.write_prg_rom(address, data),

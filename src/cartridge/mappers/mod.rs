@@ -1,8 +1,8 @@
-use crate::bus::{BusRead, BusWrite};
+use crate::bus::Device;
 
 pub mod mapper000;
 
-pub trait Mapper: BusRead + BusWrite {}
+pub trait Mapper: Device {}
 
 #[derive(Clone, Copy)]
 pub enum MapperMemoryPin {

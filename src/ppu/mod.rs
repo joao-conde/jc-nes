@@ -1,9 +1,9 @@
-mod address;
 pub mod nametable;
 pub mod palette;
+mod vram_address;
 
-use crate::bus::{Bus, BusRead, BusWrite};
-use crate::ppu::address::Address;
+use crate::bus::{Bus, Device};
+use crate::ppu::vram_address::VRAMAddress;
 use bitflags::bitflags;
 
 pub struct PPU<'a> {
@@ -23,8 +23,8 @@ pub struct PPU<'a> {
 
     // address registers (nesdev.com/loopyppu.zip)
     // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Explanation
-    vram_address: Address,
-    tram_address: Address,
+    vram_address: VRAMAddress,
+    tram_address: VRAMAddress,
     fine_x: u8,
 
     // background buffered data (pre-load)
@@ -90,8 +90,8 @@ impl<'a> PPU<'a> {
             buffer: 0x00,
             screen: [[(0, 0, 0); 256]; 240],
             raise_nmi: false,
-            vram_address: Address::default(),
-            tram_address: Address::default(),
+            vram_address: VRAMAddress::default(),
+            tram_address: VRAMAddress::default(),
             fine_x: 0x00,
             bg_next_tile_id: 0x00,
             bg_next_tile_attrib: 0x00,
@@ -324,7 +324,42 @@ impl<'a> PPU<'a> {
     }
 }
 
-impl<'a> BusWrite for PPU<'a> {
+impl<'a> Device for PPU<'a> {
+    fn read(&mut self, address: u16) -> u8 {
+        match address {
+            0x0000 => 0x00,
+            0x0001 => 0x00,
+            0x0002 => {
+                let data = self.status.bits() & 0xE0 | (self.buffer & 0x1F);
+                self.status.set(Status::VERTICAL_BLANK, false);
+                self.render = false;
+                self.write_flip_flop = true;
+                data
+            }
+            0x0003 => 0x00,
+            0x0004 => 0x00,
+            0x0005 => 0x00,
+            0x0006 => 0x00,
+            0x0007 => {
+                let mut data = self.buffer;
+                self.buffer = self.bus.read(self.vram_address.into());
+
+                if u16::from(self.vram_address) >= 0x3F00 {
+                    data = self.buffer
+                };
+
+                let increment = if self.control.contains(Control::INCREMENT_MODE) {
+                    32
+                } else {
+                    1
+                } as u16;
+                self.vram_address = (u16::from(self.vram_address) + increment).into();
+                data
+            }
+            _ => panic!("unknown PPU register"),
+        }
+    }
+
     fn write(&mut self, address: u16, data: u8) {
         match address {
             0x0000 => {
@@ -374,43 +409,6 @@ impl<'a> BusWrite for PPU<'a> {
                     1
                 } as u16;
                 self.vram_address = (u16::from(self.vram_address) + increment).into();
-            }
-            _ => panic!("unknown PPU register"),
-        }
-    }
-}
-
-impl<'a> BusRead for PPU<'a> {
-    fn read(&mut self, address: u16) -> u8 {
-        match address {
-            0x0000 => 0x00,
-            0x0001 => 0x00,
-            0x0002 => {
-                let data = self.status.bits() & 0xE0 | (self.buffer & 0x1F);
-                self.status.set(Status::VERTICAL_BLANK, false);
-                self.render = false;
-                self.write_flip_flop = true;
-                data
-            }
-            0x0003 => 0x00,
-            0x0004 => 0x00,
-            0x0005 => 0x00,
-            0x0006 => 0x00,
-            0x0007 => {
-                let mut data = self.buffer;
-                self.buffer = self.bus.read(self.vram_address.into());
-
-                if u16::from(self.vram_address) >= 0x3F00 {
-                    data = self.buffer
-                };
-
-                let increment = if self.control.contains(Control::INCREMENT_MODE) {
-                    32
-                } else {
-                    1
-                } as u16;
-                self.vram_address = (u16::from(self.vram_address) + increment).into();
-                data
             }
             _ => panic!("unknown PPU register"),
         }
