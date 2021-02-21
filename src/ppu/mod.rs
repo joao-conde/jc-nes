@@ -21,6 +21,8 @@ pub struct PPU<'a> {
 
     pub screen: [[(u8, u8, u8); 256]; 240],
 
+    dac: [(u8, u8, u8); 0x40],
+
     // address registers (nesdev.com/loopyppu.zip)
     // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Explanation
     vram_address: VRAMAddress,
@@ -79,6 +81,73 @@ bitflags! {
 
 impl<'a> PPU<'a> {
     pub fn new(bus: Bus<'a>) -> PPU<'a> {
+        let dac = [
+            (84, 84, 84),
+            (0, 30, 116),
+            (8, 16, 144),
+            (48, 0, 136),
+            (68, 0, 100),
+            (92, 0, 48),
+            (84, 4, 0),
+            (60, 24, 0),
+            (32, 42, 0),
+            (8, 58, 0),
+            (0, 64, 0),
+            (0, 60, 0),
+            (0, 50, 60),
+            (0, 0, 0),
+            (0, 0, 0),
+            (0, 0, 0),
+            (152, 150, 152),
+            (8, 76, 196),
+            (48, 50, 236),
+            (92, 30, 228),
+            (136, 20, 176),
+            (160, 20, 100),
+            (152, 34, 32),
+            (120, 60, 0),
+            (84, 90, 0),
+            (40, 114, 0),
+            (8, 124, 0),
+            (0, 118, 40),
+            (0, 102, 120),
+            (0, 0, 0),
+            (0, 0, 0),
+            (0, 0, 0),
+            (236, 238, 236),
+            (76, 154, 236),
+            (120, 124, 236),
+            (176, 98, 236),
+            (228, 84, 236),
+            (236, 88, 180),
+            (236, 106, 100),
+            (212, 136, 32),
+            (160, 170, 0),
+            (116, 196, 0),
+            (76, 208, 32),
+            (56, 204, 108),
+            (56, 180, 204),
+            (60, 60, 60),
+            (0, 0, 0),
+            (0, 0, 0),
+            (236, 238, 236),
+            (168, 204, 236),
+            (188, 188, 236),
+            (212, 178, 236),
+            (236, 174, 236),
+            (236, 174, 212),
+            (236, 180, 176),
+            (228, 196, 144),
+            (204, 210, 120),
+            (180, 222, 120),
+            (168, 226, 144),
+            (152, 226, 180),
+            (160, 214, 228),
+            (160, 162, 160),
+            (0, 0, 0),
+            (0, 0, 0),
+        ];
+
         PPU {
             cycle: 0,
             scanline: 0,
@@ -101,6 +170,7 @@ impl<'a> PPU<'a> {
             bg_shifter_pattern_hi: 0x0000,
             bg_shifter_attrib_lo: 0x0000,
             bg_shifter_attrib_hi: 0x0000,
+            dac,
             bus,
         }
     }
@@ -207,13 +277,15 @@ impl<'a> PPU<'a> {
             let p1_pixel = (self.bg_shifter_pattern_hi & bit_offset) > 0;
             let bg_pixel = ((p1_pixel as u8) << 1) | p0_pixel as u8;
 
-            color = match bg_pixel {
-                0 => (0, 0, 0),
-                1 => (0, 102, 255),
-                2 => (0, 51, 128),
-                3 => (0, 10, 26),
-                _ => panic!("unexpected pixel value"),
-            };
+            // palette
+            let bg_pal0 = ((self.bg_shifter_attrib_lo & bit_offset) > 0) as u8;
+            let bg_pal1 = ((self.bg_shifter_attrib_hi & bit_offset) > 0) as u8;
+            let bg_palette = (bg_pal1 << 1) | bg_pal0;
+
+            let color_i = self
+                .bus
+                .read(0x3F00 + (bg_palette << 2) as u16 + bg_pixel as u16);
+            color = self.dac[color_i as usize];
         }
 
         if self.cycle > 0 && self.cycle < 256 && self.scanline >= 0 && self.scanline < 240 {
@@ -258,8 +330,10 @@ impl<'a> PPU<'a> {
 
     pub fn debug(&self) {
         println!(
-            "nmi:{} cyc:{} scan:{} mask:{:?} ctrl:{:?} stat:{:?}",
-            self.raise_nmi, self.cycle, self.scanline, self.mask, self.control, self.status
+            " PPU {}, {} VRAM: 0x{:4X}",
+            self.scanline,
+            self.cycle,
+            u16::from(self.vram_address)
         );
     }
 

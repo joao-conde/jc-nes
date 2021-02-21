@@ -47,7 +47,7 @@ fn nestest() {
 }
 
 fn play() {
-    // let rom_path = "roms/secret/donkey-kong.nes";
+    // let rom_path = "roms/ignored/donkey-kong.nes";
     // let rom_path = "roms/full_palette.nes";
     // let rom_path = "roms/full_palette_alt.nes";
     let rom_path = "roms/nestest.nes";
