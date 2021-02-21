@@ -1,10 +1,10 @@
 #[derive(Clone, Copy, Debug, Default)]
 pub struct VRAMAddress {
-    pub coarse_x: u8,
-    pub coarse_y: u8,
-    pub nametable_x: u8,
-    pub nametable_y: u8,
-    pub fine_y: u8,
+    pub(in crate::ppu) coarse_x: u8,
+    pub(in crate::ppu) coarse_y: u8,
+    pub(in crate::ppu) nametable_x: u8,
+    pub(in crate::ppu) nametable_y: u8,
+    pub(in crate::ppu) fine_y: u8,
 }
 
 impl From<u16> for VRAMAddress {

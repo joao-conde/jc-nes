@@ -235,6 +235,27 @@ impl<'a> PPU<'a> {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.fine_x = 0x00;
+        self.write_flip_flop = true;
+        self.buffer = 0x00;
+        self.scanline = 0;
+        self.cycle = 0;
+        self.bg_next_tile_id = 0x00;
+        self.bg_next_tile_attrib = 0x00;
+        self.bg_next_tile_lsb = 0x00;
+        self.bg_next_tile_msb = 0x00;
+        self.bg_shifter_pattern_lo = 0x0000;
+        self.bg_shifter_pattern_hi = 0x0000;
+        self.bg_shifter_attrib_lo = 0x0000;
+        self.bg_shifter_attrib_hi = 0x0000;
+        self.status = Status::from_bits_truncate(0x00);
+        self.mask = Mask::from_bits_truncate(0x00);
+        self.control = Control::from_bits_truncate(0x00);
+        self.vram_address = VRAMAddress::default();
+        self.tram_address = VRAMAddress::default();
+    }
+
     pub fn debug(&self) {
         println!(
             "nmi:{} cyc:{} scan:{} mask:{:?} ctrl:{:?} stat:{:?}",
@@ -386,22 +407,23 @@ impl<'a> Device for PPU<'a> {
             }
             0x0006 => {
                 if self.write_flip_flop {
-                    let addr: u16 = (u16::from(self.tram_address) & 0x00FF) | (u16::from(data) << 8);
+                    let addr: u16 =
+                        (u16::from(self.tram_address) & 0x00FF) | (u16::from(data) << 8);
                     self.tram_address = addr.into();
 
-                    println!("addr: 0x{:4X}", addr);
-                    println!("data: 0x{:2X}", data);
-                    println!("set tram to 0x{:4X}", u16::from(self.tram_address));
+                    // println!("addr: 0x{:4X}", addr);
+                    // println!("data: 0x{:2X}", data);
+                    // println!("set tram to 0x{:4X}", u16::from(self.tram_address));
                     self.write_flip_flop = false;
                 } else {
                     let addr: u16 = (u16::from(self.tram_address) & 0xFF00) | u16::from(data);
                     self.tram_address = addr.into();
                     self.vram_address = self.tram_address;
 
-                    println!("addr: 0x{:4X}", addr);
-                    println!("data: 0x{:2X}", data);
-                    println!("set tram to 0x{:4X}", u16::from(self.tram_address));
-                    println!("set vram to 0x{:4X}", u16::from(self.vram_address));
+                    // println!("addr: 0x{:4X}", addr);
+                    // println!("data: 0x{:2X}", data);
+                    // println!("set tram to 0x{:4X}", u16::from(self.tram_address));
+                    // println!("set vram to 0x{:4X}", u16::from(self.vram_address));
                     self.write_flip_flop = true;
                 }
             }

@@ -63,7 +63,7 @@ impl Cartridge {
 
                 let prg_rom = bytes.by_ref().take(prg_len).flatten().collect::<Vec<u8>>();
                 cartridge.prg_rom.copy_from_slice(&prg_rom);
-                
+
                 let chr_len = cartridge.meta.chr_banks as usize * 8 * 1024;
                 cartridge.chr_rom.resize(chr_len, 0);
                 cartridge.chr_rom = bytes.by_ref().take(chr_len).flatten().collect();

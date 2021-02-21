@@ -85,12 +85,11 @@ impl<'a> Nes<'a> {
     }
 
     pub fn clock(&mut self, canvas: &mut Canvas<Window>) {
-        
         self.ppu.borrow_mut().clock();
         if self.ticks % 3 == 0 {
             self.cpu.clock();
-            self.cpu.debug(0x00);
-            self.ppu.borrow().debug();
+            // self.cpu.debug(0x00);
+            // self.ppu.borrow().debug();
         }
 
         if self.ppu.borrow().raise_nmi {

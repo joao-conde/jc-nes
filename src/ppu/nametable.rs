@@ -41,6 +41,6 @@ impl Device for NameTable {
 
     fn write(&mut self, address: u16, data: u8) {
         self.mem[address as usize] = data;
-        self.debug();
+        // self.debug();
     }
 }
