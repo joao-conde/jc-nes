@@ -1,5 +1,3 @@
-pub mod nametable;
-pub mod palette;
 mod vram_address;
 
 use crate::bus::{Bus, Device};
@@ -269,8 +267,7 @@ impl<'a> PPU<'a> {
             }
         }
 
-        let mut color = (0, 0, 0);
-        if self.mask.contains(Mask::RENDER_BACKGROUND) {
+        let color = if self.mask.contains(Mask::RENDER_BACKGROUND) {
             let bit_offset = 0x8000 >> self.fine_x;
 
             let p0_pixel = (self.bg_shifter_pattern_lo & bit_offset) > 0;
@@ -285,8 +282,10 @@ impl<'a> PPU<'a> {
             let color_i = self
                 .bus
                 .read(0x3F00 + (bg_palette << 2) as u16 + bg_pixel as u16);
-            color = self.dac[color_i as usize];
-        }
+            self.dac[color_i as usize]
+        } else {
+            (0, 0, 0)
+        };
 
         if self.cycle > 0 && self.cycle < 256 && self.scanline >= 0 && self.scanline < 240 {
             self.screen[self.scanline as usize][self.cycle as usize - 1] = color;

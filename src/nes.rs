@@ -1,5 +1,6 @@
 use sdl2::{pixels::Color, rect::Point, render::Canvas, video::Window};
 
+use crate::bus::Bus;
 use crate::cartridge::{
     mappers::{mapper000::Mapper000, MapperMemoryPin},
     Cartridge,
@@ -7,10 +8,6 @@ use crate::cartridge::{
 use crate::cpu::CPU;
 use crate::ppu::PPU;
 use crate::ram::RAM;
-use crate::{
-    bus::Bus,
-    ppu::{nametable::NameTable, palette::Palette},
-};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -25,14 +22,12 @@ pub struct Nes<'a> {
 impl<'a> Nes<'a> {
     pub fn new() -> Nes<'a> {
         // PPU bus devices
-        let nametbl1 = Rc::new(RefCell::new(NameTable::new()));
-        let nametbl2 = Rc::new(RefCell::new(NameTable::new()));
-        let nametbl3 = Rc::new(RefCell::new(NameTable::new()));
-        let nametbl4 = Rc::new(RefCell::new(NameTable::new()));
+        let nametbl1 = Rc::new(RefCell::new(RAM::new(vec![0u8; 1024])));
+        let nametbl2 = Rc::new(RefCell::new(RAM::new(vec![0u8; 1024])));
+        let nametbl3 = Rc::new(RefCell::new(RAM::new(vec![0u8; 1024])));
+        let nametbl4 = Rc::new(RefCell::new(RAM::new(vec![0u8; 1024])));
+        let palette = Rc::new(RefCell::new(RAM::new(vec![0u8; 256])));
 
-        let palette = Rc::new(RefCell::new(Palette::new()));
-
-        // Connect devices to PPU bus
         let mut ppu_bus = Bus::default();
         ppu_bus.connect(0x2000..=0x23FF, &nametbl1);
         ppu_bus.connect(0x2400..=0x27FF, &nametbl2);
@@ -46,14 +41,12 @@ impl<'a> Nes<'a> {
 
         // CPU bus devices
         let ram = Rc::new(RefCell::new(RAM::new(vec![0u8; 2 * 1024])));
+        let tmp = Rc::new(RefCell::new(RAM::new(vec![0u8; 32]))); // TODO: remove tmp hack (IO + APU)
 
-        let TMP_IO_APU = Rc::new(RefCell::new(RAM::new(vec![0u8; 32]))); // TODO: remove tmp hack
-
-        // Connect devices to CPU bus
         let mut cpu_bus = Bus::default();
         cpu_bus.connect(0x0000..=0x1FFF, &ram);
         cpu_bus.connect(0x2000..=0x3FFF, &ppu);
-        cpu_bus.connect(0x4000..=0x401F, &TMP_IO_APU);
+        cpu_bus.connect(0x4000..=0x401F, &tmp);
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
 
@@ -63,7 +56,7 @@ impl<'a> Nes<'a> {
     }
 
     pub fn load_rom(&mut self, rom_path: &str) {
-        let cartridge = Cartridge::load_rom(rom_path);
+        let cartridge = Cartridge::new(rom_path);
         let cartridge = Rc::new(RefCell::new(cartridge));
 
         let meta = cartridge.borrow().meta.clone();
@@ -88,8 +81,6 @@ impl<'a> Nes<'a> {
         self.ppu.borrow_mut().clock();
         if self.ticks % 3 == 0 {
             self.cpu.clock();
-            // self.cpu.debug(0x00);
-            // self.ppu.borrow().debug();
         }
 
         if self.ppu.borrow().raise_nmi {
@@ -194,39 +185,5 @@ impl<'a> Nes<'a> {
             }
         }
         canvas.present();
-    }
-
-    fn draw_tile(&self, canvas: &mut Canvas<Window>, tile_idx: u8, x: i32, y: i32) {
-        const PATTERN_TABLE_PIXEL_WIDTH: u32 = 256;
-        const TILE_BYTE_WIDTH: u32 = 16;
-
-        let tile_y = ((tile_idx & 0xF0) >> 4) as u32;
-        let tile_x = (tile_idx & 0x0F) as u32;
-        let base = tile_y * PATTERN_TABLE_PIXEL_WIDTH + tile_x * TILE_BYTE_WIDTH;
-
-        for row in 0..8 {
-            // get data from both bit planes
-            let addr = base + row;
-            let mut lsb: u8 = self.ppu.borrow_mut().bus.read(addr as u16);
-            let mut msb: u8 = self.ppu.borrow_mut().bus.read(addr as u16 + 8);
-
-            for col in 0..8 {
-                let pixel = (lsb & 0x01) + (msb & 0x01);
-                lsb >>= 1;
-                msb >>= 1;
-
-                // draw
-                match pixel {
-                    0 => canvas.set_draw_color(Color::RGB(0, 0, 0)),
-                    1 => canvas.set_draw_color(Color::RGB(0, 102, 255)),
-                    2 => canvas.set_draw_color(Color::RGB(0, 51, 128)),
-                    3 => canvas.set_draw_color(Color::RGB(0, 10, 26)),
-                    _ => panic!("unexpected pixel value"),
-                }
-                canvas
-                    .draw_point(Point::new(x + (7 - col) as i32, y + row as i32))
-                    .unwrap();
-            }
-        }
     }
 }

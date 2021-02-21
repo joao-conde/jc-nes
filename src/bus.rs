@@ -22,7 +22,7 @@ impl<'a> Bus<'a> {
         device: &SharedMut<D>,
     ) {
         self.devices
-            .insert(addressable_range.clone(), Rc::<RefCell<D>>::clone(device));
+            .insert(addressable_range, Rc::<RefCell<D>>::clone(device));
     }
 
     // TODO: change mirroring -> adding a 0x0000-0x1FFF RAM with 0x07FF mirroring is the same as

@@ -19,7 +19,7 @@ pub struct Meta {
 }
 
 impl Cartridge {
-    pub fn load_rom(path: &str) -> Cartridge {
+    pub fn new(path: &str) -> Cartridge {
         let mut cartridge = Cartridge::default();
 
         // read ROM bytes
@@ -37,16 +37,16 @@ impl Cartridge {
         let mapper1 = bytes.by_ref().next().unwrap().unwrap();
         let mapper2 = bytes.by_ref().next().unwrap().unwrap();
 
-        let prg_ram_len = bytes.by_ref().next().unwrap().unwrap();
+        let _prg_ram_len = bytes.by_ref().next().unwrap().unwrap();
 
-        let tv_system1 = bytes.by_ref().next().unwrap().unwrap();
-        let tv_system2 = bytes.by_ref().next().unwrap().unwrap();
+        let _tv_system1 = bytes.by_ref().next().unwrap().unwrap();
+        let _tv_system2 = bytes.by_ref().next().unwrap().unwrap();
 
-        let unused = bytes.by_ref().take(5).flatten().collect::<Vec<u8>>();
+        let _unused = bytes.by_ref().take(5).flatten().collect::<Vec<u8>>();
 
         // ff a "trainer" exists
-        if mapper1 & 0x04 == 1 {
-            let trainer = bytes.by_ref().take(512).flatten().collect::<Vec<u8>>();
+        if (mapper1 & 0x04) >> 2 == 1 {
+            let _trainer = bytes.by_ref().take(512).flatten().collect::<Vec<u8>>();
         }
 
         cartridge.meta.mapper_id = ((mapper2 >> 4) << 4) | (mapper1 >> 4);
@@ -58,8 +58,8 @@ impl Cartridge {
                 let prg_len = cartridge.meta.prg_banks as usize * 16 * 1024;
                 cartridge.prg_rom.resize(prg_len, 0);
 
-                let mp1 = 0xFFF9 & 0x3FFF;
-                let mp2 = 0xFFFF & 0x3FFF;
+                let _mp1 = 0xFFF9 & 0x3FFF;
+                let _mp2 = 0xFFFF & 0x3FFF;
 
                 let prg_rom = bytes.by_ref().take(prg_len).flatten().collect::<Vec<u8>>();
                 cartridge.prg_rom.copy_from_slice(&prg_rom);
