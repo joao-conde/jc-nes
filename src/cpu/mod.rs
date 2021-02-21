@@ -69,6 +69,7 @@ impl<'a> CPU<'a> {
         self.status = Status::from_bits_truncate(0x00);
 
         self.cycle = 8;
+        self.total_cycles = 8;
     }
 
     pub fn nmi(&mut self) {
@@ -372,7 +373,7 @@ impl<'a> CPU<'a> {
     }
 
     pub fn debug(&self, opcode: u8) {
-        println!(
+        print!(
             "{:04X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
             self.pc, opcode, self.a, self.x, self.y, self.status, self.sp, self.total_cycles
         );

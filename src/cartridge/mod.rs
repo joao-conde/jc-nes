@@ -62,15 +62,8 @@ impl Cartridge {
                 let mp2 = 0xFFFF & 0x3FFF;
 
                 let prg_rom = bytes.by_ref().take(prg_len).flatten().collect::<Vec<u8>>();
-                // println!("{:04x?}", &prg_rom[mp1..mp2]);
-
-                // println!("{:04x?}", &cartridge.prg_rom[mp1..mp2]);
-
                 cartridge.prg_rom.copy_from_slice(&prg_rom);
-                // println!("{:04x?}", &prg_rom[mp1..mp2]);
-
-                // println!("{:04x?}", &cartridge.prg_rom[mp1..mp2]);
-
+                
                 let chr_len = cartridge.meta.chr_banks as usize * 8 * 1024;
                 cartridge.chr_rom.resize(chr_len, 0);
                 cartridge.chr_rom = bytes.by_ref().take(chr_len).flatten().collect();

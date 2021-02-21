@@ -4,8 +4,8 @@ This folder contains summary information about the NES console compiled from the
 
 # Main devices
 
-- [CPU](CPU.md)
-- [PPU](PPU.md)
+- [CPU](cpu.md)
+- [PPU](ppu.md)
 
 # TODO REMOVE
 

@@ -85,26 +85,21 @@ impl<'a> Nes<'a> {
     }
 
     pub fn clock(&mut self, canvas: &mut Canvas<Window>) {
-        // if self.cpu.total_cycles >= 86950 {
-        //     self.cpu.debug(0x00);
-        //     self.ppu.borrow().debug();
-        //     self.cpu.pause();
-        // }
-
+        
         self.ppu.borrow_mut().clock();
         if self.ticks % 3 == 0 {
             self.cpu.clock();
+            self.cpu.debug(0x00);
+            self.ppu.borrow().debug();
         }
 
         if self.ppu.borrow().raise_nmi {
             self.ppu.borrow_mut().raise_nmi = false;
             self.cpu.nmi();
-            // self.cpu.debug(0x00);
-            // self.cpu.pause();
         }
 
         if self.ppu.borrow().render {
-            // self.draw_screen(canvas, 256, 240);
+            self.draw_screen(canvas, 256, 240);
             self.ppu.borrow_mut().render = false;
         }
 
@@ -112,7 +107,8 @@ impl<'a> Nes<'a> {
     }
 
     pub fn reset(&mut self) {
-        self.cpu.reset()
+        self.cpu.reset();
+        self.ppu.borrow_mut().reset();
     }
 
     pub fn draw_screen(&self, canvas: &mut Canvas<Window>, width: usize, height: usize) {
@@ -141,7 +137,7 @@ impl<'a> Nes<'a> {
                 let address = (0x2000 + 0x400 * table) + x + y * width;
                 let byte = self.ppu.borrow().bus.read(address as u16);
                 print!("{:02X}", byte);
-                self.draw_tile(canvas, byte, x as i32 * 8, y as i32 * 8);
+                // self.draw_tile(canvas, byte, x as i32 * 8, y as i32 * 8);
             }
             println!()
         }
