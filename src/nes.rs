@@ -72,6 +72,8 @@ impl<'a> Nes<'a> {
                     .borrow_mut()
                     .bus
                     .connect(0x0000..=0x1FFF, &mapper_ppu);
+
+                self.ppu.borrow_mut().set_mirror(meta.mirror);
             }
             _ => panic!("unknown mapper!"),
         }

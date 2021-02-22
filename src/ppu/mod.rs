@@ -1,7 +1,10 @@
 mod vram_address;
 
-use crate::bus::{Bus, Device};
 use crate::ppu::vram_address::VRAMAddress;
+use crate::{
+    bus::{Bus, Device},
+    cartridge::{self, Mirror},
+};
 use bitflags::bitflags;
 
 pub struct PPU<'a> {
@@ -20,6 +23,8 @@ pub struct PPU<'a> {
     pub screen: [[(u8, u8, u8); 256]; 240],
 
     dac: [(u8, u8, u8); 0x40],
+
+    cartridge_mirror: Mirror,
 
     // address registers (nesdev.com/loopyppu.zip)
     // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Explanation
@@ -168,9 +173,14 @@ impl<'a> PPU<'a> {
             bg_shifter_pattern_hi: 0x0000,
             bg_shifter_attrib_lo: 0x0000,
             bg_shifter_attrib_hi: 0x0000,
+            cartridge_mirror: Mirror::default(),
             dac,
             bus,
         }
+    }
+
+    pub fn set_mirror(&mut self, mirror: Mirror) {
+        self.cartridge_mirror = mirror;
     }
 
     // https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
@@ -194,6 +204,7 @@ impl<'a> PPU<'a> {
                 match (self.cycle - 1) % 8 {
                     0 => {
                         self.load_background_shifters();
+
                         self.bg_next_tile_id = self
                             .bus
                             .read(0x2000 | (u16::from(self.vram_address) & 0x0FFF));
@@ -483,29 +494,26 @@ impl<'a> Device for PPU<'a> {
                     let addr: u16 =
                         (u16::from(self.tram_address) & 0x00FF) | (u16::from(data) << 8);
                     self.tram_address = addr.into();
-
-                    // println!("addr: 0x{:4X}", addr);
-                    // println!("data: 0x{:2X}", data);
-                    // println!("set tram to 0x{:4X}", u16::from(self.tram_address));
                     self.write_flip_flop = false;
                 } else {
                     let addr: u16 = (u16::from(self.tram_address) & 0xFF00) | u16::from(data);
                     self.tram_address = addr.into();
                     self.vram_address = self.tram_address;
-
-                    // println!("addr: 0x{:4X}", addr);
-                    // println!("data: 0x{:2X}", data);
-                    // println!("set tram to 0x{:4X}", u16::from(self.tram_address));
-                    // println!("set vram to 0x{:4X}", u16::from(self.vram_address));
                     self.write_flip_flop = true;
                 }
             }
             0x0007 => {
-                // self.debug();
-                // println!("v: {:?}", self.vram_address);
-                // println!("t: {:?}", self.tram_address);
+                // self.bus.write(0x2000 | u16::from(self.vram_address), data);
+                match self.cartridge_mirror {
+                    Mirror::Horizontal => {
+                        self.bus.write(0x2000 | u16::from(self.vram_address), data);
+                        self.bus.write(0x2400 | u16::from(self.vram_address), data);
+                    }
+                    Mirror::Vertical => {
+                        todo!();
+                    }
+                }
 
-                self.bus.write(0x2000 | u16::from(self.vram_address), data);
                 let increment = if self.control.contains(Control::INCREMENT_MODE) {
                     32
                 } else {

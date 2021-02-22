@@ -13,9 +13,22 @@ pub struct Cartridge {
 pub struct Meta {
     pub(in crate) mapper_id: u8,
     pub(in crate) name: String,
-    pub(in crate) mirror: bool,
     pub(in crate) prg_banks: u8,
     pub(in crate) chr_banks: u8,
+    pub(in crate) mirror: Mirror,
+}
+
+#[derive(Clone)]
+pub enum Mirror {
+    Horizontal,
+    Vertical,
+}
+
+// TODO: clean this up, cartridge should have no default
+impl Default for Mirror {
+    fn default() -> Self {
+        Mirror::Horizontal
+    }
 }
 
 impl Cartridge {
@@ -50,7 +63,11 @@ impl Cartridge {
         }
 
         cartridge.meta.mapper_id = ((mapper2 >> 4) << 4) | (mapper1 >> 4);
-        cartridge.meta.mirror = mapper1 & 0x01 == 1;
+        cartridge.meta.mirror = if mapper1 & 0x01 == 1 {
+            Mirror::Vertical
+        } else {
+            Mirror::Horizontal
+        };
 
         let file_type = 1; // TODO not hard-code (works for DK and nestest)
         match file_type {
