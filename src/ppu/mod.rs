@@ -3,7 +3,7 @@ mod vram_address;
 use crate::ppu::vram_address::VRAMAddress;
 use crate::{
     bus::{Bus, Device},
-    cartridge::{self, Mirror},
+    cartridge::Mirror,
 };
 use bitflags::bitflags;
 
