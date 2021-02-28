@@ -308,14 +308,14 @@ impl<'a> PPU<'a> {
                     "0x{:4X} 0x{:2X} {:?}",
                     addr, color_i, self.dac[color_i as usize]
                 );
-                println!("Palette");
-                for x in 0x3F00..=0x3F0F {
-                    let color_i = self.bus.read(x);
-                    println!(
-                        "0x{:04X} 0x{:02X} {:?}",
-                        x, color_i, self.dac[color_i as usize]
-                    );
-                }
+                // println!("Palette");
+                // for x in 0x3F00..=0x3F0F {
+                //     let color_i = self.bus.read(x);
+                //     println!(
+                //         "0x{:04X} 0x{:02X} {:?}",
+                //         x, color_i, self.dac[color_i as usize]
+                //     );
+                // }
             }
         }
 
@@ -439,10 +439,19 @@ impl<'a> PPU<'a> {
             (self.bg_shifter_pattern_lo & 0xFF00) | self.bg_next_tile_lsb as u16;
         self.bg_shifter_pattern_hi =
             (self.bg_shifter_pattern_hi & 0xFF00) | self.bg_next_tile_msb as u16;
-        self.bg_shifter_attrib_lo =
-            (self.bg_shifter_attrib_lo & 0xFF00) | ((self.bg_next_tile_attrib & 0b01) as u16);
-        self.bg_shifter_attrib_hi =
-            (self.bg_shifter_attrib_hi & 0xFF00) | ((self.bg_next_tile_attrib & 0b10) as u16);
+
+        self.bg_shifter_attrib_lo = (self.bg_shifter_attrib_lo & 0xFF00)
+            | if self.bg_next_tile_attrib & 0b01 == 0b01 {
+                0xFF
+            } else {
+                0x00
+            };
+        self.bg_shifter_attrib_hi = (self.bg_shifter_attrib_hi & 0xFF00)
+            | if self.bg_next_tile_attrib & 0b10 == 0b10 {
+                0xFF
+            } else {
+                0x00
+            };
     }
 }
 
