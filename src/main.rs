@@ -13,10 +13,10 @@ fn main() {
         if mode == "nestest" {
             nestest()
         } else if mode == "play" {
-            play()
+            play(&env::args().nth(2).unwrap())
         }
     } else {
-        play()
+        play(&env::args().nth(2).unwrap())
     }
 }
 
@@ -46,8 +46,8 @@ fn nestest() {
     }
 }
 
-fn play() {
-    let rom_path = "roms/ignored/donkey-kong.nes";
+fn play(rom_path: &str) {
+    // let rom_path = "roms/ignored/donkey-kong.nes";
     // let rom_path = "roms/full_palette.nes";
     // let rom_path = "roms/full_palette_alt.nes";
     // let rom_path = "roms/nestest.nes";

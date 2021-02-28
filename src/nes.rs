@@ -6,6 +6,7 @@ use crate::cartridge::{
     Cartridge,
 };
 use crate::cpu::CPU;
+use crate::palette::Palette;
 use crate::ppu::PPU;
 use crate::ram::RAM;
 use std::cell::RefCell;
@@ -26,7 +27,7 @@ impl<'a> Nes<'a> {
         let nametbl2 = Rc::new(RefCell::new(RAM::new(vec![0u8; 1024])));
         let nametbl3 = Rc::new(RefCell::new(RAM::new(vec![0u8; 1024])));
         let nametbl4 = Rc::new(RefCell::new(RAM::new(vec![0u8; 1024])));
-        let palette = Rc::new(RefCell::new(RAM::new(vec![0u8; 256])));
+        let palette = Rc::new(RefCell::new(Palette::new(vec![0u8; 256])));
 
         let mut ppu_bus = Bus::default();
         ppu_bus.connect(0x2000..=0x23FF, &nametbl1);

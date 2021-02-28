@@ -278,28 +278,45 @@ impl<'a> PPU<'a> {
             }
         }
 
-        let color = if self.mask.contains(Mask::RENDER_BACKGROUND) {
+        let mut bg_pixel = 0x00;
+        let mut bg_palette = 0x00;
+
+        if self.mask.contains(Mask::RENDER_BACKGROUND) {
             let bit_offset = 0x8000 >> self.fine_x;
 
-            let p0_pixel = (self.bg_shifter_pattern_lo & bit_offset) > 0;
-            let p1_pixel = (self.bg_shifter_pattern_hi & bit_offset) > 0;
-            let bg_pixel = ((p1_pixel as u8) << 1) | p0_pixel as u8;
+            // pixel
+            let p0_pixel = ((self.bg_shifter_pattern_lo & bit_offset) > 0) as u8;
+            let p1_pixel = ((self.bg_shifter_pattern_hi & bit_offset) > 0) as u8;
+            bg_pixel = (p1_pixel << 1) | p0_pixel;
 
             // palette
             let bg_pal0 = ((self.bg_shifter_attrib_lo & bit_offset) > 0) as u8;
             let bg_pal1 = ((self.bg_shifter_attrib_hi & bit_offset) > 0) as u8;
-            let bg_palette = (bg_pal1 << 1) | bg_pal0;
-
-            let color_i = self
-                .bus
-                .read(0x3F00 + (bg_palette << 2) as u16 + bg_pixel as u16);
-            self.dac[color_i as usize]
-        } else {
-            (0, 0, 0)
-        };
+            bg_palette = (bg_pal1 << 1) | bg_pal0;
+        }
 
         if self.cycle > 0 && self.cycle < 256 && self.scanline >= 0 && self.scanline < 240 {
-            self.screen[self.scanline as usize][self.cycle as usize - 1] = color;
+            let addr = 0x3F00 + ((bg_palette as u16) << 2) + bg_pixel as u16;
+            let color_i = self.bus.read(addr);
+            self.screen[self.scanline as usize][self.cycle as usize - 1] =
+                self.dac[color_i as usize];
+
+            // debug
+            if self.scanline == 4 && self.cycle == 7 {
+                println!("0x{:X} 0x{:X}", bg_pixel, bg_palette);
+                println!(
+                    "0x{:4X} 0x{:2X} {:?}",
+                    addr, color_i, self.dac[color_i as usize]
+                );
+                println!("Palette");
+                for x in 0x3F00..=0x3F0F {
+                    let color_i = self.bus.read(x);
+                    println!(
+                        "0x{:04X} 0x{:02X} {:?}",
+                        x, color_i, self.dac[color_i as usize]
+                    );
+                }
+            }
         }
 
         self.cycle += 1;
@@ -447,7 +464,7 @@ impl<'a> Device for PPU<'a> {
             0x0006 => 0x00,
             0x0007 => {
                 let mut data = self.buffer;
-                self.buffer = self.bus.read(self.vram_address.into());
+                self.buffer = self.bus.read(0x2000 | u16::from(self.vram_address));
 
                 if u16::from(self.vram_address) >= 0x3F00 {
                     data = self.buffer
@@ -461,7 +478,7 @@ impl<'a> Device for PPU<'a> {
                 self.vram_address = (u16::from(self.vram_address) + increment).into();
                 data
             }
-            _ => panic!("unknown PPU register"),
+            _ => panic!("unknown ppu register"),
         }
     }
 
@@ -503,7 +520,6 @@ impl<'a> Device for PPU<'a> {
                 }
             }
             0x0007 => {
-                // self.bus.write(0x2000 | u16::from(self.vram_address), data);
                 match self.cartridge_mirror {
                     Mirror::Horizontal => {
                         self.bus.write(0x2000 | u16::from(self.vram_address), data);
