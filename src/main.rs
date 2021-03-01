@@ -9,14 +9,74 @@ use std::io::Read;
 use std::rc::Rc;
 
 fn main() {
-    if let Some(mode) = env::args().nth(1) {
-        if mode == "nestest" {
-            nestest()
-        } else if mode == "play" {
-            play(&env::args().nth(2).unwrap())
-        }
+    let mode = env::args().nth(1).expect("No run mode specified");
+    if mode == "nestest" {
+        nestest()
+    } else if mode == "play" {
+        play(&env::args().nth(2).expect("No rom to play"))
     } else {
-        play(&env::args().nth(2).unwrap())
+        panic!("Invalid mode");
+    }
+}
+
+fn play(rom_path: &str) {
+    let mut nes = Nes::new();
+    nes.load_rom(rom_path);
+    nes.reset();
+
+    // SDL graphics
+    const MAIN_WIDTH: u32 = 256;
+    const MAIN_HEIGHT: u32 = 240;
+    const MAIN_SCALING: u32 = 4;
+
+    let sdl = sdl2::init().unwrap();
+    let video_subsystem = sdl.video().unwrap();
+
+    let main_window = video_subsystem
+        .window(
+            rom_path,
+            MAIN_SCALING * MAIN_WIDTH,
+            MAIN_SCALING * MAIN_HEIGHT,
+        )
+        .resizable()
+        .build()
+        .unwrap();
+    let mut main_canvas = main_window.into_canvas().build().unwrap();
+    main_canvas
+        .set_scale(MAIN_SCALING as f32, MAIN_SCALING as f32)
+        .unwrap();
+    main_canvas.clear();
+    main_canvas.present();
+
+    // emulate clock ticks
+    let mut event_pump = sdl.event_pump().unwrap();
+    'main: loop {
+        nes.clock();
+
+        if nes.ppu.borrow().render {
+            println!("Rendering");
+            nes.draw_screen(&mut main_canvas, MAIN_WIDTH as usize, MAIN_HEIGHT as usize);
+            nes.ppu.borrow_mut().render = false;
+        }
+
+        for event in event_pump.poll_iter() {
+            match event {
+                sdl2::event::Event::Quit { .. } => break 'main,
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'main,
+
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::D),
+                    ..
+                } => {
+                    nes.draw_screen(&mut main_canvas, MAIN_WIDTH as usize, MAIN_HEIGHT as usize);
+                    nes.ppu.borrow_mut().render = false;
+                }
+                _ => {}
+            }
+        }
     }
 }
 
@@ -43,80 +103,5 @@ fn nestest() {
     // emulate clock cycle
     for _ in 0..26553 {
         cpu.clock();
-    }
-}
-
-fn play(rom_path: &str) {
-    // let rom_path = "roms/ignored/donkey-kong.nes";
-    // let rom_path = "roms/full_palette.nes";
-    // let rom_path = "roms/full_palette_alt.nes";
-    // let rom_path = "roms/nestest.nes";
-
-    let mut nes = Nes::new();
-    nes.load_rom(rom_path);
-    nes.reset();
-
-    // SDL graphics
-    const WIDTH: u32 = 256;
-    const HEIGHT: u32 = 240;
-    const SCALING: u32 = 4;
-
-    let sdl = sdl2::init().unwrap();
-    let video_subsystem = sdl.video().unwrap();
-    let window = video_subsystem
-        .window(rom_path, SCALING * WIDTH, SCALING * HEIGHT)
-        .resizable()
-        .build()
-        .unwrap();
-    let mut canvas = window.into_canvas().build().unwrap();
-    canvas.set_scale(SCALING as f32, SCALING as f32).unwrap();
-    canvas.clear();
-    canvas.present();
-
-    // emulate clock ticks, CPU 3x slower than PPU
-    let mut event_pump = sdl.event_pump().unwrap();
-    'main: loop {
-        nes.clock(&mut canvas);
-        for event in event_pump.poll_iter() {
-            match event {
-                sdl2::event::Event::Quit { .. } => break 'main,
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => break 'main,
-
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(Keycode::Num1),
-                    ..
-                } => nes.draw_name_table(0, &mut canvas, 32, 30),
-
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(Keycode::Num2),
-                    ..
-                } => nes.draw_name_table(1, &mut canvas, 32, 30),
-
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(Keycode::Num3),
-                    ..
-                } => nes.draw_name_table(2, &mut canvas, 32, 30),
-
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(Keycode::Num4),
-                    ..
-                } => nes.draw_name_table(3, &mut canvas, 32, 30),
-
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(Keycode::P),
-                    ..
-                } => nes.draw_pattern_table(&mut canvas, WIDTH, HEIGHT),
-
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(Keycode::D),
-                    ..
-                } => nes.draw_screen(&mut canvas, WIDTH as usize, HEIGHT as usize),
-
-                _ => {}
-            }
-        }
     }
 }

@@ -44,10 +44,6 @@ impl Mapper000 {
         (*self.cartridge).borrow().prg_rom[address as usize]
     }
 
-    fn read_chr_rom(&self, address: u16) -> u8 {
-        (*self.cartridge).borrow().chr_rom[address as usize]
-    }
-
     fn write_prg_rom(&mut self, address: u16, data: u8) {
         let address = if self.prg_banks == 1 {
             address & 0x3FFF
@@ -56,6 +52,10 @@ impl Mapper000 {
         };
 
         (*self.cartridge).borrow_mut().prg_rom[address as usize] = data;
+    }
+
+    fn read_chr_rom(&self, address: u16) -> u8 {
+        (*self.cartridge).borrow_mut().chr_rom[address as usize]
     }
 
     fn write_chr_rom(&mut self, address: u16, data: u8) {

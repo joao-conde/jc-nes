@@ -195,7 +195,6 @@ impl<'a> PPU<'a> {
             // new frame
             if self.scanline == -1 && self.cycle == 1 {
                 self.status.set(Status::VERTICAL_BLANK, false);
-                self.render = false;
             }
 
             if (self.cycle >= 2 && self.cycle < 258) || (self.cycle >= 321 && self.cycle < 338) {
@@ -230,14 +229,16 @@ impl<'a> PPU<'a> {
                     }
                     4 => {
                         self.bg_next_tile_lsb = self.bus.read(
-                            (((self.control & Control::PATTERN_BACKGROUND).bits() as u16) << 12)
+                            ((((self.control & Control::PATTERN_BACKGROUND).bits() >> 4) as u16)
+                                << 12)
                                 + ((self.bg_next_tile_id as u16) << 4)
                                 + self.vram_address.fine_y as u16,
                         );
                     }
                     6 => {
                         self.bg_next_tile_msb = self.bus.read(
-                            (((self.control & Control::PATTERN_BACKGROUND).bits() as u16) << 12)
+                            ((((self.control & Control::PATTERN_BACKGROUND).bits() >> 4) as u16)
+                                << 12)
                                 + ((self.bg_next_tile_id as u16) << 4)
                                 + self.vram_address.fine_y as u16
                                 + 8,
@@ -271,7 +272,6 @@ impl<'a> PPU<'a> {
         else if self.scanline >= 241 && self.scanline < 261 {
             if self.scanline == 241 && self.cycle == 1 {
                 self.status.set(Status::VERTICAL_BLANK, true);
-                self.render = true;
                 if self.control.contains(Control::ENABLE_NMI) {
                     self.raise_nmi = true;
                 }
@@ -302,21 +302,21 @@ impl<'a> PPU<'a> {
                 self.dac[color_i as usize];
 
             // debug
-            if self.scanline == 4 && self.cycle == 7 {
-                println!("0x{:X} 0x{:X}", bg_pixel, bg_palette);
-                println!(
-                    "0x{:4X} 0x{:2X} {:?}",
-                    addr, color_i, self.dac[color_i as usize]
-                );
-                // println!("Palette");
-                // for x in 0x3F00..=0x3F0F {
-                //     let color_i = self.bus.read(x);
-                //     println!(
-                //         "0x{:04X} 0x{:02X} {:?}",
-                //         x, color_i, self.dac[color_i as usize]
-                //     );
-                // }
-            }
+            // if self.scanline == 4 && self.cycle == 7 {
+            //     println!("0x{:X} 0x{:X}", bg_pixel, bg_palette);
+            //     println!(
+            //         "0x{:4X} 0x{:2X} {:?}",
+            //         addr, color_i, self.dac[color_i as usize]
+            //     );
+            //     // println!("Palette");
+            //     // for x in 0x3F00..=0x3F0F {
+            //     //     let color_i = self.bus.read(x);
+            //     //     println!(
+            //     //         "0x{:04X} 0x{:02X} {:?}",
+            //     //         x, color_i, self.dac[color_i as usize]
+            //     //     );
+            //     // }
+            // }
         }
 
         self.cycle += 1;
@@ -463,7 +463,6 @@ impl<'a> Device for PPU<'a> {
             0x0002 => {
                 let data = self.status.bits() & 0xE0 | (self.buffer & 0x1F);
                 self.status.set(Status::VERTICAL_BLANK, false);
-                self.render = false;
                 self.write_flip_flop = true;
                 data
             }
@@ -496,7 +495,7 @@ impl<'a> Device for PPU<'a> {
             0x0000 => {
                 self.control = Control::from_bits_truncate(data);
                 self.tram_address.nametable_x = (self.control & Control::NAMETABLE_X).bits();
-                self.tram_address.nametable_y = (self.control & Control::NAMETABLE_Y).bits();
+                self.tram_address.nametable_y = (self.control & Control::NAMETABLE_Y).bits() >> 1;
             }
             0x0001 => {
                 self.mask = Mask::from_bits_truncate(data);

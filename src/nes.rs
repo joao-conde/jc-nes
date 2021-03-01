@@ -16,7 +16,7 @@ pub type SharedMut<T> = Rc<RefCell<T>>;
 
 pub struct Nes<'a> {
     cpu: CPU<'a>,
-    ppu: SharedMut<PPU<'a>>,
+    pub ppu: SharedMut<PPU<'a>>,
     ticks: usize,
 }
 
@@ -80,7 +80,7 @@ impl<'a> Nes<'a> {
         }
     }
 
-    pub fn clock(&mut self, canvas: &mut Canvas<Window>) {
+    pub fn clock(&mut self) {
         self.ppu.borrow_mut().clock();
         if self.ticks % 3 == 0 {
             self.cpu.clock();
@@ -89,11 +89,6 @@ impl<'a> Nes<'a> {
         if self.ppu.borrow().raise_nmi {
             self.ppu.borrow_mut().raise_nmi = false;
             self.cpu.nmi();
-        }
-
-        if self.ppu.borrow().render {
-            self.draw_screen(canvas, 256, 240);
-            self.ppu.borrow_mut().render = false;
         }
 
         self.ticks += 1;
@@ -105,7 +100,7 @@ impl<'a> Nes<'a> {
     }
 
     pub fn draw_screen(&self, canvas: &mut Canvas<Window>, width: usize, height: usize) {
-        canvas.clear();
+        // canvas.clear();
         for y in 0..height {
             for x in 0..width {
                 let (r, g, b) = self.ppu.borrow().screen[y][x];
