@@ -72,7 +72,6 @@ fn play(rom_path: &str) {
                     ..
                 } => {
                     nes.draw_screen(&mut main_canvas, MAIN_WIDTH as usize, MAIN_HEIGHT as usize);
-                    nes.ppu.borrow_mut().render = false;
                 }
                 _ => {}
             }

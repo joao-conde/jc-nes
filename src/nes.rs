@@ -6,8 +6,7 @@ use crate::cartridge::{
     Cartridge,
 };
 use crate::cpu::CPU;
-use crate::palette::Palette;
-use crate::ppu::PPU;
+use crate::ppu::{palette::Palette, PPU};
 use crate::ram::RAM;
 use std::cell::RefCell;
 use std::rc::Rc;

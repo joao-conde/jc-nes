@@ -1,3 +1,5 @@
+pub mod palette;
+
 mod vram_address;
 
 use crate::ppu::vram_address::VRAMAddress;
