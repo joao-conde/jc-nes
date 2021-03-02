@@ -1,4 +1,9 @@
-use sdl2::{pixels::Color, rect::Point, render::Canvas, video::Window};
+use sdl2::{
+    pixels::Color,
+    rect::Point,
+    render::{Canvas, Texture},
+    video::Window,
+};
 
 use crate::bus::Bus;
 use crate::cartridge::{
@@ -8,8 +13,8 @@ use crate::cartridge::{
 use crate::cpu::CPU;
 use crate::ppu::{palette::Palette, PPU};
 use crate::ram::RAM;
-use std::cell::RefCell;
 use std::rc::Rc;
+use std::{cell::RefCell, time::Instant};
 
 pub type SharedMut<T> = Rc<RefCell<T>>;
 
@@ -98,17 +103,17 @@ impl<'a> Nes<'a> {
         self.ppu.borrow_mut().reset();
     }
 
-    pub fn draw_screen(&self, canvas: &mut Canvas<Window>, width: usize, height: usize) {
-        // canvas.clear();
-        for y in 0..height {
-            for x in 0..width {
-                let (r, g, b) = self.ppu.borrow().screen[y][x];
-                canvas.set_draw_color(Color::RGB(r, g, b));
-                canvas.draw_point(Point::new(x as i32, y as i32)).unwrap();
-            }
-        }
-        canvas.present();
-    }
+    // pub fn draw_screen(&self, canvas: &mut Canvas<Window>, width: usize, height: usize) {
+    //     // canvas.clear();
+    //     for y in 0..height {
+    //         for x in 0..width {
+    //             let (r, g, b) = self.ppu.borrow().screen[y][x];
+    //             canvas.set_draw_color(Color::RGB(r, g, b));
+    //             canvas.draw_point(Point::new(x as i32, y as i32)).unwrap();
+    //         }
+    //     }
+    //     canvas.present();
+    // }
 
     pub fn draw_name_table(
         &self,

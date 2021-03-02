@@ -1,12 +1,14 @@
 use jc_nes::cpu::CPU;
 use jc_nes::ram::RAM;
 use jc_nes::{bus::Bus, nes::Nes};
-use sdl2::keyboard::Keycode;
-use std::cell::RefCell;
+use sdl2::{
+    keyboard::Keycode, pixels::PixelFormatEnum, rect::Rect, render::Texture, surface::Surface,
+};
 use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::rc::Rc;
+use std::{cell::RefCell, time::Instant};
 
 fn main() {
     let mode = env::args().nth(1).expect("No run mode specified");
@@ -29,24 +31,29 @@ fn play(rom_path: &str) {
     const MAIN_HEIGHT: u32 = 240;
     const MAIN_SCALING: u32 = 4;
 
-    let sdl = sdl2::init().unwrap();
-    let video_subsystem = sdl.video().unwrap();
+    let sdl = sdl2::init().expect("failed to init SDL");
+    let video_subsystem = sdl.video().expect("failed to get video context");
 
     let main_window = video_subsystem
-        .window(
-            rom_path,
-            MAIN_SCALING * MAIN_WIDTH,
-            MAIN_SCALING * MAIN_HEIGHT,
-        )
+        .window(rom_path, MAIN_WIDTH, MAIN_HEIGHT)
         .resizable()
         .build()
-        .unwrap();
-    let mut main_canvas = main_window.into_canvas().build().unwrap();
-    main_canvas
-        .set_scale(MAIN_SCALING as f32, MAIN_SCALING as f32)
-        .unwrap();
+        .expect("failed to build window");
+    let mut main_canvas = main_window
+        .into_canvas()
+        .build()
+        .expect("failed to build window's canvas");
+    // main_canvas
+    //     .set_scale(MAIN_SCALING as f32, MAIN_SCALING as f32)
+    //     .expect("failed setting window scale");
     main_canvas.clear();
     main_canvas.present();
+
+    let texture_creator = main_canvas.texture_creator();
+
+    let mut texture = texture_creator
+        .create_texture_streaming(PixelFormatEnum::RGB24, 256, 240)
+        .unwrap();
 
     // emulate clock ticks
     let mut event_pump = sdl.event_pump().unwrap();
@@ -54,8 +61,16 @@ fn play(rom_path: &str) {
         nes.clock();
 
         if nes.ppu.borrow().render {
-            println!("Rendering");
-            nes.draw_screen(&mut main_canvas, MAIN_WIDTH as usize, MAIN_HEIGHT as usize);
+            main_canvas.clear();
+            // let now = Instant::now();
+            // println!("RENDER: {}ns", now.elapsed().as_nanos());
+
+            texture
+                .update(None, &nes.ppu.borrow().screen, 256 * 3)
+                .unwrap();
+            main_canvas.copy(&texture, None, None).unwrap();
+
+            main_canvas.present();
             nes.ppu.borrow_mut().render = false;
         }
 
@@ -66,13 +81,6 @@ fn play(rom_path: &str) {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'main,
-
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(Keycode::D),
-                    ..
-                } => {
-                    nes.draw_screen(&mut main_canvas, MAIN_WIDTH as usize, MAIN_HEIGHT as usize);
-                }
                 _ => {}
             }
         }

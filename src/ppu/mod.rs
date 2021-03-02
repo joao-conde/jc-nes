@@ -22,7 +22,7 @@ pub struct PPU<'a> {
     write_flip_flop: bool,
     buffer: u8,
 
-    pub screen: [[(u8, u8, u8); 256]; 240],
+    pub screen: [u8; 256 * 240 * 3],
 
     dac: [(u8, u8, u8); 0x40],
 
@@ -162,7 +162,7 @@ impl<'a> PPU<'a> {
             control: Control::from_bits_truncate(0x00),
             write_flip_flop: true,
             buffer: 0x00,
-            screen: [[(0, 0, 0); 256]; 240],
+            screen: [0; 256 * 240 * 3],
             raise_nmi: false,
             vram_address: VRAMAddress::default(),
             tram_address: VRAMAddress::default(),
@@ -300,25 +300,11 @@ impl<'a> PPU<'a> {
         if self.cycle > 0 && self.cycle < 256 && self.scanline >= 0 && self.scanline < 240 {
             let addr = 0x3F00 + ((bg_palette as u16) << 2) + bg_pixel as u16;
             let color_i = self.bus.read(addr);
-            self.screen[self.scanline as usize][self.cycle as usize - 1] =
-                self.dac[color_i as usize];
 
-            // debug
-            // if self.scanline == 4 && self.cycle == 7 {
-            //     println!("0x{:X} 0x{:X}", bg_pixel, bg_palette);
-            //     println!(
-            //         "0x{:4X} 0x{:2X} {:?}",
-            //         addr, color_i, self.dac[color_i as usize]
-            //     );
-            //     // println!("Palette");
-            //     // for x in 0x3F00..=0x3F0F {
-            //     //     let color_i = self.bus.read(x);
-            //     //     println!(
-            //     //         "0x{:04X} 0x{:02X} {:?}",
-            //     //         x, color_i, self.dac[color_i as usize]
-            //     //     );
-            //     // }
-            // }
+            let tex_addr = 256 * 3 * (self.scanline as u16) + (self.cycle - 1) * 3;
+            self.screen[tex_addr as usize] = self.dac[color_i as usize].0;
+            self.screen[tex_addr as usize + 1] = self.dac[color_i as usize].1;
+            self.screen[tex_addr as usize + 2] = self.dac[color_i as usize].2;
         }
 
         self.cycle += 1;
