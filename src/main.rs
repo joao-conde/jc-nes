@@ -83,7 +83,7 @@ fn nestest() {
     // read test rom
     let mut rom = File::open("roms/nestest.nes").unwrap();
     let mut buffer = Vec::new();
-    rom.read_to_end(&mut buffer).expect("buffer OVERFLOW");
+    rom.read_to_end(&mut buffer).expect("buffer overflow");
 
     // make test rom address start at 0xC000
     // and discard 16-bit header
