@@ -13,8 +13,8 @@ use crate::cartridge::{
 use crate::cpu::CPU;
 use crate::ppu::{palette::Palette, PPU};
 use crate::ram::RAM;
+use std::cell::RefCell;
 use std::rc::Rc;
-use std::{cell::RefCell, time::Instant};
 
 pub type SharedMut<T> = Rc<RefCell<T>>;
 

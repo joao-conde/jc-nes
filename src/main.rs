@@ -4,11 +4,11 @@ use jc_nes::{bus::Bus, nes::Nes};
 use sdl2::{
     keyboard::Keycode, pixels::PixelFormatEnum, rect::Rect, render::Texture, surface::Surface,
 };
-use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::rc::Rc;
 use std::{cell::RefCell, time::Instant};
+use std::{env, time::Duration};
 
 fn main() {
     let mode = env::args().nth(1).expect("No run mode specified");
@@ -35,7 +35,11 @@ fn play(rom_path: &str) {
     let video_subsystem = sdl.video().expect("failed to get video context");
 
     let main_window = video_subsystem
-        .window(rom_path, MAIN_WIDTH, MAIN_HEIGHT)
+        .window(
+            rom_path,
+            MAIN_SCALING * MAIN_WIDTH,
+            MAIN_SCALING * MAIN_HEIGHT,
+        )
         .resizable()
         .build()
         .expect("failed to build window");
@@ -43,9 +47,9 @@ fn play(rom_path: &str) {
         .into_canvas()
         .build()
         .expect("failed to build window's canvas");
-    // main_canvas
-    //     .set_scale(MAIN_SCALING as f32, MAIN_SCALING as f32)
-    //     .expect("failed setting window scale");
+    main_canvas
+        .set_scale(MAIN_SCALING as f32, MAIN_SCALING as f32)
+        .expect("failed setting window scale");
     main_canvas.clear();
     main_canvas.present();
 
@@ -58,20 +62,22 @@ fn play(rom_path: &str) {
     // emulate clock ticks
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
+        // let now = Instant::now();
+        // println!("CLOCK: {}ns", now.elapsed().as_nanos());
         nes.clock();
 
         if nes.ppu.borrow().render {
-            main_canvas.clear();
             // let now = Instant::now();
             // println!("RENDER: {}ns", now.elapsed().as_nanos());
 
             texture
                 .update(None, &nes.ppu.borrow().screen, 256 * 3)
                 .unwrap();
+
             main_canvas.copy(&texture, None, None).unwrap();
 
-            main_canvas.present();
             nes.ppu.borrow_mut().render = false;
+            main_canvas.present();
         }
 
         for event in event_pump.poll_iter() {

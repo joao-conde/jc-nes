@@ -301,7 +301,7 @@ impl<'a> PPU<'a> {
             let addr = 0x3F00 + ((bg_palette as u16) << 2) + bg_pixel as u16;
             let color_i = self.bus.read(addr);
 
-            let tex_addr = 256 * 3 * (self.scanline as u16) + (self.cycle - 1) * 3;
+            let tex_addr = 256 * 3 * (self.scanline as usize) + (self.cycle as usize - 1) * 3;
             self.screen[tex_addr as usize] = self.dac[color_i as usize].0;
             self.screen[tex_addr as usize + 1] = self.dac[color_i as usize].1;
             self.screen[tex_addr as usize + 2] = self.dac[color_i as usize].2;
