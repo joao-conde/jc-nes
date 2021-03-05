@@ -62,14 +62,9 @@ fn play(rom_path: &str) {
     // emulate clock ticks
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
-        // let now = Instant::now();
-        // println!("CLOCK: {}ns", now.elapsed().as_nanos());
         nes.clock();
 
         if nes.ppu.borrow().render {
-            // let now = Instant::now();
-            // println!("RENDER: {}ns", now.elapsed().as_nanos());
-
             texture
                 .update(None, &nes.ppu.borrow().screen, 256 * 3)
                 .unwrap();
@@ -80,16 +75,16 @@ fn play(rom_path: &str) {
             main_canvas.present();
         }
 
-        for event in event_pump.poll_iter() {
-            match event {
-                sdl2::event::Event::Quit { .. } => break 'main,
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => break 'main,
-                _ => {}
-            }
-        }
+        // for event in event_pump.poll_iter() {
+        //     match event {
+        //         sdl2::event::Event::Quit { .. } => break 'main,
+        //         sdl2::event::Event::KeyDown {
+        //             keycode: Some(Keycode::Escape),
+        //             ..
+        //         } => break 'main,
+        //         _ => {}
+        //     }
+        // }
     }
 }
 

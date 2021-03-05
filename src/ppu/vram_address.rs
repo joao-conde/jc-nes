@@ -21,10 +21,10 @@ impl From<u16> for VRAMAddress {
 
 impl From<VRAMAddress> for u16 {
     fn from(address: VRAMAddress) -> u16 {
-        (address.coarse_x as u16
+        address.coarse_x as u16
             | (address.coarse_y as u16) << 5
             | (address.nametable_x as u16) << 10
             | (address.nametable_y as u16) << 11
-            | (address.fine_y as u16) << 12)
+            | (address.fine_y as u16) << 12
     }
 }

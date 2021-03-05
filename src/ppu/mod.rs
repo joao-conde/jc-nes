@@ -344,12 +344,7 @@ impl<'a> PPU<'a> {
     }
 
     pub fn debug(&self) {
-        println!(
-            " PPU {}, {} VRAM: 0x{:4X}",
-            self.scanline,
-            self.cycle,
-            u16::from(self.vram_address)
-        );
+        println!(" PPU {}, {}", self.scanline, self.cycle);
     }
 
     pub fn pause(&self) {

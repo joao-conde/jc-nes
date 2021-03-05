@@ -17,8 +17,9 @@ pub struct CPU<'a> {
     status: Status,
 
     /// Implementation specific
-    cycle: u8,
+    pub cycle: u8,
     pub total_cycles: usize, // TODO remove ?
+    pub debug: bool,
     extra_cycles: bool,
     pub(in crate) bus: Bus<'a>,
 }
@@ -96,6 +97,9 @@ impl<'a> CPU<'a> {
 /// Opcode processing and execution and utility functions
 impl<'a> CPU<'a> {
     fn process_opcode(&mut self, opcode: u8) {
+        if self.debug {
+            self.debug(opcode);
+        }
         match opcode {
             // Official Opcodes
             0x00 => self.execute(CPU::imp, CPU::brk, 7, false),

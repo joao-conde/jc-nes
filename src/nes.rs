@@ -1,10 +1,3 @@
-use sdl2::{
-    pixels::Color,
-    rect::Point,
-    render::{Canvas, Texture},
-    video::Window,
-};
-
 use crate::bus::Bus;
 use crate::cartridge::{
     mappers::{mapper000::Mapper000, MapperMemoryPin},
@@ -55,7 +48,8 @@ impl<'a> Nes<'a> {
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
 
-        let cpu = CPU::new(cpu_bus);
+        let mut cpu = CPU::new(cpu_bus);
+        cpu.debug = false;
 
         Nes { cpu, ppu, ticks: 0 }
     }
@@ -87,7 +81,11 @@ impl<'a> Nes<'a> {
     pub fn clock(&mut self) {
         self.ppu.borrow_mut().clock();
         if self.ticks % 3 == 0 {
+            let ppu_debug_now = false; //self.cpu.cycle == 0;
             self.cpu.clock();
+            if ppu_debug_now {
+                self.ppu.borrow().debug()
+            }
         }
 
         if self.ppu.borrow().raise_nmi {
@@ -103,89 +101,66 @@ impl<'a> Nes<'a> {
         self.ppu.borrow_mut().reset();
     }
 
-    // pub fn draw_screen(&self, canvas: &mut Canvas<Window>, width: usize, height: usize) {
-    //     // canvas.clear();
+    // pub fn draw_name_table(&self, table: usize, width: usize, height: usize) {
     //     for y in 0..height {
     //         for x in 0..width {
-    //             let (r, g, b) = self.ppu.borrow().screen[y][x];
-    //             canvas.set_draw_color(Color::RGB(r, g, b));
+    //             let address = (0x2000 + 0x400 * table) + x + y * width;
+    //             let byte = self.ppu.borrow().bus.read(address as u16);
+    //             print!("{:02X}", byte);
+    //         }
+    //         println!()
+    //     }
+    // }
+
+    // pub fn draw_pattern_table(&self, canvas: &mut Canvas<Window>, width: u32, height: u32) {
+    //     canvas.clear();
+
+    //     const TILE_PIXEL_WIDTH: u32 = 8;
+    //     const TILE_PIXEL_HEIGHT: u32 = TILE_PIXEL_WIDTH;
+    //     const TILE_BYTE_WIDTH: u32 = 2 * TILE_PIXEL_WIDTH;
+
+    //     for y in 0..height {
+    //         for x in 0..width {
+    //             // get base address of pixel
+    //             let tile_x = x / TILE_PIXEL_WIDTH;
+    //             let tile_y = y / TILE_PIXEL_HEIGHT;
+
+    //             let pixel_y = y % 8;
+    //             let addr = tile_y * height + tile_x * TILE_BYTE_WIDTH + pixel_y;
+
+    //             // get data from both bit planes
+    //             let mut lsb: u8 = self.ppu.borrow_mut().bus.read(addr as u16);
+    //             let mut msb: u8 = self.ppu.borrow_mut().bus.read(addr as u16 + 8);
+
+    //             // join bit plane data
+    //             let mut pixel_help: u16 = 0x0000;
+    //             for i in 0..8 {
+    //                 let bit0: u8 = lsb & 0x01;
+    //                 let bit1: u8 = msb & 0x01;
+
+    //                 pixel_help |= (bit0 as u16) << (i * 2);
+    //                 pixel_help |= (bit1 as u16) << (i * 2 + 1);
+
+    //                 lsb >>= 1;
+    //                 msb >>= 1;
+    //             }
+
+    //             // compute pixel number (from 0 to 3)
+    //             let pos = 7 - (x % 8);
+    //             let opt = pos * 2;
+    //             let pixel = (pixel_help & (0x3 << opt)) >> opt;
+
+    //             // draw
+    //             match pixel {
+    //                 0 => canvas.set_draw_color(Color::RGB(0, 0, 0)),
+    //                 1 => canvas.set_draw_color(Color::RGB(0, 102, 255)),
+    //                 2 => canvas.set_draw_color(Color::RGB(0, 51, 128)),
+    //                 3 => canvas.set_draw_color(Color::RGB(0, 10, 26)),
+    //                 _ => panic!("unexpected pixel value"),
+    //             }
     //             canvas.draw_point(Point::new(x as i32, y as i32)).unwrap();
     //         }
     //     }
     //     canvas.present();
     // }
-
-    pub fn draw_name_table(
-        &self,
-        table: usize,
-        canvas: &mut Canvas<Window>,
-        width: usize,
-        height: usize,
-    ) {
-        canvas.clear();
-
-        for y in 0..height {
-            for x in 0..width {
-                let address = (0x2000 + 0x400 * table) + x + y * width;
-                let byte = self.ppu.borrow().bus.read(address as u16);
-                print!("{:02X}", byte);
-                // self.draw_tile(canvas, byte, x as i32 * 8, y as i32 * 8);
-            }
-            println!()
-        }
-
-        canvas.present();
-    }
-
-    pub fn draw_pattern_table(&self, canvas: &mut Canvas<Window>, width: u32, height: u32) {
-        canvas.clear();
-
-        const TILE_PIXEL_WIDTH: u32 = 8;
-        const TILE_PIXEL_HEIGHT: u32 = TILE_PIXEL_WIDTH;
-        const TILE_BYTE_WIDTH: u32 = 2 * TILE_PIXEL_WIDTH;
-
-        for y in 0..height {
-            for x in 0..width {
-                // get base address of pixel
-                let tile_x = x / TILE_PIXEL_WIDTH;
-                let tile_y = y / TILE_PIXEL_HEIGHT;
-
-                let pixel_y = y % 8;
-                let addr = tile_y * height + tile_x * TILE_BYTE_WIDTH + pixel_y;
-
-                // get data from both bit planes
-                let mut lsb: u8 = self.ppu.borrow_mut().bus.read(addr as u16);
-                let mut msb: u8 = self.ppu.borrow_mut().bus.read(addr as u16 + 8);
-
-                // join bit plane data
-                let mut pixel_help: u16 = 0x0000;
-                for i in 0..8 {
-                    let bit0: u8 = lsb & 0x01;
-                    let bit1: u8 = msb & 0x01;
-
-                    pixel_help |= (bit0 as u16) << (i * 2);
-                    pixel_help |= (bit1 as u16) << (i * 2 + 1);
-
-                    lsb >>= 1;
-                    msb >>= 1;
-                }
-
-                // compute pixel number (from 0 to 3)
-                let pos = 7 - (x % 8);
-                let opt = pos * 2;
-                let pixel = (pixel_help & (0x3 << opt)) >> opt;
-
-                // draw
-                match pixel {
-                    0 => canvas.set_draw_color(Color::RGB(0, 0, 0)),
-                    1 => canvas.set_draw_color(Color::RGB(0, 102, 255)),
-                    2 => canvas.set_draw_color(Color::RGB(0, 51, 128)),
-                    3 => canvas.set_draw_color(Color::RGB(0, 10, 26)),
-                    _ => panic!("unexpected pixel value"),
-                }
-                canvas.draw_point(Point::new(x as i32, y as i32)).unwrap();
-            }
-        }
-        canvas.present();
-    }
 }
