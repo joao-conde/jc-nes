@@ -75,7 +75,7 @@ fn play(rom_path: &str) {
             main_canvas.present();
         }
 
-        // for event in event_pump.poll_iter() {
+        // while let Some(event) = event_pump.poll_event() {
         //     match event {
         //         sdl2::event::Event::Quit { .. } => break 'main,
         //         sdl2::event::Event::KeyDown {
