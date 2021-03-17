@@ -4,21 +4,22 @@ use jc_nes::{bus::Bus, nes::Nes};
 use sdl2::{
     keyboard::Keycode, pixels::PixelFormatEnum, rect::Rect, render::Texture, surface::Surface,
 };
-use std::fs::File;
 use std::io::Read;
 use std::rc::Rc;
 use std::{cell::RefCell, time::Instant};
 use std::{env, time::Duration};
+use std::{fs::File, io::stdin};
 
 fn main() {
-    let mode = env::args().nth(1).expect("No run mode specified");
-    if mode == "nestest" {
-        nestest()
-    } else if mode == "play" {
-        play(&env::args().nth(2).expect("No rom to play"))
-    } else {
-        panic!("Invalid mode");
-    }
+    play("C:\\Users\\João\\Documents\\Projects\\nes-emulator\\roms\\ignored\\donkey-kong.nes");
+    // let mode = env::args().nth(1).expect("No run mode specified");
+    // if mode == "nestest" {
+    //     nestest()
+    // } else if mode == "play" {
+    //     play(&env::args().nth(2).expect("No rom to play"))
+    // } else {
+    //     panic!("Invalid mode");
+    // }
 }
 
 fn play(rom_path: &str) {
@@ -60,32 +61,77 @@ fn play(rom_path: &str) {
         .unwrap();
 
     // emulate clock ticks
+    let mut timer_subsystem = sdl.timer().expect("failed to get timer system");
+    let tick_interval = 1000 / 60; // frequency in Hz to period in ms
+    let mut last_update_time = 0;
+
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
-        nes.clock();
+        while let Some(event) = event_pump.poll_event() {
+            match event {
+                sdl2::event::Event::Quit { .. } => break 'main,
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'main,
+                _ => {}
+            }
+        }
 
-        if nes.ppu.borrow().render {
+        while !nes.ppu.borrow().frame_complete {
+            nes.clock();
+        }
+
+        let current_time = timer_subsystem.ticks();
+        let delta_t = current_time - last_update_time;
+
+        if tick_interval > delta_t {
+            timer_subsystem.delay(tick_interval - delta_t); // energy saving
+
             texture
                 .update(None, &nes.ppu.borrow().screen, 256 * 3)
                 .unwrap();
 
             main_canvas.copy(&texture, None, None).unwrap();
 
-            nes.ppu.borrow_mut().render = false;
+            nes.ppu.borrow_mut().frame_complete = false;
             main_canvas.present();
         }
 
-        // while let Some(event) = event_pump.poll_event() {
-        //     match event {
-        //         sdl2::event::Event::Quit { .. } => break 'main,
-        //         sdl2::event::Event::KeyDown {
-        //             keycode: Some(Keycode::Escape),
-        //             ..
-        //         } => break 'main,
-        //         _ => {}
-        //     }
-        // }
+        last_update_time = current_time;
     }
+
+    // debug press R for each frame loop
+    // let mut event_pump = sdl.event_pump().unwrap();
+    // 'main: loop {
+    //     while let Some(event) = event_pump.poll_event() {
+    //         match event {
+    //             sdl2::event::Event::Quit { .. } => break 'main,
+    //             sdl2::event::Event::KeyDown {
+    //                 keycode: Some(Keycode::Escape),
+    //                 ..
+    //             } => break 'main,
+    //             sdl2::event::Event::KeyDown {
+    //                 keycode: Some(Keycode::R),
+    //                 ..
+    //             } => {
+    //                 while !nes.ppu.borrow().frame_complete {
+    //                     nes.clock();
+    //                 }
+
+    //                 texture
+    //                     .update(None, &nes.ppu.borrow().screen, 256 * 3)
+    //                     .unwrap();
+
+    //                 main_canvas.copy(&texture, None, None).unwrap();
+
+    //                 nes.ppu.borrow_mut().frame_complete = false;
+    //                 main_canvas.present();
+    //             }
+    //             _ => (),
+    //         }
+    //     }
+    // }
 }
 
 fn nestest() {

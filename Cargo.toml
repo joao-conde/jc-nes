@@ -9,7 +9,11 @@ version = "1.2.1"
 
 [dependencies.wasm-bindgen]
 version = "0.2"
-default-features = false
+
+[dependencies.sdl2]
+version = "0.34.3"
+features = ["bundled", "static-link"]
+git = "https://github.com/joao-conde/rust-sdl2"
 
 [profile.release]
 debug = false

@@ -81,11 +81,7 @@ impl<'a> Nes<'a> {
     pub fn clock(&mut self) {
         self.ppu.borrow_mut().clock();
         if self.ticks % 3 == 0 {
-            let ppu_debug_now = false; //self.cpu.cycle == 0;
             self.cpu.clock();
-            if ppu_debug_now {
-                self.ppu.borrow().debug()
-            }
         }
 
         if self.ppu.borrow().raise_nmi {

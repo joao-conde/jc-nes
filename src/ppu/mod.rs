@@ -13,7 +13,7 @@ pub struct PPU<'a> {
     cycle: u16,
     scanline: i16,
 
-    pub render: bool,
+    pub frame_complete: bool,
 
     status: Status,
     mask: Mask,
@@ -156,7 +156,7 @@ impl<'a> PPU<'a> {
         PPU {
             cycle: 0,
             scanline: 0,
-            render: false,
+            frame_complete: false,
             status: Status::from_bits_truncate(0x00),
             mask: Mask::from_bits_truncate(0x00),
             control: Control::from_bits_truncate(0x00),
@@ -318,7 +318,7 @@ impl<'a> PPU<'a> {
         // reset scanlines
         if self.scanline >= 261 {
             self.scanline = -1;
-            self.render = true;
+            self.frame_complete = true;
         }
     }
 
