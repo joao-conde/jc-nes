@@ -4,7 +4,7 @@ use crate::cartridge::{
     Cartridge,
 };
 use crate::cpu::CPU;
-use crate::ppu::{palette::Palette, PPU};
+use crate::ppu::PPU;
 use crate::ram::RAM;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -24,7 +24,7 @@ impl<'a> Nes<'a> {
         let nametbl2 = Rc::new(RefCell::new(RAM::new(vec![0u8; 1024])));
         let nametbl3 = Rc::new(RefCell::new(RAM::new(vec![0u8; 1024])));
         let nametbl4 = Rc::new(RefCell::new(RAM::new(vec![0u8; 1024])));
-        let palette = Rc::new(RefCell::new(Palette::new(vec![0u8; 256])));
+        let palette = Rc::new(RefCell::new(RAM::new(vec![0u8; 256])));
 
         let mut ppu_bus = Bus::default();
         ppu_bus.connect(0x2000..=0x23FF, &nametbl1);
@@ -96,67 +96,4 @@ impl<'a> Nes<'a> {
         self.cpu.reset();
         self.ppu.borrow_mut().reset();
     }
-
-    // pub fn draw_name_table(&self, table: usize, width: usize, height: usize) {
-    //     for y in 0..height {
-    //         for x in 0..width {
-    //             let address = (0x2000 + 0x400 * table) + x + y * width;
-    //             let byte = self.ppu.borrow().bus.read(address as u16);
-    //             print!("{:02X}", byte);
-    //         }
-    //         println!()
-    //     }
-    // }
-
-    // pub fn draw_pattern_table(&self, canvas: &mut Canvas<Window>, width: u32, height: u32) {
-    //     canvas.clear();
-
-    //     const TILE_PIXEL_WIDTH: u32 = 8;
-    //     const TILE_PIXEL_HEIGHT: u32 = TILE_PIXEL_WIDTH;
-    //     const TILE_BYTE_WIDTH: u32 = 2 * TILE_PIXEL_WIDTH;
-
-    //     for y in 0..height {
-    //         for x in 0..width {
-    //             // get base address of pixel
-    //             let tile_x = x / TILE_PIXEL_WIDTH;
-    //             let tile_y = y / TILE_PIXEL_HEIGHT;
-
-    //             let pixel_y = y % 8;
-    //             let addr = tile_y * height + tile_x * TILE_BYTE_WIDTH + pixel_y;
-
-    //             // get data from both bit planes
-    //             let mut lsb: u8 = self.ppu.borrow_mut().bus.read(addr as u16);
-    //             let mut msb: u8 = self.ppu.borrow_mut().bus.read(addr as u16 + 8);
-
-    //             // join bit plane data
-    //             let mut pixel_help: u16 = 0x0000;
-    //             for i in 0..8 {
-    //                 let bit0: u8 = lsb & 0x01;
-    //                 let bit1: u8 = msb & 0x01;
-
-    //                 pixel_help |= (bit0 as u16) << (i * 2);
-    //                 pixel_help |= (bit1 as u16) << (i * 2 + 1);
-
-    //                 lsb >>= 1;
-    //                 msb >>= 1;
-    //             }
-
-    //             // compute pixel number (from 0 to 3)
-    //             let pos = 7 - (x % 8);
-    //             let opt = pos * 2;
-    //             let pixel = (pixel_help & (0x3 << opt)) >> opt;
-
-    //             // draw
-    //             match pixel {
-    //                 0 => canvas.set_draw_color(Color::RGB(0, 0, 0)),
-    //                 1 => canvas.set_draw_color(Color::RGB(0, 102, 255)),
-    //                 2 => canvas.set_draw_color(Color::RGB(0, 51, 128)),
-    //                 3 => canvas.set_draw_color(Color::RGB(0, 10, 26)),
-    //                 _ => panic!("unexpected pixel value"),
-    //             }
-    //             canvas.draw_point(Point::new(x as i32, y as i32)).unwrap();
-    //         }
-    //     }
-    //     canvas.present();
-    // }
 }

@@ -1,7 +1,13 @@
 use jc_nes::cpu::CPU;
 use jc_nes::ram::RAM;
 use jc_nes::{bus::Bus, nes::Nes};
-use sdl2::{keyboard::Keycode, pixels::PixelFormatEnum};
+use sdl2::{
+    keyboard::Keycode,
+    pixels::PixelFormatEnum,
+    render::{Canvas, Texture},
+    video::Window,
+    Sdl,
+};
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
@@ -9,14 +15,6 @@ use std::rc::Rc;
 
 fn main() {
     play("C:\\Users\\João\\Documents\\Projects\\nes-emulator\\roms\\ignored\\donkey-kong.nes");
-    // let mode = env::args().nth(1).expect("No run mode specified");
-    // if mode == "nestest" {
-    //     nestest()
-    // } else if mode == "play" {
-    //     play(&env::args().nth(2).expect("No rom to play"))
-    // } else {
-    //     panic!("Invalid mode");
-    // }
 }
 
 fn play(rom_path: &str) {
@@ -53,10 +51,40 @@ fn play(rom_path: &str) {
 
     let texture_creator = main_canvas.texture_creator();
 
-    let mut texture = texture_creator
+    let texture = texture_creator
         .create_texture_streaming(PixelFormatEnum::RGB24, 256, 240)
         .unwrap();
 
+    play_60fps(nes, sdl, texture, main_canvas);
+}
+
+fn nestest() {
+    // read test rom
+    let mut rom = File::open("roms/nestest.nes").unwrap();
+    let mut buffer = Vec::new();
+    rom.read_to_end(&mut buffer).expect("buffer overflow");
+
+    // make test rom address start at 0xC000
+    // and discard 16-bit header
+    let mut mem = Vec::new();
+    (0..0xC000).for_each(|_| mem.push(0));
+    buffer[16..0x4F00].iter().for_each(|byte| mem.push(*byte));
+
+    // connect ram to the bus
+    // give bus to CPU to read/write
+    let ram = Rc::new(RefCell::new(RAM::new(mem)));
+    let mut bus = Bus::default();
+    bus.connect(0x0000..=0xFFFF, &ram);
+
+    let mut cpu = CPU::new(bus);
+
+    // emulate clock cycle
+    for _ in 0..26553 {
+        cpu.clock();
+    }
+}
+
+fn play_60fps(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<Window>) {
     // emulate clock ticks
     let mut timer_subsystem = sdl.timer().expect("failed to get timer system");
     let tick_interval = 1000 / 120; // frequency in Hz to period in ms
@@ -89,70 +117,46 @@ fn play(rom_path: &str) {
                 .update(None, &nes.ppu.borrow().screen, 256 * 3)
                 .unwrap();
 
-            main_canvas.copy(&texture, None, None).unwrap();
+            canvas.copy(&texture, None, None).unwrap();
 
             nes.ppu.borrow_mut().frame_complete = false;
-            main_canvas.present();
+            canvas.present();
         }
 
         last_update_time = current_time;
     }
-
-    // debug press R for each frame loop
-    // let mut event_pump = sdl.event_pump().unwrap();
-    // 'main: loop {
-    //     while let Some(event) = event_pump.poll_event() {
-    //         match event {
-    //             sdl2::event::Event::Quit { .. } => break 'main,
-    //             sdl2::event::Event::KeyDown {
-    //                 keycode: Some(Keycode::Escape),
-    //                 ..
-    //             } => break 'main,
-    //             sdl2::event::Event::KeyDown {
-    //                 keycode: Some(Keycode::R),
-    //                 ..
-    //             } => {
-    //                 while !nes.ppu.borrow().frame_complete {
-    //                     nes.clock();
-    //                 }
-
-    //                 texture
-    //                     .update(None, &nes.ppu.borrow().screen, 256 * 3)
-    //                     .unwrap();
-
-    //                 main_canvas.copy(&texture, None, None).unwrap();
-
-    //                 nes.ppu.borrow_mut().frame_complete = false;
-    //                 main_canvas.present();
-    //             }
-    //             _ => (),
-    //         }
-    //     }
-    // }
 }
 
-fn nestest() {
-    // read test rom
-    let mut rom = File::open("roms/nestest.nes").unwrap();
-    let mut buffer = Vec::new();
-    rom.read_to_end(&mut buffer).expect("buffer overflow");
+fn play_frame_step(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<Window>) {
+    // debug press R for each frame loop
+    let mut event_pump = sdl.event_pump().unwrap();
+    'main: loop {
+        while let Some(event) = event_pump.poll_event() {
+            match event {
+                sdl2::event::Event::Quit { .. } => break 'main,
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'main,
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(Keycode::R),
+                    ..
+                } => {
+                    while !nes.ppu.borrow().frame_complete {
+                        nes.clock();
+                    }
 
-    // make test rom address start at 0xC000
-    // and discard 16-bit header
-    let mut mem = Vec::new();
-    (0..0xC000).for_each(|_| mem.push(0));
-    buffer[16..0x4F00].iter().for_each(|byte| mem.push(*byte));
+                    texture
+                        .update(None, &nes.ppu.borrow().screen, 256 * 3)
+                        .unwrap();
 
-    // connect ram to the bus
-    // give bus to CPU to read/write
-    let ram = Rc::new(RefCell::new(RAM::new(mem)));
-    let mut bus = Bus::default();
-    bus.connect(0x0000..=0xFFFF, &ram);
+                    canvas.copy(&texture, None, None).unwrap();
 
-    let mut cpu = CPU::new(bus);
-
-    // emulate clock cycle
-    for _ in 0..26553 {
-        cpu.clock();
+                    nes.ppu.borrow_mut().frame_complete = false;
+                    canvas.present();
+                }
+                _ => (),
+            }
+        }
     }
 }
