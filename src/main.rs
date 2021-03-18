@@ -1,14 +1,11 @@
 use jc_nes::cpu::CPU;
 use jc_nes::ram::RAM;
 use jc_nes::{bus::Bus, nes::Nes};
-use sdl2::{
-    keyboard::Keycode, pixels::PixelFormatEnum, rect::Rect, render::Texture, surface::Surface,
-};
+use sdl2::{keyboard::Keycode, pixels::PixelFormatEnum};
+use std::cell::RefCell;
+use std::fs::File;
 use std::io::Read;
 use std::rc::Rc;
-use std::{cell::RefCell, time::Instant};
-use std::{env, time::Duration};
-use std::{fs::File, io::stdin};
 
 fn main() {
     play("C:\\Users\\João\\Documents\\Projects\\nes-emulator\\roms\\ignored\\donkey-kong.nes");
@@ -62,7 +59,7 @@ fn play(rom_path: &str) {
 
     // emulate clock ticks
     let mut timer_subsystem = sdl.timer().expect("failed to get timer system");
-    let tick_interval = 1000 / 60; // frequency in Hz to period in ms
+    let tick_interval = 1000 / 120; // frequency in Hz to period in ms
     let mut last_update_time = 0;
 
     let mut event_pump = sdl.event_pump().unwrap();
