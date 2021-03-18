@@ -55,8 +55,7 @@ impl<'a> Nes<'a> {
     }
 
     pub fn load_rom(&mut self, rom_path: &str) {
-        let cartridge = Cartridge::new(rom_path);
-        let cartridge = Rc::new(RefCell::new(cartridge));
+        let cartridge = Rc::new(RefCell::new(Cartridge::new(rom_path)));
 
         let meta = cartridge.borrow().meta.clone();
         match meta.mapper_id {

@@ -12,6 +12,7 @@ pub struct PPU<'a> {
     scanline: i16,
 
     pub frame_complete: bool,
+    pub screen: [u8; 256 * 240 * 3],
 
     status: Status,
     mask: Mask,
@@ -20,14 +21,11 @@ pub struct PPU<'a> {
     write_flip_flop: bool,
     buffer: u8,
 
-    pub screen: [u8; 256 * 240 * 3],
-
     dac: [(u8, u8, u8); 0x40],
 
-    cartridge_mirror: Mirror,
+    cartridge_mirror_mode: Mirror,
 
-    // address registers (nesdev.com/loopyppu.zip)
-    // https://wiki.nesdev.com/w/index.php/PPU_scrolling#Explanation
+    // address registers (https://wiki.nesdev.com/w/index.php/PPU_scrolling#Explanation)
     vram_address: VRAMAddress,
     tram_address: VRAMAddress,
     fine_x: u8,
@@ -173,14 +171,14 @@ impl<'a> PPU<'a> {
             bg_shifter_pattern_hi: 0x0000,
             bg_shifter_attrib_lo: 0x0000,
             bg_shifter_attrib_hi: 0x0000,
-            cartridge_mirror: Mirror::default(),
+            cartridge_mirror_mode: Mirror::Horizontal,
             dac,
             bus,
         }
     }
 
     pub fn set_mirror(&mut self, mirror: Mirror) {
-        self.cartridge_mirror = mirror;
+        self.cartridge_mirror_mode = mirror;
     }
 
     // https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
@@ -509,7 +507,7 @@ impl<'a> Device for PPU<'a> {
                 }
             }
             0x0007 => {
-                match self.cartridge_mirror {
+                match self.cartridge_mirror_mode {
                     Mirror::Horizontal => {
                         self.bus.write(0x2000 | u16::from(self.vram_address), data);
                         self.bus.write(0x2400 | u16::from(self.vram_address), data);
