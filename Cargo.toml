@@ -1,8 +1,12 @@
 [package]
 name = "jc-nes"
-version = "0.1.0"
-authors = ["João Dias Conde Azevedo <joaodiasconde@gmail.com>"]
+version = "1.0.0"
+authors = ["João Conde <joaodiasconde@gmail.com>"]
 edition = "2018"
+description = "NES Emulator in Rust"
+repository = "https://github.com/joao-conde/jc-nes"
+license = "MIT"
+keywords = ["NES", "emulator", "rust"]
 
 [dependencies.bitflags]
 version = "1.2.1"
