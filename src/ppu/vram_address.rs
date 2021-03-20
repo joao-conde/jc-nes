@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy)]
 pub struct VRAMAddress {
     pub(in crate::ppu) coarse_x: u8,
     pub(in crate::ppu) coarse_y: u8,

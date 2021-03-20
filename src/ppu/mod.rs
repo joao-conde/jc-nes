@@ -1,5 +1,7 @@
+mod status;
 mod vram_address;
 
+use crate::ppu::status::Status;
 use crate::ppu::vram_address::VRAMAddress;
 use crate::{
     bus::{Bus, Device},
@@ -13,10 +15,15 @@ pub struct PPU<'a> {
 
     pub frame_complete: bool,
     pub screen: [u8; 256 * 240 * 3],
+    pub(in crate) raise_nmi: bool,
+    pub(in crate) bus: Bus<'a>,
 
     status: Status,
     mask: Mask,
     control: Control,
+    vram_address: VRAMAddress,
+    tram_address: VRAMAddress,
+    fine_x: u8,
 
     write_flip_flop: bool,
     buffer: u8,
@@ -25,12 +32,7 @@ pub struct PPU<'a> {
 
     cartridge_mirror_mode: Mirror,
 
-    // address registers (https://wiki.nesdev.com/w/index.php/PPU_scrolling#Explanation)
-    vram_address: VRAMAddress,
-    tram_address: VRAMAddress,
-    fine_x: u8,
-
-    // background buffered data (pre-load)
+    // background buffered data
     bg_next_tile_id: u8,
     bg_next_tile_attrib: u8,
     bg_next_tile_lsb: u8,
@@ -41,17 +43,6 @@ pub struct PPU<'a> {
     bg_shifter_pattern_hi: u16,
     bg_shifter_attrib_lo: u16,
     bg_shifter_attrib_hi: u16,
-
-    pub(in crate) raise_nmi: bool,
-    pub(in crate) bus: Bus<'a>,
-}
-
-bitflags! {
-    struct Status: u8 {
-        const SPRITE_OVERFLOW = 0x20;
-        const SPRITE_ZERO_HIT = 0x40;
-        const VERTICAL_BLANK = 0x80;
-    }
 }
 
 bitflags! {
@@ -153,15 +144,15 @@ impl<'a> PPU<'a> {
             cycle: 0,
             scanline: 0,
             frame_complete: false,
-            status: Status::from_bits_truncate(0x00),
+            status: Status::from(0x00),
             mask: Mask::from_bits_truncate(0x00),
             control: Control::from_bits_truncate(0x00),
             write_flip_flop: true,
             buffer: 0x00,
             screen: [0; 256 * 240 * 3],
             raise_nmi: false,
-            vram_address: VRAMAddress::default(),
-            tram_address: VRAMAddress::default(),
+            vram_address: VRAMAddress::from(0x0000),
+            tram_address: VRAMAddress::from(0x0000),
             fine_x: 0x00,
             bg_next_tile_id: 0x00,
             bg_next_tile_attrib: 0x00,
@@ -192,7 +183,7 @@ impl<'a> PPU<'a> {
 
             // new frame
             if self.scanline == -1 && self.cycle == 1 {
-                self.status.set(Status::VERTICAL_BLANK, false);
+                self.status.vertical_blank = false;
             }
 
             if (self.cycle >= 2 && self.cycle < 258) || (self.cycle >= 321 && self.cycle < 338) {
@@ -269,7 +260,7 @@ impl<'a> PPU<'a> {
         // post-render
         else if self.scanline >= 241 && self.scanline < 261 {
             if self.scanline == 241 && self.cycle == 1 {
-                self.status.set(Status::VERTICAL_BLANK, true);
+                self.status.vertical_blank = true;
                 if self.control.contains(Control::ENABLE_NMI) {
                     self.raise_nmi = true;
                 }
@@ -332,11 +323,11 @@ impl<'a> PPU<'a> {
         self.bg_shifter_pattern_hi = 0x0000;
         self.bg_shifter_attrib_lo = 0x0000;
         self.bg_shifter_attrib_hi = 0x0000;
-        self.status = Status::from_bits_truncate(0x00);
+        self.status = Status::from(0x00);
         self.mask = Mask::from_bits_truncate(0x00);
         self.control = Control::from_bits_truncate(0x00);
-        self.vram_address = VRAMAddress::default();
-        self.tram_address = VRAMAddress::default();
+        self.vram_address = VRAMAddress::from(0x0000);
+        self.tram_address = VRAMAddress::from(0x0000);
     }
 
     pub fn debug(&self) {
@@ -358,11 +349,7 @@ impl<'a> PPU<'a> {
             self.vram_address.coarse_x += 1;
             if self.vram_address.coarse_x == 32 {
                 self.vram_address.coarse_x = 0;
-                self.vram_address.nametable_x = if self.vram_address.nametable_x == 0 {
-                    1
-                } else {
-                    0
-                };
+                self.vram_address.nametable_x ^= 1;
             }
         }
     }
@@ -375,11 +362,7 @@ impl<'a> PPU<'a> {
                 self.vram_address.fine_y = 0;
                 if self.vram_address.coarse_y == 29 {
                     self.vram_address.coarse_y = 0;
-                    self.vram_address.nametable_y = if self.vram_address.nametable_y == 0 {
-                        1
-                    } else {
-                        0
-                    };
+                    self.vram_address.nametable_y ^= 1;
                 } else if self.vram_address.coarse_y == 31 {
                     self.vram_address.coarse_y = 0;
                 } else {
@@ -440,8 +423,8 @@ impl<'a> Device for PPU<'a> {
             0x0000 => 0x00,
             0x0001 => 0x00,
             0x0002 => {
-                let data = self.status.bits() & 0xE0 | (self.buffer & 0x1F);
-                self.status.set(Status::VERTICAL_BLANK, false);
+                let data = u8::from(self.status) & 0xE0 | (self.buffer & 0x1F);
+                self.status.vertical_blank = false;
                 self.write_flip_flop = true;
                 data
             }
