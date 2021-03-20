@@ -1,8 +1,9 @@
 mod addressing;
 mod instructions;
+mod status;
 
 use crate::bus::Bus;
-use bitflags::bitflags;
+use crate::cpu::status::Status;
 
 const STACK_BASE: u16 = 0x0100;
 
@@ -24,27 +25,13 @@ pub struct CPU<'a> {
     pub(in crate) bus: Bus<'a>,
 }
 
-bitflags! {
-    #[derive(Default)]
-    pub(in crate::cpu) struct Status: u8 {
-        const CARRY = 0x01;
-        const ZERO = 0x02;
-        const INTERRUPT = 0x04;
-        const DECIMAL = 0x08;
-        const B1 = 0x10;
-        const B2 = 0x20;
-        const OVERFLOW = 0x40;
-        const NEGATIVE = 0x80;
-    }
-}
-
 impl<'a> CPU<'a> {
     pub fn new(bus: Bus<'a>) -> CPU<'a> {
         let mut cpu = CPU::default();
         cpu.bus = bus;
         // nestest.nes
         // cpu.pc = 0xC000;
-        // cpu.status = Status::from_bits_truncate(0x24);
+        // cpu.status = Status::from(0x24);
         // cpu.total_cycles = 7;
         // cpu.sp = 0xFD;
         // cpu.cycle = 0;
@@ -67,7 +54,7 @@ impl<'a> CPU<'a> {
         self.x = 0;
         self.y = 0;
         self.sp = 0xFD;
-        self.status = Status::from_bits_truncate(0x00);
+        self.status = Status::from(0x00);
 
         self.cycle = 8;
         self.total_cycles = 8;
@@ -80,11 +67,11 @@ impl<'a> CPU<'a> {
         self.push_stack(pch as u8);
         self.push_stack(pcl as u8);
 
-        self.status.set(Status::B1, false);
-        self.status.set(Status::B2, true);
-        self.status.set(Status::INTERRUPT, true);
+        self.status.b1 = false;
+        self.status.b2 = true;
+        self.status.interrupt = true;
 
-        self.push_stack(self.status.bits());
+        self.push_stack(u8::from(self.status));
 
         let pcl = self.bus.read(0xFFFA);
         let pch = self.bus.read(0xFFFB);
@@ -379,7 +366,14 @@ impl<'a> CPU<'a> {
     pub fn debug(&self, opcode: u8) {
         print!(
             "{:04X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
-            self.pc, opcode, self.a, self.x, self.y, self.status, self.sp, self.total_cycles
+            self.pc,
+            opcode,
+            self.a,
+            self.x,
+            self.y,
+            u8::from(self.status),
+            self.sp,
+            self.total_cycles
         );
     }
 

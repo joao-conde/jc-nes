@@ -4,20 +4,17 @@ use crate::cpu::{Status, CPU};
 impl<'a> CPU<'a> {
     pub(in crate::cpu) fn adc(&mut self, address: u16) {
         let operand = self.bus.read(address);
-        let tmp = self.a as u16 + operand as u16 + self.status.contains(Status::CARRY) as u16;
+        let tmp = self.a as u16 + operand as u16 + self.status.carry as u16;
 
-        self.status.set(Status::CARRY, tmp > 0xFF);
-        self.status.set(Status::ZERO, tmp & 0xFF == 0);
-        self.status
-            .set(Status::NEGATIVE, self.is_negative((tmp & 0xFF) as u8));
+        self.status.carry = tmp > 0xFF;
+        self.status.zero = tmp & 0xFF == 0;
+        self.status.negative = self.is_negative((tmp & 0xFF) as u8);
 
         // OVERFLOWs if positive + positive = NEGATIVE or
         // NEGATIVE + NEGATIVE = positive
         // V = ~(A ^ OPERAND) & (A ^ TMP)
-        self.status.set(
-            Status::OVERFLOW,
-            ((!(self.a as u16 ^ operand as u16) & (self.a as u16 ^ tmp)) & 0x0080) >> 7 == 1,
-        );
+        self.status.overflow =
+            ((!(self.a as u16 ^ operand as u16) & (self.a as u16 ^ tmp)) & 0x0080) >> 7 == 1;
         self.a = tmp as u8;
         self.pc += 1;
     }
@@ -25,179 +22,145 @@ impl<'a> CPU<'a> {
     pub(in crate::cpu) fn and(&mut self, address: u16) {
         let operand = self.bus.read(address);
         self.a &= operand;
-        self.status.set(Status::ZERO, self.a == 0);
-        self.status.set(Status::NEGATIVE, self.is_negative(self.a));
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn asl_acc(&mut self, _acc: ()) {
-        self.status.set(Status::CARRY, self.is_negative(self.a));
+        self.status.carry = self.is_negative(self.a);
         self.a <<= 1;
-        self.status.set(Status::NEGATIVE, self.is_negative(self.a));
-        self.status.set(Status::ZERO, self.a == 0);
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn asl_mem(&mut self, address: u16) {
         let operand = self.bus.read(address);
-        self.status.set(Status::CARRY, self.is_negative(operand));
+        self.status.carry = self.is_negative(operand);
         let operand = operand << 1;
-        self.status.set(Status::NEGATIVE, self.is_negative(operand));
-        self.status.set(Status::ZERO, operand == 0);
+        self.status.negative = self.is_negative(operand);
+        self.status.zero = operand == 0;
         self.bus.write(address, operand);
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn bcc(&mut self, address: u16) {
-        self.relative_jump(
-            !self.status.contains(Status::CARRY),
-            self.bus.read(address) as i8,
-        );
+        self.relative_jump(!self.status.carry, self.bus.read(address) as i8);
     }
 
     pub(in crate::cpu) fn bcs(&mut self, address: u16) {
-        self.relative_jump(
-            self.status.contains(Status::CARRY),
-            self.bus.read(address) as i8,
-        );
+        self.relative_jump(self.status.carry, self.bus.read(address) as i8);
     }
 
     pub(in crate::cpu) fn beq(&mut self, address: u16) {
-        self.relative_jump(
-            self.status.contains(Status::ZERO),
-            self.bus.read(address) as i8,
-        );
+        self.relative_jump(self.status.zero, self.bus.read(address) as i8);
     }
 
     pub(in crate::cpu) fn bit(&mut self, address: u16) {
         let operand = self.bus.read(address);
-        self.status.set(Status::ZERO, self.a & operand == 0);
-        self.status.set(Status::NEGATIVE, self.is_negative(operand));
-        self.status
-            .set(Status::OVERFLOW, (operand & 0x40) >> 6 == 1);
+        self.status.zero = self.a & operand == 0;
+        self.status.negative = self.is_negative(operand);
+        self.status.overflow = (operand & 0x40) >> 6 == 1;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn bmi(&mut self, address: u16) {
-        self.relative_jump(
-            self.status.contains(Status::NEGATIVE),
-            self.bus.read(address) as i8,
-        );
+        self.relative_jump(self.status.negative, self.bus.read(address) as i8);
     }
 
     pub(in crate::cpu) fn bne(&mut self, address: u16) {
-        self.relative_jump(
-            !self.status.contains(Status::ZERO),
-            self.bus.read(address) as i8,
-        );
+        self.relative_jump(!self.status.zero, self.bus.read(address) as i8);
     }
 
     pub(in crate::cpu) fn bpl(&mut self, address: u16) {
-        self.relative_jump(
-            !self.status.contains(Status::NEGATIVE),
-            self.bus.read(address) as i8,
-        );
+        self.relative_jump(!self.status.negative, self.bus.read(address) as i8);
     }
 
     pub(in crate::cpu) fn brk(&mut self, _imp: ()) {
-        self.status.set(Status::B1, true);
+        self.status.b1 = true;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn bvc(&mut self, address: u16) {
-        self.relative_jump(
-            !self.status.contains(Status::OVERFLOW),
-            self.bus.read(address) as i8,
-        );
+        self.relative_jump(!self.status.overflow, self.bus.read(address) as i8);
     }
 
     pub(in crate::cpu) fn bvs(&mut self, address: u16) {
-        self.relative_jump(
-            self.status.contains(Status::OVERFLOW),
-            self.bus.read(address) as i8,
-        );
+        self.relative_jump(self.status.overflow, self.bus.read(address) as i8);
     }
 
     pub(in crate::cpu) fn clc(&mut self, _imp: ()) {
-        self.status.set(Status::CARRY, false);
+        self.status.carry = false;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn cld(&mut self, _imp: ()) {
-        self.status.set(Status::DECIMAL, false);
+        self.status.decimal = false;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn cli(&mut self, _imp: ()) {
-        self.status.set(Status::INTERRUPT, false);
+        self.status.interrupt = false;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn clv(&mut self, _imp: ()) {
-        self.status.set(Status::OVERFLOW, false);
+        self.status.overflow = false;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn cmp(&mut self, address: u16) {
         let operand = self.bus.read(address);
-        self.status.set(Status::CARRY, self.a >= operand);
-        self.status.set(Status::ZERO, self.a == operand);
-        self.status.set(
-            Status::NEGATIVE,
-            (self.a.wrapping_sub(operand) & 0x80) >> 7 == 1,
-        );
+        self.status.carry = self.a >= operand;
+        self.status.zero = self.a == operand;
+        self.status.negative = (self.a.wrapping_sub(operand) & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn cpx(&mut self, address: u16) {
         let operand = self.bus.read(address);
-        self.status.set(Status::CARRY, self.x >= operand);
-        self.status.set(Status::ZERO, self.x == operand);
-        self.status.set(
-            Status::NEGATIVE,
-            (self.x.wrapping_sub(operand) & 0x80) >> 7 == 1,
-        );
+        self.status.carry = self.x >= operand;
+        self.status.zero = self.x == operand;
+        self.status.negative = (self.x.wrapping_sub(operand) & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn cpy(&mut self, address: u16) {
         let operand = self.bus.read(address);
-        self.status.set(Status::CARRY, self.y >= operand);
-        self.status.set(Status::ZERO, self.y == operand);
-        self.status.set(
-            Status::NEGATIVE,
-            (self.y.wrapping_sub(operand) & 0x80) >> 7 == 1,
-        );
+        self.status.carry = self.y >= operand;
+        self.status.zero = self.y == operand;
+        self.status.negative = (self.y.wrapping_sub(operand) & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn dec(&mut self, address: u16) {
         let operand = self.bus.read(address).wrapping_sub(1);
         self.bus.write(address, operand);
-        self.status.set(Status::ZERO, operand == 0);
-        self.status.set(Status::NEGATIVE, self.is_negative(operand));
+        self.status.zero = operand == 0;
+        self.status.negative = self.is_negative(operand);
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn dex(&mut self, _imp: ()) {
         self.x = self.x.wrapping_sub(1);
-        self.status.set(Status::ZERO, self.x == 0);
-        self.status.set(Status::NEGATIVE, (self.x & 0x80) >> 7 == 1);
+        self.status.zero = self.x == 0;
+        self.status.negative = (self.x & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn dey(&mut self, _imp: ()) {
         self.y = self.y.wrapping_sub(1);
-        self.status.set(Status::ZERO, self.y == 0);
-        self.status.set(Status::NEGATIVE, (self.y & 0x80) >> 7 == 1);
+        self.status.zero = self.y == 0;
+        self.status.negative = (self.y & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn eor(&mut self, address: u16) {
         let operand = self.bus.read(address);
         self.a ^= operand;
-        self.status.set(Status::ZERO, self.a == 0);
-        self.status.set(Status::NEGATIVE, self.is_negative(self.a));
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
         self.pc += 1;
     }
 
@@ -205,22 +168,22 @@ impl<'a> CPU<'a> {
         let operand = self.bus.read(address);
         let operand = operand.wrapping_add(1);
         self.bus.write(address, operand);
-        self.status.set(Status::ZERO, operand == 0);
-        self.status.set(Status::NEGATIVE, self.is_negative(operand));
+        self.status.zero = operand == 0;
+        self.status.negative = self.is_negative(operand);
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn inx(&mut self, _imp: ()) {
         self.x = self.x.wrapping_add(1);
-        self.status.set(Status::ZERO, self.x == 0);
-        self.status.set(Status::NEGATIVE, (self.x & 0x80) >> 7 == 1);
+        self.status.zero = self.x == 0;
+        self.status.negative = (self.x & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn iny(&mut self, _imp: ()) {
         self.y = self.y.wrapping_add(1);
-        self.status.set(Status::ZERO, self.y == 0);
-        self.status.set(Status::NEGATIVE, (self.y & 0x80) >> 7 == 1);
+        self.status.zero = self.y == 0;
+        self.status.negative = (self.y & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
@@ -239,41 +202,41 @@ impl<'a> CPU<'a> {
     pub(in crate::cpu) fn lda(&mut self, address: u16) {
         let operand = self.bus.read(address);
         self.a = operand;
-        self.status.set(Status::ZERO, self.a == 0);
-        self.status.set(Status::NEGATIVE, self.is_negative(self.a));
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn ldx(&mut self, address: u16) {
         let operand = self.bus.read(address);
         self.x = operand;
-        self.status.set(Status::ZERO, self.x == 0);
-        self.status.set(Status::NEGATIVE, (self.x & 0x80) >> 7 == 1);
+        self.status.zero = self.x == 0;
+        self.status.negative = (self.x & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn ldy(&mut self, address: u16) {
         let operand = self.bus.read(address);
         self.y = operand;
-        self.status.set(Status::ZERO, self.y == 0);
-        self.status.set(Status::NEGATIVE, (self.y & 0x80) >> 7 == 1);
+        self.status.zero = self.y == 0;
+        self.status.negative = (self.y & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn lsr_acc(&mut self, _acc: ()) {
-        self.status.set(Status::CARRY, self.a & 0x01 == 1);
+        self.status.carry = self.a & 0x01 == 1;
         self.a >>= 1;
-        self.status.set(Status::NEGATIVE, self.is_negative(self.a));
-        self.status.set(Status::ZERO, self.a == 0);
+        self.status.negative = self.is_negative(self.a);
+        self.status.zero = self.a == 0;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn lsr_mem(&mut self, address: u16) {
         let operand = self.bus.read(address);
-        self.status.set(Status::CARRY, operand & 0x01 == 1);
+        self.status.carry = operand & 0x01 == 1;
         let operand = operand >> 1;
-        self.status.set(Status::NEGATIVE, self.is_negative(operand));
-        self.status.set(Status::ZERO, operand == 0);
+        self.status.negative = self.is_negative(operand);
+        self.status.zero = operand == 0;
         self.bus.write(address, operand);
         self.pc += 1;
     }
@@ -285,8 +248,8 @@ impl<'a> CPU<'a> {
     pub(in crate::cpu) fn ora(&mut self, address: u16) {
         let operand = self.bus.read(address);
         self.a |= operand;
-        self.status.set(Status::ZERO, self.a == 0);
-        self.status.set(Status::NEGATIVE, self.is_negative(self.a));
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
         self.pc += 1;
     }
 
@@ -296,71 +259,71 @@ impl<'a> CPU<'a> {
     }
 
     pub(in crate::cpu) fn php(&mut self, _imp: ()) {
-        self.push_stack(self.status.bits() | 0x30); // NES quirk, not regular 6502
+        self.push_stack(u8::from(self.status) | 0x30); // NES quirk, not regular 6502
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn pla(&mut self, _imp: ()) {
         self.a = self.pop_stack();
-        self.status.set(Status::ZERO, self.a == 0);
-        self.status.set(Status::NEGATIVE, self.is_negative(self.a));
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn plp(&mut self, _imp: ()) {
-        self.status = Status::from_bits_truncate((self.pop_stack() & 0xEF) | 0x20); // NES quirk, not regular 6502
+        self.status = Status::from((self.pop_stack() & 0xEF) | 0x20); // NES quirk, not regular 6502
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn rol_acc(&mut self, _imp: ()) {
-        let bit0 = self.status.contains(Status::CARRY) as u8;
-        self.status.set(Status::CARRY, self.is_negative(self.a));
+        let bit0 = self.status.carry as u8;
+        self.status.carry = self.is_negative(self.a);
         self.a <<= 1;
         self.a |= bit0;
-        self.status.set(Status::NEGATIVE, self.is_negative(self.a));
-        self.status.set(Status::ZERO, self.a == 0);
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn rol_mem(&mut self, address: u16) {
         let operand = self.bus.read(address);
-        let bit0 = self.status.contains(Status::CARRY) as u8;
-        self.status.set(Status::CARRY, self.is_negative(operand));
+        let bit0 = self.status.carry as u8;
+        self.status.carry = self.is_negative(operand);
         let operand = operand << 1;
         let operand = operand | bit0;
         self.bus.write(address, operand);
-        self.status.set(Status::NEGATIVE, self.is_negative(operand));
-        self.status.set(Status::ZERO, operand == 0);
+        self.status.negative = self.is_negative(operand);
+        self.status.zero = operand == 0;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn ror_acc(&mut self, _imp: ()) {
-        let bit7 = self.status.contains(Status::CARRY) as u8;
-        self.status.set(Status::CARRY, self.a & 0x01 == 1);
+        let bit7 = self.status.carry as u8;
+        self.status.carry = self.a & 0x01 == 1;
         self.a >>= 1;
         self.a |= bit7 << 7;
-        self.status.set(Status::NEGATIVE, self.is_negative(self.a));
-        self.status.set(Status::ZERO, self.a == 0);
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn ror_mem(&mut self, address: u16) {
         let operand = self.bus.read(address);
-        let bit7 = self.status.contains(Status::CARRY) as u8;
-        self.status.set(Status::CARRY, operand & 0x01 == 1);
+        let bit7 = self.status.carry as u8;
+        self.status.carry = operand & 0x01 == 1;
         let operand = operand >> 1;
         let operand = operand | bit7 << 7;
         self.bus.write(address, operand);
-        self.status.set(Status::NEGATIVE, self.is_negative(operand));
-        self.status.set(Status::ZERO, operand == 0);
+        self.status.negative = self.is_negative(operand);
+        self.status.zero = operand == 0;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn rti(&mut self, _imp: ()) {
-        self.status = Status::from_bits_truncate(self.pop_stack());
+        self.status = Status::from(self.pop_stack());
         let pcl = self.pop_stack();
         let pch = self.pop_stack();
-        self.status.set(Status::B2, true);
+        self.status.b2 = true;
         self.pc = ((pch as u16) << 8) | pcl as u16;
     }
 
@@ -375,34 +338,32 @@ impl<'a> CPU<'a> {
         let operand = self.bus.read(address) ^ 0xFF; // 2's complement (+1 nulified by 1-C)
 
         // rest is the same as adc
-        let tmp = self.a as u16 + operand as u16 + self.status.contains(Status::CARRY) as u16;
-        self.status.set(Status::CARRY, tmp > 0xFF);
-        self.status.set(Status::ZERO, tmp & 0xFF == 0);
-        self.status.set(Status::NEGATIVE, (tmp & 0x80) >> 7 == 1);
+        let tmp = self.a as u16 + operand as u16 + self.status.carry as u16;
+        self.status.carry = tmp > 0xFF;
+        self.status.zero = tmp & 0xFF == 0;
+        self.status.negative = (tmp & 0x80) >> 7 == 1;
 
         // OVERFLOWs if positive + positive = NEGATIVE or
         // NEGATIVE + NEGATIVE = positive
         // V = ~(A ^ OPERAND) & (A ^ TMP)
-        self.status.set(
-            Status::OVERFLOW,
-            ((!(self.a as u16 ^ operand as u16) & (self.a as u16 ^ tmp)) & 0x0080) >> 7 == 1,
-        );
+        self.status.overflow =
+            ((!(self.a as u16 ^ operand as u16) & (self.a as u16 ^ tmp)) & 0x0080) >> 7 == 1;
         self.a = tmp as u8;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn sec(&mut self, _imp: ()) {
-        self.status.set(Status::CARRY, true);
+        self.status.carry = true;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn sed(&mut self, _imp: ()) {
-        self.status.set(Status::DECIMAL, true);
+        self.status.decimal = true;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn sei(&mut self, _imp: ()) {
-        self.status.set(Status::INTERRUPT, true);
+        self.status.interrupt = true;
         self.pc += 1;
     }
 
@@ -423,29 +384,29 @@ impl<'a> CPU<'a> {
 
     pub(in crate::cpu) fn tax(&mut self, _imp: ()) {
         self.x = self.a;
-        self.status.set(Status::ZERO, self.x == 0);
-        self.status.set(Status::NEGATIVE, (self.x & 0x80) >> 7 == 1);
+        self.status.zero = self.x == 0;
+        self.status.negative = (self.x & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn tay(&mut self, _imp: ()) {
         self.y = self.a;
-        self.status.set(Status::ZERO, self.y == 0);
-        self.status.set(Status::NEGATIVE, (self.y & 0x80) >> 7 == 1);
+        self.status.zero = self.y == 0;
+        self.status.negative = (self.y & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn tsx(&mut self, _imp: ()) {
         self.x = self.sp as u8;
-        self.status.set(Status::ZERO, self.x == 0);
-        self.status.set(Status::NEGATIVE, (self.x & 0x80) >> 7 == 1);
+        self.status.zero = self.x == 0;
+        self.status.negative = (self.x & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
     pub(in crate::cpu) fn txa(&mut self, _imp: ()) {
         self.a = self.x;
-        self.status.set(Status::ZERO, self.a == 0);
-        self.status.set(Status::NEGATIVE, self.is_negative(self.a));
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
         self.pc += 1;
     }
 
@@ -456,8 +417,8 @@ impl<'a> CPU<'a> {
 
     pub(in crate::cpu) fn tya(&mut self, _imp: ()) {
         self.a = self.y;
-        self.status.set(Status::ZERO, self.a == 0);
-        self.status.set(Status::NEGATIVE, self.is_negative(self.a));
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
         self.pc += 1;
     }
 }

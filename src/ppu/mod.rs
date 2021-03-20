@@ -1,7 +1,9 @@
+mod control;
 mod mask;
 mod status;
 mod vram_address;
 
+use crate::ppu::control::Control;
 use crate::ppu::mask::Mask;
 use crate::ppu::status::Status;
 use crate::ppu::vram_address::VRAMAddress;
@@ -9,7 +11,6 @@ use crate::{
     bus::{Bus, Device},
     cartridge::Mirror,
 };
-use bitflags::bitflags;
 
 pub struct PPU<'a> {
     cycle: u16,
@@ -45,19 +46,6 @@ pub struct PPU<'a> {
     bg_shifter_pattern_hi: u16,
     bg_shifter_attrib_lo: u16,
     bg_shifter_attrib_hi: u16,
-}
-
-bitflags! {
-    struct Control: u8 {
-        const NAMETABLE_X = 0x01;
-        const NAMETABLE_Y = 0x02;
-        const INCREMENT_MODE = 0x04;
-        const PATTERN_SPRITE = 0x08;
-        const PATTERN_BACKGROUND = 0x10;
-        const SPRITE_SIZE = 0x20;
-        const SLAVE_MODE = 0x40;
-        const ENABLE_NMI = 0x80;
-    }
 }
 
 impl<'a> PPU<'a> {
@@ -135,7 +123,7 @@ impl<'a> PPU<'a> {
             frame_complete: false,
             status: Status::from(0x00),
             mask: Mask::from(0x00),
-            control: Control::from_bits_truncate(0x00),
+            control: Control::from(0x00),
             write_flip_flop: true,
             buffer: 0x00,
             screen: [0; 256 * 240 * 3],
@@ -207,16 +195,14 @@ impl<'a> PPU<'a> {
                     }
                     4 => {
                         self.bg_next_tile_lsb = self.bus.read(
-                            ((((self.control & Control::PATTERN_BACKGROUND).bits() >> 4) as u16)
-                                << 12)
+                            ((self.control.pattern_background as u16) << 12)
                                 + ((self.bg_next_tile_id as u16) << 4)
                                 + self.vram_address.fine_y as u16,
                         );
                     }
                     6 => {
                         self.bg_next_tile_msb = self.bus.read(
-                            ((((self.control & Control::PATTERN_BACKGROUND).bits() >> 4) as u16)
-                                << 12)
+                            ((self.control.pattern_background as u16) << 12)
                                 + ((self.bg_next_tile_id as u16) << 4)
                                 + self.vram_address.fine_y as u16
                                 + 8,
@@ -250,7 +236,7 @@ impl<'a> PPU<'a> {
         else if self.scanline >= 241 && self.scanline < 261 {
             if self.scanline == 241 && self.cycle == 1 {
                 self.status.vertical_blank = true;
-                if self.control.contains(Control::ENABLE_NMI) {
+                if self.control.enable_nmi {
                     self.raise_nmi = true;
                 }
             }
@@ -314,7 +300,7 @@ impl<'a> PPU<'a> {
         self.bg_shifter_attrib_hi = 0x0000;
         self.status = Status::from(0x00);
         self.mask = Mask::from(0x00);
-        self.control = Control::from_bits_truncate(0x00);
+        self.control = Control::from(0x00);
         self.vram_address = VRAMAddress::from(0x0000);
         self.tram_address = VRAMAddress::from(0x0000);
     }
@@ -429,11 +415,7 @@ impl<'a> Device for PPU<'a> {
                     data = self.buffer
                 };
 
-                let increment = if self.control.contains(Control::INCREMENT_MODE) {
-                    32
-                } else {
-                    1
-                } as u16;
+                let increment = if self.control.increment_mode { 32 } else { 1 } as u16;
                 self.vram_address = (u16::from(self.vram_address) + increment).into();
                 data
             }
@@ -444,9 +426,9 @@ impl<'a> Device for PPU<'a> {
     fn write(&mut self, address: u16, data: u8) {
         match address {
             0x0000 => {
-                self.control = Control::from_bits_truncate(data);
-                self.tram_address.nametable_x = (self.control & Control::NAMETABLE_X).bits();
-                self.tram_address.nametable_y = (self.control & Control::NAMETABLE_Y).bits() >> 1;
+                self.control = Control::from(data);
+                self.tram_address.nametable_x = self.control.nametable_x as u8;
+                self.tram_address.nametable_y = self.control.nametable_y as u8;
             }
             0x0001 => {
                 self.mask = Mask::from(data);
@@ -489,11 +471,7 @@ impl<'a> Device for PPU<'a> {
                     }
                 }
 
-                let increment = if self.control.contains(Control::INCREMENT_MODE) {
-                    32
-                } else {
-                    1
-                } as u16;
+                let increment = if self.control.increment_mode { 32 } else { 1 } as u16;
                 self.vram_address = (u16::from(self.vram_address) + increment).into();
             }
             _ => panic!("unknown PPU register"),
