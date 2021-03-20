@@ -1,3 +1,4 @@
+use jc_nes::controller::Button;
 use jc_nes::cpu::CPU;
 use jc_nes::ram::RAM;
 use jc_nes::{bus::Bus, nes::Nes};
@@ -14,7 +15,7 @@ use std::io::Read;
 use std::rc::Rc;
 
 fn main() {
-    play("C:\\Users\\João\\Documents\\Projects\\nes-emulator\\roms\\ignored\\donkey-kong.nes");
+    play("C:\\Users\\João\\Documents\\Projects\\nes-emulator\\roms\\nestest.nes");
 }
 
 fn play(rom_path: &str) {
@@ -94,13 +95,27 @@ fn play_60fps(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<W
     'main: loop {
         while let Some(event) = event_pump.poll_event() {
             match event {
+                // close window
                 sdl2::event::Event::Quit { .. } => break 'main,
                 sdl2::event::Event::KeyDown {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'main,
-                _ => {}
-            }
+
+                // key down
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(keycode),
+                    ..
+                } => key_to_btn(keycode).map(|btn| nes.controller1.borrow_mut().set(btn)),
+
+                // key up
+                sdl2::event::Event::KeyUp {
+                    keycode: Some(keycode),
+                    ..
+                } => key_to_btn(keycode).map(|btn| nes.controller1.borrow_mut().unset(btn)),
+
+                _ => None,
+            };
         }
 
         while !nes.ppu.borrow().frame_complete {
@@ -127,36 +142,16 @@ fn play_60fps(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<W
     }
 }
 
-fn play_frame_step(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<Window>) {
-    // debug press R for each frame loop
-    let mut event_pump = sdl.event_pump().unwrap();
-    'main: loop {
-        while let Some(event) = event_pump.poll_event() {
-            match event {
-                sdl2::event::Event::Quit { .. } => break 'main,
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => break 'main,
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(Keycode::R),
-                    ..
-                } => {
-                    while !nes.ppu.borrow().frame_complete {
-                        nes.clock();
-                    }
-
-                    texture
-                        .update(None, &nes.ppu.borrow().screen, 256 * 3)
-                        .unwrap();
-
-                    canvas.copy(&texture, None, None).unwrap();
-
-                    nes.ppu.borrow_mut().frame_complete = false;
-                    canvas.present();
-                }
-                _ => (),
-            }
-        }
+fn key_to_btn(keycode: Keycode) -> Option<Button> {
+    match keycode {
+        Keycode::Up => Some(Button::Up),
+        Keycode::Down => Some(Button::Down),
+        Keycode::Left => Some(Button::Left),
+        Keycode::Right => Some(Button::Right),
+        Keycode::A => Some(Button::A),
+        Keycode::S => Some(Button::B),
+        Keycode::Z => Some(Button::Start),
+        Keycode::X => Some(Button::Select),
+        _ => None,
     }
 }

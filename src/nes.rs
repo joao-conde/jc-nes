@@ -3,6 +3,7 @@ use crate::cartridge::{
     mappers::{mapper000::Mapper000, MapperMemoryPin},
     Cartridge,
 };
+use crate::controller::Controller;
 use crate::cpu::CPU;
 use crate::ppu::PPU;
 use crate::ram::RAM;
@@ -14,6 +15,8 @@ pub type SharedMut<T> = Rc<RefCell<T>>;
 pub struct Nes<'a> {
     cpu: CPU<'a>,
     pub ppu: SharedMut<PPU<'a>>,
+    pub controller1: SharedMut<Controller>, // TODO remove pubs give getters or nicer API
+    pub controller2: SharedMut<Controller>,
     ticks: usize,
 }
 
@@ -40,18 +43,29 @@ impl<'a> Nes<'a> {
         // CPU bus devices
         let ram = Rc::new(RefCell::new(RAM::new(vec![0u8; 2 * 1024])));
         let tmp = Rc::new(RefCell::new(RAM::new(vec![0u8; 32]))); // TODO: remove tmp hack (IO + APU)
+        let controller1 = Rc::new(RefCell::new(Controller::default()));
+        let controller2 = Rc::new(RefCell::new(Controller::default()));
 
         let mut cpu_bus = Bus::default();
         cpu_bus.connect(0x0000..=0x1FFF, &ram);
         cpu_bus.connect(0x2000..=0x3FFF, &ppu);
-        cpu_bus.connect(0x4000..=0x401F, &tmp);
+        cpu_bus.connect(0x4016..=0x4016, &controller1);
+        cpu_bus.connect(0x4017..=0x4017, &controller2);
+        cpu_bus.connect(0x4000..=0x4015, &tmp);
+        cpu_bus.connect(0x4018..=0x401F, &tmp);
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
 
         let mut cpu = CPU::new(cpu_bus);
         cpu.debug = false;
 
-        Nes { cpu, ppu, ticks: 0 }
+        Nes {
+            cpu,
+            ppu,
+            controller1,
+            controller2,
+            ticks: 0,
+        }
     }
 
     pub fn load_rom(&mut self, rom_path: &str) {
