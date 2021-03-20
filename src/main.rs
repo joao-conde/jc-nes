@@ -1,5 +1,6 @@
 use jc_nes::controller::Button;
 use jc_nes::cpu::CPU;
+use jc_nes::ppu::WIDTH;
 use jc_nes::ram::RAM;
 use jc_nes::{bus::Bus, nes::Nes};
 use sdl2::{
@@ -15,7 +16,7 @@ use std::io::Read;
 use std::rc::Rc;
 
 fn main() {
-    play("C:\\Users\\João\\Documents\\Projects\\nes-emulator\\roms\\nestest.nes");
+    play("roms/ignored/donkey-kong.nes");
 }
 
 fn play(rom_path: &str) {
@@ -90,7 +91,6 @@ fn play_60fps(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<W
     let mut timer_subsystem = sdl.timer().expect("failed to get timer system");
     let tick_interval = 1000 / 120; // frequency in Hz to period in ms
     let mut last_update_time = 0;
-
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
         while let Some(event) = event_pump.poll_event() {
@@ -106,36 +106,32 @@ fn play_60fps(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<W
                 sdl2::event::Event::KeyDown {
                     keycode: Some(keycode),
                     ..
-                } => key_to_btn(keycode).map(|btn| nes.controller1.borrow_mut().set(btn)),
+                } => key_to_btn(keycode).map(|btn| nes.down(1, btn)),
 
                 // key up
                 sdl2::event::Event::KeyUp {
                     keycode: Some(keycode),
                     ..
-                } => key_to_btn(keycode).map(|btn| nes.controller1.borrow_mut().unset(btn)),
+                } => key_to_btn(keycode).map(|btn| nes.up(1, btn)),
 
                 _ => None,
             };
         }
 
-        while !nes.ppu.borrow().frame_complete {
+        // 1.79MHz / 60Hz
+        for _ in 0..30 {
             nes.clock();
         }
-
         let current_time = timer_subsystem.ticks();
         let delta_t = current_time - last_update_time;
 
         if tick_interval > delta_t {
-            timer_subsystem.delay(tick_interval - delta_t); // energy saving
-
-            texture
-                .update(None, &nes.ppu.borrow().screen, 256 * 3)
-                .unwrap();
-
-            canvas.copy(&texture, None, None).unwrap();
-
-            nes.ppu.borrow_mut().frame_complete = false;
-            canvas.present();
+            if let Some(screen) = nes.frame() {
+                timer_subsystem.delay(tick_interval - delta_t); // energy saving
+                texture.update(None, &screen, WIDTH * 3).unwrap();
+                canvas.copy(&texture, None, None).unwrap();
+                canvas.present();
+            }
         }
 
         last_update_time = current_time;

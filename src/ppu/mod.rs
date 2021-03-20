@@ -12,12 +12,15 @@ use crate::{
     cartridge::Mirror,
 };
 
+pub const WIDTH: usize = 256;
+pub const HEIGHT: usize = 240;
+
 pub struct PPU<'a> {
     cycle: u16,
     scanline: i16,
 
     pub frame_complete: bool,
-    pub screen: [u8; 256 * 240 * 3],
+    pub screen: [u8; WIDTH * HEIGHT * 3],
     pub(in crate) raise_nmi: bool,
     pub(in crate) bus: Bus<'a>,
 

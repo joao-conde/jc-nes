@@ -30,7 +30,7 @@ impl Device for Controller {
 }
 
 impl Controller {
-    pub fn set(&mut self, btn: Button) {
+    pub fn down(&mut self, btn: Button) {
         match btn {
             Button::Right => self.state |= 0x01,
             Button::Left => self.state |= 0x02,
@@ -43,7 +43,7 @@ impl Controller {
         }
     }
 
-    pub fn unset(&mut self, btn: Button) {
+    pub fn up(&mut self, btn: Button) {
         match btn {
             Button::Right => self.state &= !0x01,
             Button::Left => self.state &= !0x02,

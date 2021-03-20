@@ -1,11 +1,10 @@
 use crate::bus::Bus;
-use crate::cartridge::{
-    mappers::{mapper000::Mapper000, MapperMemoryPin},
-    Cartridge,
-};
-use crate::controller::Controller;
+use crate::cartridge::mappers::mapper000::Mapper000;
+use crate::cartridge::mappers::MapperMemoryPin;
+use crate::cartridge::Cartridge;
+use crate::controller::{Button, Controller};
 use crate::cpu::CPU;
-use crate::ppu::PPU;
+use crate::ppu::{HEIGHT, PPU, WIDTH};
 use crate::ram::RAM;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -14,9 +13,9 @@ pub type SharedMut<T> = Rc<RefCell<T>>;
 
 pub struct Nes<'a> {
     cpu: CPU<'a>,
-    pub ppu: SharedMut<PPU<'a>>,
-    pub controller1: SharedMut<Controller>, // TODO remove pubs give getters or nicer API
-    pub controller2: SharedMut<Controller>,
+    ppu: SharedMut<PPU<'a>>,
+    controller1: SharedMut<Controller>,
+    controller2: SharedMut<Controller>,
     ticks: usize,
 }
 
@@ -108,5 +107,31 @@ impl<'a> Nes<'a> {
     pub fn reset(&mut self) {
         self.cpu.reset();
         self.ppu.borrow_mut().reset();
+    }
+
+    pub fn frame(&mut self) -> Option<[u8; WIDTH * HEIGHT * 3]> {
+        let mut ppu = &mut *self.ppu.borrow_mut();
+        if ppu.frame_complete {
+            ppu.frame_complete = false;
+            Some(ppu.screen)
+        } else {
+            None
+        }
+    }
+
+    pub fn down(&mut self, controller: u8, btn: Button) {
+        match controller {
+            1 => self.controller1.borrow_mut().down(btn),
+            2 => self.controller2.borrow_mut().down(btn),
+            _ => panic!("expected either controller 1 or 2"),
+        }
+    }
+
+    pub fn up(&mut self, controller: u8, btn: Button) {
+        match controller {
+            1 => self.controller1.borrow_mut().up(btn),
+            2 => self.controller2.borrow_mut().up(btn),
+            _ => panic!("expected either controller '1' or '2'"),
+        }
     }
 }
