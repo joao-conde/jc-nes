@@ -1,6 +1,8 @@
+mod mask;
 mod status;
 mod vram_address;
 
+use crate::ppu::mask::Mask;
 use crate::ppu::status::Status;
 use crate::ppu::vram_address::VRAMAddress;
 use crate::{
@@ -43,19 +45,6 @@ pub struct PPU<'a> {
     bg_shifter_pattern_hi: u16,
     bg_shifter_attrib_lo: u16,
     bg_shifter_attrib_hi: u16,
-}
-
-bitflags! {
-    struct Mask: u8 {
-        const GRAY_SCALE = 0x01;
-        const RENDER_BACKGROUND_LEFT = 0x02;
-        const RENDER_SPRITES_LEFT = 0x04;
-        const RENDER_BACKGROUND = 0x08;
-        const RENDER_SPRITES = 0x10;
-        const ENHANCE_RED = 0x20;
-        const ENHANCE_GREEN = 0x40;
-        const ENHANCE_BLUE = 0x80;
-    }
 }
 
 bitflags! {
@@ -145,7 +134,7 @@ impl<'a> PPU<'a> {
             scanline: 0,
             frame_complete: false,
             status: Status::from(0x00),
-            mask: Mask::from_bits_truncate(0x00),
+            mask: Mask::from(0x00),
             control: Control::from_bits_truncate(0x00),
             write_flip_flop: true,
             buffer: 0x00,
@@ -270,7 +259,7 @@ impl<'a> PPU<'a> {
         let mut bg_pixel = 0x00;
         let mut bg_palette = 0x00;
 
-        if self.mask.contains(Mask::RENDER_BACKGROUND) {
+        if self.mask.render_background {
             let bit_offset = 0x8000 >> self.fine_x;
 
             // pixel
@@ -324,7 +313,7 @@ impl<'a> PPU<'a> {
         self.bg_shifter_attrib_lo = 0x0000;
         self.bg_shifter_attrib_hi = 0x0000;
         self.status = Status::from(0x00);
-        self.mask = Mask::from_bits_truncate(0x00);
+        self.mask = Mask::from(0x00);
         self.control = Control::from_bits_truncate(0x00);
         self.vram_address = VRAMAddress::from(0x0000);
         self.tram_address = VRAMAddress::from(0x0000);
@@ -345,7 +334,7 @@ impl<'a> PPU<'a> {
 
 impl<'a> PPU<'a> {
     fn inc_x(&mut self) {
-        if self.mask.contains(Mask::RENDER_BACKGROUND) || self.mask.contains(Mask::RENDER_SPRITES) {
+        if self.mask.render_background || self.mask.render_sprites {
             self.vram_address.coarse_x += 1;
             if self.vram_address.coarse_x == 32 {
                 self.vram_address.coarse_x = 0;
@@ -355,7 +344,7 @@ impl<'a> PPU<'a> {
     }
 
     fn inc_y(&mut self) {
-        if self.mask.contains(Mask::RENDER_BACKGROUND) || self.mask.contains(Mask::RENDER_SPRITES) {
+        if self.mask.render_background || self.mask.render_sprites {
             if self.vram_address.fine_y < 7 {
                 self.vram_address.fine_y += 1;
             } else {
@@ -373,14 +362,14 @@ impl<'a> PPU<'a> {
     }
 
     fn reset_x(&mut self) {
-        if self.mask.contains(Mask::RENDER_BACKGROUND) || self.mask.contains(Mask::RENDER_SPRITES) {
+        if self.mask.render_background || self.mask.render_sprites {
             self.vram_address.nametable_x = self.tram_address.nametable_x;
             self.vram_address.coarse_x = self.tram_address.coarse_x;
         }
     }
 
     fn reset_y(&mut self) {
-        if self.mask.contains(Mask::RENDER_BACKGROUND) || self.mask.contains(Mask::RENDER_SPRITES) {
+        if self.mask.render_background || self.mask.render_sprites {
             self.vram_address.nametable_y = self.tram_address.nametable_y;
             self.vram_address.coarse_y = self.tram_address.coarse_y;
             self.vram_address.fine_y = self.tram_address.fine_y;
@@ -388,7 +377,7 @@ impl<'a> PPU<'a> {
     }
 
     fn shift_background_shifters(&mut self) {
-        if self.mask.contains(Mask::RENDER_BACKGROUND) {
+        if self.mask.render_background {
             self.bg_shifter_pattern_lo <<= 1;
             self.bg_shifter_pattern_hi <<= 1;
             self.bg_shifter_attrib_lo <<= 1;
@@ -460,7 +449,7 @@ impl<'a> Device for PPU<'a> {
                 self.tram_address.nametable_y = (self.control & Control::NAMETABLE_Y).bits() >> 1;
             }
             0x0001 => {
-                self.mask = Mask::from_bits_truncate(data);
+                self.mask = Mask::from(data);
             }
             0x0002 => (),
             0x0003 => (),
