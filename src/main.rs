@@ -116,14 +116,14 @@ fn play_60fps(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<W
             };
         }
 
-        // 1.79MHz / 60Hz
-        for _ in 0..30 {
-            nes.clock();
-        }
         let current_time = timer_subsystem.ticks();
         let delta_t = current_time - last_update_time;
 
         if tick_interval > delta_t {
+            // 1.79MHz / 60Hz
+            for _ in 0..30 {
+                nes.clock();
+            }
             if let Some(screen) = nes.frame() {
                 timer_subsystem.delay(tick_interval - delta_t); // energy saving
                 texture.update(None, &screen, WIDTH as usize * 3).unwrap();

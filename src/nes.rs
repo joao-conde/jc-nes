@@ -41,7 +41,7 @@ impl<'a> Nes<'a> {
 
         // CPU bus devices
         let ram = Rc::new(RefCell::new(RAM::new(vec![0u8; 2 * 1024])));
-        let tmp = Rc::new(RefCell::new(RAM::new(vec![0u8; 32]))); // TODO: remove tmp hack (IO + APU)
+        let tmp = Rc::new(RefCell::new(RAM::new(vec![0u8; 32]))); // TODO: remove tmp hack (APU)
         let controller1 = Rc::new(RefCell::new(Controller::default()));
         let controller2 = Rc::new(RefCell::new(Controller::default()));
 

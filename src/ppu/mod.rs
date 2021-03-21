@@ -1,9 +1,11 @@
 mod control;
+mod dac;
 mod mask;
 mod status;
 mod vram_address;
 
 use crate::ppu::control::Control;
+use crate::ppu::dac::DAC;
 use crate::ppu::mask::Mask;
 use crate::ppu::status::Status;
 use crate::ppu::vram_address::VRAMAddress;
@@ -35,7 +37,6 @@ pub struct PPU<'a> {
     fine_x: u8,
 
     write_flip_flop: bool,
-    dac: [(u8, u8, u8); 0x40],
     cartridge_mirror_mode: Mirror,
 
     // buffered PPU data in between clocks
@@ -52,77 +53,14 @@ pub struct PPU<'a> {
     bg_shifter_pattern_hi: u16,
     bg_shifter_attrib_lo: u16,
     bg_shifter_attrib_hi: u16,
+
+    // foreground/sprites
+    oam_addr: u8,
+    oam: [u8; 256],
 }
 
 impl<'a> PPU<'a> {
     pub fn new(bus: Bus<'a>) -> PPU<'a> {
-        let dac = [
-            (84, 84, 84),
-            (0, 30, 116),
-            (8, 16, 144),
-            (48, 0, 136),
-            (68, 0, 100),
-            (92, 0, 48),
-            (84, 4, 0),
-            (60, 24, 0),
-            (32, 42, 0),
-            (8, 58, 0),
-            (0, 64, 0),
-            (0, 60, 0),
-            (0, 50, 60),
-            (0, 0, 0),
-            (0, 0, 0),
-            (0, 0, 0),
-            (152, 150, 152),
-            (8, 76, 196),
-            (48, 50, 236),
-            (92, 30, 228),
-            (136, 20, 176),
-            (160, 20, 100),
-            (152, 34, 32),
-            (120, 60, 0),
-            (84, 90, 0),
-            (40, 114, 0),
-            (8, 124, 0),
-            (0, 118, 40),
-            (0, 102, 120),
-            (0, 0, 0),
-            (0, 0, 0),
-            (0, 0, 0),
-            (236, 238, 236),
-            (76, 154, 236),
-            (120, 124, 236),
-            (176, 98, 236),
-            (228, 84, 236),
-            (236, 88, 180),
-            (236, 106, 100),
-            (212, 136, 32),
-            (160, 170, 0),
-            (116, 196, 0),
-            (76, 208, 32),
-            (56, 204, 108),
-            (56, 180, 204),
-            (60, 60, 60),
-            (0, 0, 0),
-            (0, 0, 0),
-            (236, 238, 236),
-            (168, 204, 236),
-            (188, 188, 236),
-            (212, 178, 236),
-            (236, 174, 236),
-            (236, 174, 212),
-            (236, 180, 176),
-            (228, 196, 144),
-            (204, 210, 120),
-            (180, 222, 120),
-            (168, 226, 144),
-            (152, 226, 180),
-            (160, 214, 228),
-            (160, 162, 160),
-            (0, 0, 0),
-            (0, 0, 0),
-        ];
-
         PPU {
             cycle: 0,
             scanline: 0,
@@ -146,8 +84,9 @@ impl<'a> PPU<'a> {
             bg_shifter_attrib_lo: 0x0000,
             bg_shifter_attrib_hi: 0x0000,
             cartridge_mirror_mode: Mirror::Horizontal,
-            dac,
             bus,
+            oam_addr: 0x00,
+            oam: [0u8; 256],
         }
     }
 
@@ -275,9 +214,9 @@ impl<'a> PPU<'a> {
 
             let tex_addr =
                 WIDTH as usize * 3 * (self.scanline as usize) + (self.cycle as usize - 1) * 3;
-            self.screen[tex_addr as usize] = self.dac[color_i as usize].0;
-            self.screen[tex_addr as usize + 1] = self.dac[color_i as usize].1;
-            self.screen[tex_addr as usize + 2] = self.dac[color_i as usize].2;
+            self.screen[tex_addr as usize] = DAC[color_i as usize].0;
+            self.screen[tex_addr as usize + 1] = DAC[color_i as usize].1;
+            self.screen[tex_addr as usize + 2] = DAC[color_i as usize].2;
         }
 
         self.cycle += 1;
@@ -292,6 +231,7 @@ impl<'a> PPU<'a> {
         if self.scanline >= 261 {
             self.scanline = -1;
             self.frame_complete = true;
+            // println!("{:02X?}", &self.oam[..4]);
         }
     }
 
@@ -414,8 +354,11 @@ impl<'a> Device for PPU<'a> {
                 self.write_flip_flop = true;
                 data
             }
-            0x0003 => 0x00,
-            0x0004 => 0x00,
+            0x0003 => {
+                // not readable
+                0x00
+            }
+            0x0004 => self.oam[self.oam_addr as usize],
             0x0005 => 0x00,
             0x0006 => 0x00,
             0x0007 => {
@@ -445,8 +388,8 @@ impl<'a> Device for PPU<'a> {
                 self.mask = Mask::from(data);
             }
             0x0002 => (),
-            0x0003 => (),
-            0x0004 => (),
+            0x0003 => self.oam_addr = data,
+            0x0004 => self.oam[self.oam_addr as usize] = data,
             0x0005 => {
                 if self.write_flip_flop {
                     self.fine_x = data & 0x07;
