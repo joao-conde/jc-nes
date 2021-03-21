@@ -1,13 +1,12 @@
 mod control;
 mod dac;
 mod mask;
+mod oam;
 mod status;
 mod vram_address;
-mod oam;
 
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{nes::SharedMut, ppu::control::Control};
 use crate::ppu::dac::DAC;
 use crate::ppu::mask::Mask;
 use crate::ppu::status::Status;
@@ -16,6 +15,7 @@ use crate::{
     bus::{Bus, Device},
     cartridge::Mirror,
 };
+use crate::{nes::SharedMut, ppu::control::Control};
 
 use crate::ppu::oam::OAM;
 
@@ -87,7 +87,7 @@ impl<'a> PPU<'a> {
             bg_shifter_attrib_hi: 0x0000,
             cartridge_mirror_mode: Mirror::Horizontal,
             bus,
-            oam: Rc::new(RefCell::new(OAM::default()))
+            oam: Rc::new(RefCell::new(OAM::default())),
         }
     }
 
@@ -232,7 +232,6 @@ impl<'a> PPU<'a> {
         if self.scanline >= 261 {
             self.scanline = -1;
             self.frame_complete = true;
-            // println!("{:02X?}", &self.oam[..4]);
         }
     }
 
@@ -359,7 +358,7 @@ impl<'a> Device for PPU<'a> {
                 // not readable
                 0x00
             }
-            0x0004 => 0x00, //self.oam[self.oam_addr as usize],
+            0x0004 => self.oam.borrow_mut().read(),
             0x0005 => 0x00,
             0x0006 => 0x00,
             0x0007 => {
@@ -389,8 +388,8 @@ impl<'a> Device for PPU<'a> {
                 self.mask = Mask::from(data);
             }
             0x0002 => (),
-            0x0003 => (), //self.oam_addr = data,
-            0x0004 => (), //self.oam[self.oam_addr as usize] = data,
+            0x0003 => self.oam.borrow_mut().set_addr(data),
+            0x0004 => self.oam.borrow_mut().write(data),
             0x0005 => {
                 if self.write_flip_flop {
                     self.fine_x = data & 0x07;
