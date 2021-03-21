@@ -3,8 +3,11 @@ mod dac;
 mod mask;
 mod status;
 mod vram_address;
+mod oam;
 
-use crate::ppu::control::Control;
+use std::{cell::RefCell, rc::Rc};
+
+use crate::{nes::SharedMut, ppu::control::Control};
 use crate::ppu::dac::DAC;
 use crate::ppu::mask::Mask;
 use crate::ppu::status::Status;
@@ -14,6 +17,8 @@ use crate::{
     cartridge::Mirror,
 };
 
+use crate::ppu::oam::OAM;
+
 pub const WIDTH: u16 = 256;
 pub const HEIGHT: u16 = 240;
 
@@ -22,6 +27,7 @@ pub struct PPU<'a> {
     pub(in crate) screen: [u8; WIDTH as usize * HEIGHT as usize * 3],
     pub(in crate) raise_nmi: bool,
     pub(in crate) bus: Bus<'a>,
+    pub(in crate) oam: SharedMut<OAM>,
 
     // current screen pixel
     cycle: u16,
@@ -53,10 +59,6 @@ pub struct PPU<'a> {
     bg_shifter_pattern_hi: u16,
     bg_shifter_attrib_lo: u16,
     bg_shifter_attrib_hi: u16,
-
-    // foreground/sprites
-    oam_addr: u8,
-    oam: [u8; 256],
 }
 
 impl<'a> PPU<'a> {
@@ -85,8 +87,7 @@ impl<'a> PPU<'a> {
             bg_shifter_attrib_hi: 0x0000,
             cartridge_mirror_mode: Mirror::Horizontal,
             bus,
-            oam_addr: 0x00,
-            oam: [0u8; 256],
+            oam: Rc::new(RefCell::new(OAM::default()))
         }
     }
 
@@ -358,7 +359,7 @@ impl<'a> Device for PPU<'a> {
                 // not readable
                 0x00
             }
-            0x0004 => self.oam[self.oam_addr as usize],
+            0x0004 => 0x00, //self.oam[self.oam_addr as usize],
             0x0005 => 0x00,
             0x0006 => 0x00,
             0x0007 => {
@@ -388,8 +389,8 @@ impl<'a> Device for PPU<'a> {
                 self.mask = Mask::from(data);
             }
             0x0002 => (),
-            0x0003 => self.oam_addr = data,
-            0x0004 => self.oam[self.oam_addr as usize] = data,
+            0x0003 => (), //self.oam_addr = data,
+            0x0004 => (), //self.oam[self.oam_addr as usize] = data,
             0x0005 => {
                 if self.write_flip_flop {
                     self.fine_x = data & 0x07;

@@ -48,10 +48,15 @@ impl<'a> Nes<'a> {
         let mut cpu_bus = Bus::default();
         cpu_bus.connect(0x0000..=0x1FFF, &ram);
         cpu_bus.connect(0x2000..=0x3FFF, &ppu);
+        cpu_bus.connect(0x4014..=0x4014, &ppu.borrow().oam);
         cpu_bus.connect(0x4016..=0x4016, &controller1);
         cpu_bus.connect(0x4017..=0x4017, &controller2);
-        cpu_bus.connect(0x4000..=0x4015, &tmp);
+
+        // TODO remove tmps
+        cpu_bus.connect(0x4000..=0x4013, &tmp);
+        cpu_bus.connect(0x4015..=0x4015, &tmp);
         cpu_bus.connect(0x4018..=0x401F, &tmp);
+
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
 
