@@ -358,7 +358,7 @@ impl<'a> Device for PPU<'a> {
                 // not readable
                 0x00
             }
-            0x0004 => self.oam.borrow_mut().read(),
+            0x0004 => self.oam.borrow().mem[self.oam.borrow().addr],
             0x0005 => 0x00,
             0x0006 => 0x00,
             0x0007 => {
@@ -388,8 +388,8 @@ impl<'a> Device for PPU<'a> {
                 self.mask = Mask::from(data);
             }
             0x0002 => (),
-            0x0003 => self.oam.borrow_mut().set_addr(data),
-            0x0004 => self.oam.borrow_mut().write(data),
+            0x0003 => self.oam.borrow_mut().addr = data as usize,
+            0x0004 => self.oam.borrow_mut().mem[self.oam.borrow().addr] = data,
             0x0005 => {
                 if self.write_flip_flop {
                     self.fine_x = data & 0x07;
