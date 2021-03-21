@@ -1,3 +1,4 @@
+use crate::cartridge::mappers::Mapper;
 use crate::cartridge::mappers::MapperMemoryPin;
 use crate::cartridge::Cartridge;
 use crate::{bus::Device, nes::SharedMut};
@@ -9,7 +10,7 @@ pub struct Mapper000 {
     prg_banks: u8,
 }
 
-impl Device for Mapper000 {
+impl Mapper for Mapper000 {
     fn read(&mut self, address: u16) -> u8 {
         match self.pin {
             MapperMemoryPin::PrgROM => self.read_prg_rom(address),

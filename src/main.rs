@@ -1,6 +1,6 @@
 use jc_nes::controller::Button;
 use jc_nes::cpu::CPU;
-use jc_nes::ppu::WIDTH;
+use jc_nes::ppu::{HEIGHT, WIDTH};
 use jc_nes::ram::RAM;
 use jc_nes::{bus::Bus, nes::Nes};
 use sdl2::{
@@ -15,7 +15,10 @@ use std::fs::File;
 use std::io::Read;
 use std::rc::Rc;
 
+const SCALE: f32 = 4.0;
+
 fn main() {
+    // play("roms/nestest.nes");
     play("roms/ignored/donkey-kong.nes");
 }
 
@@ -24,19 +27,14 @@ fn play(rom_path: &str) {
     nes.load_rom(rom_path);
     nes.reset();
 
-    // SDL graphics
-    const MAIN_WIDTH: u32 = 256;
-    const MAIN_HEIGHT: u32 = 240;
-    const MAIN_SCALING: u32 = 4;
-
     let sdl = sdl2::init().expect("failed to init SDL");
     let video_subsystem = sdl.video().expect("failed to get video context");
 
     let main_window = video_subsystem
         .window(
             rom_path,
-            MAIN_SCALING * MAIN_WIDTH,
-            MAIN_SCALING * MAIN_HEIGHT,
+            SCALE as u32 * WIDTH as u32,
+            SCALE as u32 * WIDTH as u32,
         )
         .resizable()
         .build()
@@ -46,7 +44,7 @@ fn play(rom_path: &str) {
         .build()
         .expect("failed to build window's canvas");
     main_canvas
-        .set_scale(MAIN_SCALING as f32, MAIN_SCALING as f32)
+        .set_scale(SCALE, SCALE)
         .expect("failed setting window scale");
     main_canvas.clear();
     main_canvas.present();
@@ -54,7 +52,7 @@ fn play(rom_path: &str) {
     let texture_creator = main_canvas.texture_creator();
 
     let texture = texture_creator
-        .create_texture_streaming(PixelFormatEnum::RGB24, 256, 240)
+        .create_texture_streaming(PixelFormatEnum::RGB24, WIDTH as u32, HEIGHT as u32)
         .unwrap();
 
     play_60fps(nes, sdl, texture, main_canvas);
@@ -128,7 +126,7 @@ fn play_60fps(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<W
         if tick_interval > delta_t {
             if let Some(screen) = nes.frame() {
                 timer_subsystem.delay(tick_interval - delta_t); // energy saving
-                texture.update(None, &screen, WIDTH * 3).unwrap();
+                texture.update(None, &screen, WIDTH as usize * 3).unwrap();
                 canvas.copy(&texture, None, None).unwrap();
                 canvas.present();
             }

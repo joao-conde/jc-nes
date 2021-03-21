@@ -109,7 +109,7 @@ impl<'a> Nes<'a> {
         self.ppu.borrow_mut().reset();
     }
 
-    pub fn frame(&mut self) -> Option<[u8; WIDTH * HEIGHT * 3]> {
+    pub fn frame(&mut self) -> Option<[u8; WIDTH as usize * HEIGHT as usize * 3]> {
         let mut ppu = &mut *self.ppu.borrow_mut();
         if ppu.frame_complete {
             ppu.frame_complete = false;

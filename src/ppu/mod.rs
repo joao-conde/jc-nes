@@ -12,33 +12,36 @@ use crate::{
     cartridge::Mirror,
 };
 
-pub const WIDTH: usize = 256;
-pub const HEIGHT: usize = 240;
+pub const WIDTH: u16 = 256;
+pub const HEIGHT: u16 = 240;
 
 pub struct PPU<'a> {
-    cycle: u16,
-    scanline: i16,
-
-    pub frame_complete: bool,
-    pub screen: [u8; WIDTH * HEIGHT * 3],
+    pub(in crate) frame_complete: bool,
+    pub(in crate) screen: [u8; WIDTH as usize * HEIGHT as usize * 3],
     pub(in crate) raise_nmi: bool,
     pub(in crate) bus: Bus<'a>,
 
+    // current screen pixel
+    cycle: u16,
+    scanline: i16,
+
+    // state registers
     status: Status,
     mask: Mask,
     control: Control,
+
     vram_address: VRAMAddress,
     tram_address: VRAMAddress,
     fine_x: u8,
 
     write_flip_flop: bool,
-    buffer: u8,
-
     dac: [(u8, u8, u8); 0x40],
-
     cartridge_mirror_mode: Mirror,
 
-    // background buffered data
+    // buffered PPU data in between clocks
+    buffer: u8,
+
+    // background buffered data in between clocks
     bg_next_tile_id: u8,
     bg_next_tile_attrib: u8,
     bg_next_tile_lsb: u8,
@@ -129,7 +132,7 @@ impl<'a> PPU<'a> {
             control: Control::from(0x00),
             write_flip_flop: true,
             buffer: 0x00,
-            screen: [0; 256 * 240 * 3],
+            screen: [0; WIDTH as usize * HEIGHT as usize * 3],
             raise_nmi: false,
             vram_address: VRAMAddress::from(0x0000),
             tram_address: VRAMAddress::from(0x0000),
@@ -155,7 +158,7 @@ impl<'a> PPU<'a> {
     // https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
     pub fn clock(&mut self) {
         // visible frame
-        if self.scanline >= -1 && self.scanline < 240 {
+        if self.scanline >= -1 && self.scanline < HEIGHT as i16 {
             // odd frame skip
             if self.scanline == 0 && self.cycle == 0 {
                 self.cycle = 1;
@@ -216,7 +219,7 @@ impl<'a> PPU<'a> {
                 }
             }
 
-            if self.cycle == 256 {
+            if self.cycle == WIDTH {
                 self.inc_y();
             }
 
@@ -262,11 +265,16 @@ impl<'a> PPU<'a> {
             bg_palette = (bg_pal1 << 1) | bg_pal0;
         }
 
-        if self.cycle > 0 && self.cycle < 256 && self.scanline >= 0 && self.scanline < 240 {
+        if self.cycle > 0
+            && self.cycle < WIDTH
+            && self.scanline >= 0
+            && self.scanline < HEIGHT as i16
+        {
             let addr = 0x3F00 + ((bg_palette as u16) << 2) + bg_pixel as u16;
             let color_i = self.bus.read(addr);
 
-            let tex_addr = 256 * 3 * (self.scanline as usize) + (self.cycle as usize - 1) * 3;
+            let tex_addr =
+                WIDTH as usize * 3 * (self.scanline as usize) + (self.cycle as usize - 1) * 3;
             self.screen[tex_addr as usize] = self.dac[color_i as usize].0;
             self.screen[tex_addr as usize + 1] = self.dac[color_i as usize].1;
             self.screen[tex_addr as usize + 2] = self.dac[color_i as usize].2;
