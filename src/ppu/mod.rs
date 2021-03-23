@@ -111,10 +111,14 @@ impl<'a> PPU<'a> {
             // new frame
             if self.scanline == -1 && self.cycle == 1 {
                 self.status.vertical_blank = false;
+
+                self.status.sprite_overflow = false;
+
+                //TODO clear shifters (0)
             }
 
             if (self.cycle >= 2 && self.cycle < 258) || (self.cycle >= 321 && self.cycle < 338) {
-                self.shift_background_shifters();
+                self.shift_shifters();
 
                 match (self.cycle - 1) % 8 {
                     0 => {
@@ -192,7 +196,7 @@ impl<'a> PPU<'a> {
             }
         }
 
-        // background rendering
+        // background pixel
         let mut bg_pixel = 0x00;
         let mut bg_palette = 0x00;
 
@@ -210,12 +214,53 @@ impl<'a> PPU<'a> {
             bg_palette = (bg_pal1 << 1) | bg_pal0;
         }
 
+        // foreground pixel
+        let mut fg_pixel = 0x00;
+        let mut fg_palette = 0x00;
+        let mut fg_priority = false;
+        if self.mask.render_sprites {
+            for (i, sprite) in self.scanline_sprites.iter().enumerate() {
+                if sprite.x == 0 {
+                    let fg_pixel_lo = (self.sprite_shifter_pattern_lo[i] & 0x80) >> 7;
+                    let fg_pixel_hi = (self.sprite_shifter_pattern_hi[i] & 0x80) >> 7;
+                    fg_pixel = (fg_pixel_hi << 1) | fg_pixel_lo;
+
+                    fg_palette = (sprite.attr & 0x03) + 0x04;
+                    fg_priority = (sprite.attr & 0x20) == 0;
+
+                    if fg_pixel != 0 {
+                        break;
+                    }
+                }
+            }
+        }
+
+        let mut pixel = 0x00;
+        let mut palette = 0x00;
+        if bg_pixel == 0 && fg_pixel == 0 {
+            // transparent
+        } else if bg_pixel == 0 && fg_pixel > 0 {
+            pixel = fg_pixel;
+            palette = fg_palette;
+        } else if bg_pixel > 0 && fg_pixel == 0 {
+            pixel = bg_pixel;
+            palette = bg_palette;
+        } else if bg_pixel > 0 && fg_pixel > 0 {
+            if fg_priority {
+                pixel = fg_pixel;
+                palette = fg_palette;
+            } else {
+                pixel = bg_pixel;
+                palette = bg_palette;
+            }
+        }
+
         if self.cycle > 0
             && self.cycle < WIDTH
             && self.scanline >= 0
             && self.scanline < HEIGHT as i16
         {
-            let addr = 0x3F00 + ((bg_palette as u16) << 2) + bg_pixel as u16;
+            let addr = 0x3F00 + ((palette as u16) << 2) + pixel as u16;
             let color_i = self.bus.read(addr);
 
             let tex_addr =
@@ -272,7 +317,37 @@ impl<'a> PPU<'a> {
 
         // populate shifters
         if self.cycle < 340 {
-            for sprite in &self.scanline_sprites {}
+            for (i, sprite) in self.scanline_sprites.iter().enumerate() {
+                let mut sprite_pattern_bits_lo = 0x00;
+                let mut sprite_pattern_bits_hi = 0x00;
+                let mut sprite_pattern_addr_lo: u16 = 0x0000;
+                let mut sprite_pattern_addr_hi: u16 = 0x0000;
+
+                if self.control.sprite_size {
+                    //16-bit mode
+                } else {
+                    //8-bit mode
+                    if sprite.attr & 0x80 == 0 {
+                        // sprite normal
+                        sprite_pattern_addr_lo = ((self.control.pattern_sprite as u16) << 12)
+                            | ((sprite.tile_id as u16) << 4)
+                            | (self.scanline as u16 - sprite.y as u16);
+                    } else {
+                        // sprite flipped vertically
+                        sprite_pattern_addr_lo = ((self.control.pattern_sprite as u16) << 12)
+                            | ((sprite.tile_id as u16) << 4)
+                            | (7 - (self.scanline as u16 - sprite.y as u16));
+                    }
+                }
+
+                sprite_pattern_addr_hi = sprite_pattern_addr_lo + 8;
+
+                sprite_pattern_bits_lo = self.bus.read(sprite_pattern_addr_lo);
+                sprite_pattern_bits_hi = self.bus.read(sprite_pattern_addr_hi);
+
+                self.sprite_shifter_pattern_lo[i] = sprite_pattern_bits_lo;
+                self.sprite_shifter_pattern_hi[i] = sprite_pattern_bits_hi;
+            }
         }
     }
 
@@ -354,12 +429,23 @@ impl<'a> PPU<'a> {
         }
     }
 
-    fn shift_background_shifters(&mut self) {
+    fn shift_shifters(&mut self) {
         if self.mask.render_background {
             self.bg_shifter_pattern_lo <<= 1;
             self.bg_shifter_pattern_hi <<= 1;
             self.bg_shifter_attrib_lo <<= 1;
             self.bg_shifter_attrib_hi <<= 1;
+        }
+
+        if self.mask.render_sprites && self.cycle >= 1 && self.cycle < 258 {
+            for (i, sprite) in self.scanline_sprites.iter_mut().enumerate() {
+                if sprite.x == 0 {
+                    self.sprite_shifter_pattern_lo[i] <<= 1;
+                    self.sprite_shifter_pattern_hi[i] <<= 1;
+                } else {
+                    sprite.x -= 1;
+                }
+            }
         }
     }
 
