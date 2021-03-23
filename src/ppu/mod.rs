@@ -1,13 +1,13 @@
+pub mod dma;
+
 mod control;
 mod dac;
-pub mod dma;
 mod mask;
 mod oam;
 mod status;
 mod vram_address;
 
-use std::{cell::RefCell, rc::Rc};
-
+use crate::ppu::control::Control;
 use crate::ppu::dac::DAC;
 use crate::ppu::mask::Mask;
 use crate::ppu::status::Status;
@@ -16,9 +16,8 @@ use crate::{
     bus::{Bus, Device},
     cartridge::Mirror,
 };
-use crate::{nes::SharedMut, ppu::control::Control};
 
-use crate::ppu::oam::OAM;
+use crate::ppu::oam::{Sprite, OAM};
 
 pub const WIDTH: u16 = 256;
 pub const HEIGHT: u16 = 240;
@@ -29,6 +28,7 @@ pub struct PPU<'a> {
     pub(in crate) raise_nmi: bool,
     pub(in crate) bus: Bus<'a>,
     pub(in crate) oam: OAM,
+    pub(in crate) cartridge_mirror_mode: Mirror,
 
     // current screen pixel
     cycle: u16,
@@ -44,7 +44,6 @@ pub struct PPU<'a> {
     fine_x: u8,
 
     write_flip_flop: bool,
-    cartridge_mirror_mode: Mirror,
 
     // buffered PPU data in between clocks
     buffer: u8,
@@ -60,6 +59,11 @@ pub struct PPU<'a> {
     bg_shifter_pattern_hi: u16,
     bg_shifter_attrib_lo: u16,
     bg_shifter_attrib_hi: u16,
+
+    //foreground rendering
+    scanline_sprites: Vec<Sprite>,
+    sprite_shifter_pattern_lo: [u8; 8],
+    sprite_shifter_pattern_hi: [u8; 8],
 }
 
 impl<'a> PPU<'a> {
@@ -87,13 +91,12 @@ impl<'a> PPU<'a> {
             bg_shifter_attrib_lo: 0x0000,
             bg_shifter_attrib_hi: 0x0000,
             cartridge_mirror_mode: Mirror::Horizontal,
-            bus,
+            bus: bus,
             oam: OAM::default(),
+            scanline_sprites: vec![],
+            sprite_shifter_pattern_lo: [0u8; 8],
+            sprite_shifter_pattern_hi: [0u8; 8],
         }
-    }
-
-    pub fn set_mirror(&mut self, mirror: Mirror) {
-        self.cartridge_mirror_mode = mirror;
     }
 
     // https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
@@ -189,6 +192,7 @@ impl<'a> PPU<'a> {
             }
         }
 
+        // background rendering
         let mut bg_pixel = 0x00;
         let mut bg_palette = 0x00;
 
@@ -235,6 +239,40 @@ impl<'a> PPU<'a> {
             self.frame_complete = true;
 
             // println!("{:?}", &self.oam.mem[0..4]);
+            // y id attr x
+            // for b in 0..2 {
+            //     let bytes = &self.oam.mem[b * 0..b * 0 + 4];
+            //     println!("{}: ({}, {}) id: {} at: {}", b, bytes[3], bytes[0], bytes[1], bytes[2]);
+            // }
+        }
+
+        // sprite evaluation phase
+        if self.cycle == 257 && self.scanline >= 0 {
+            self.scanline_sprites = vec![];
+
+            let sprite_size = if self.control.sprite_size { 16 } else { 8 };
+            let mut oam_i = 0;
+            let mut sprite_cnt = 0;
+            while oam_i < 64 && sprite_cnt < 9 {
+                let sprite = Sprite::from(&self.oam.mem[oam_i * 4..oam_i * 4 + 4]);
+                let diff = self.scanline - sprite.y as i16;
+
+                if diff >= 0 && diff < sprite_size {
+                    sprite_cnt += 1;
+                    if sprite_cnt > 8 {
+                        self.status.sprite_overflow = true;
+                    } else {
+                        self.scanline_sprites.push(sprite);
+                    }
+                }
+
+                oam_i += 1;
+            }
+        }
+
+        // populate shifters
+        if self.cycle < 340 {
+            for sprite in &self.scanline_sprites {}
         }
     }
 

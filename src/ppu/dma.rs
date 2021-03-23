@@ -1,7 +1,5 @@
 use crate::bus::{Bus, Device};
 use crate::ppu::oam::OAM;
-use crate::ppu::SharedMut;
-use std::rc::Rc;
 
 pub struct OAMDMA {
     pub dma_in_progress: bool,
@@ -9,6 +7,18 @@ pub struct OAMDMA {
     buffer: u8,
     page: u8,
     addr: u8,
+}
+
+impl Default for OAMDMA {
+    fn default() -> OAMDMA {
+        OAMDMA {
+            dma_in_progress: false,
+            synched: false,
+            buffer: 0x00,
+            page: 0x00,
+            addr: 0x00,
+        }
+    }
 }
 
 impl OAMDMA {
@@ -31,25 +41,13 @@ impl OAMDMA {
     }
 }
 
-impl Default for OAMDMA {
-    fn default() -> OAMDMA {
-        OAMDMA {
-            dma_in_progress: false,
-            synched: false,
-            buffer: 0x00,
-            page: 0x00,
-            addr: 0x00,
-        }
-    }
-}
-
 // This interface is exposed for OAMDMA (address $4014 on CPU Bus)
 impl Device for OAMDMA {
-    fn read(&mut self, address: u16) -> u8 {
+    fn read(&mut self, _address: u16) -> u8 {
         panic!("can not read from OAMDMA ($4014)");
     }
 
-    fn write(&mut self, address: u16, data: u8) {
+    fn write(&mut self, _address: u16, _data: u8) {
         self.dma_in_progress = true;
     }
 }

@@ -93,7 +93,7 @@ impl<'a> Nes<'a> {
                     .bus
                     .connect(0x0000..=0x1FFF, &mapper_ppu);
 
-                self.ppu.borrow_mut().set_mirror(meta.mirror);
+                self.ppu.borrow_mut().cartridge_mirror_mode = meta.mirror;
             }
             _ => panic!("unknown mapper!"),
         }
