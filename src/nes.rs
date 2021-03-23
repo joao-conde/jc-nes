@@ -4,6 +4,7 @@ use crate::cartridge::mappers::MapperMemoryPin;
 use crate::cartridge::Cartridge;
 use crate::controller::{Button, Controller};
 use crate::cpu::CPU;
+use crate::ppu::dma::OAMDMA;
 use crate::ppu::{HEIGHT, PPU, WIDTH};
 use crate::ram::RAM;
 use std::cell::RefCell;
@@ -14,6 +15,7 @@ pub type SharedMut<T> = Rc<RefCell<T>>;
 pub struct Nes<'a> {
     cpu: CPU<'a>,
     ppu: SharedMut<PPU<'a>>,
+    oam_dma_controller: SharedMut<OAMDMA>,
     controller1: SharedMut<Controller>,
     controller2: SharedMut<Controller>,
     ticks: usize,
@@ -44,11 +46,12 @@ impl<'a> Nes<'a> {
         let tmp = Rc::new(RefCell::new(RAM::new(vec![0u8; 32]))); // TODO: remove tmp hack (APU)
         let controller1 = Rc::new(RefCell::new(Controller::default()));
         let controller2 = Rc::new(RefCell::new(Controller::default()));
+        let oam_dma_controller = Rc::new(RefCell::new(OAMDMA::default()));
 
         let mut cpu_bus = Bus::default();
         cpu_bus.connect(0x0000..=0x1FFF, &ram);
         cpu_bus.connect(0x2000..=0x3FFF, &ppu);
-        cpu_bus.connect(0x4014..=0x4014, &ppu.borrow().oam);
+        cpu_bus.connect(0x4014..=0x4014, &oam_dma_controller);
         cpu_bus.connect(0x4016..=0x4016, &controller1);
         cpu_bus.connect(0x4017..=0x4017, &controller2);
 
@@ -66,6 +69,7 @@ impl<'a> Nes<'a> {
         Nes {
             cpu,
             ppu,
+            oam_dma_controller,
             controller1,
             controller2,
             ticks: 0,
@@ -97,13 +101,22 @@ impl<'a> Nes<'a> {
 
     pub fn clock(&mut self) {
         self.ppu.borrow_mut().clock();
-        if self.ticks % 3 == 0 {
-            self.cpu.clock();
-        }
 
         if self.ppu.borrow().raise_nmi {
             self.ppu.borrow_mut().raise_nmi = false;
             self.cpu.nmi();
+        }
+
+        if self.ticks % 3 == 0 {
+            if self.oam_dma_controller.borrow().dma_in_progress {
+                self.oam_dma_controller.borrow_mut().transfer(
+                    self.ticks,
+                    &self.cpu.bus,
+                    &mut self.ppu.borrow_mut().oam,
+                );
+            } else {
+                self.cpu.clock();
+            }
         }
 
         self.ticks += 1;
