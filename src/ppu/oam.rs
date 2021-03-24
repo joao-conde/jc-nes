@@ -12,6 +12,7 @@ impl Default for OAM {
     }
 }
 
+#[derive(Debug)]
 pub struct Sprite {
     pub(in crate::ppu) y: u8,
     pub(in crate::ppu) x: u8,

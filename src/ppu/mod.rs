@@ -111,7 +111,6 @@ impl<'a> PPU<'a> {
             // new frame
             if self.scanline == -1 && self.cycle == 1 {
                 self.status.vertical_blank = false;
-
                 self.status.sprite_overflow = false;
 
                 //TODO clear shifters (0)
@@ -235,11 +234,10 @@ impl<'a> PPU<'a> {
             }
         }
 
+        // determine background and foreground priorities
         let mut pixel = 0x00;
         let mut palette = 0x00;
-        if bg_pixel == 0 && fg_pixel == 0 {
-            // transparent
-        } else if bg_pixel == 0 && fg_pixel > 0 {
+        if bg_pixel == 0 && fg_pixel > 0 {
             pixel = fg_pixel;
             palette = fg_palette;
         } else if bg_pixel > 0 && fg_pixel == 0 {
@@ -282,13 +280,7 @@ impl<'a> PPU<'a> {
         if self.scanline >= 261 {
             self.scanline = -1;
             self.frame_complete = true;
-
-            // println!("{:?}", &self.oam.mem[0..4]);
-            // y id attr x
-            // for b in 0..2 {
-            //     let bytes = &self.oam.mem[b * 0..b * 0 + 4];
-            //     println!("{}: ({}, {}) id: {} at: {}", b, bytes[3], bytes[0], bytes[1], bytes[2]);
-            // }
+            // println!("{:?}", Sprite::from(&self.oam.mem[0..4])); // TODO remove debug
         }
 
         // sprite evaluation phase
@@ -301,7 +293,6 @@ impl<'a> PPU<'a> {
             while oam_i < 64 && sprite_cnt < 9 {
                 let sprite = Sprite::from(&self.oam.mem[oam_i * 4..oam_i * 4 + 4]);
                 let diff = self.scanline - sprite.y as i16;
-
                 if diff >= 0 && diff < sprite_size {
                     sprite_cnt += 1;
                     if sprite_cnt > 8 {
@@ -310,23 +301,20 @@ impl<'a> PPU<'a> {
                         self.scanline_sprites.push(sprite);
                     }
                 }
-
                 oam_i += 1;
             }
         }
 
-        // populate shifters
-        if self.cycle < 340 {
+        // populate shifters with next scanline data
+        if self.cycle == 340 {
             for (i, sprite) in self.scanline_sprites.iter().enumerate() {
-                let mut sprite_pattern_bits_lo = 0x00;
-                let mut sprite_pattern_bits_hi = 0x00;
                 let mut sprite_pattern_addr_lo: u16 = 0x0000;
-                let mut sprite_pattern_addr_hi: u16 = 0x0000;
 
                 if self.control.sprite_size {
-                    //16-bit mode
+                    // 16-bit mode
+                    // TODO
                 } else {
-                    //8-bit mode
+                    // 8-bit mode
                     if sprite.attr & 0x80 == 0 {
                         // sprite normal
                         sprite_pattern_addr_lo = ((self.control.pattern_sprite as u16) << 12)
@@ -340,10 +328,10 @@ impl<'a> PPU<'a> {
                     }
                 }
 
-                sprite_pattern_addr_hi = sprite_pattern_addr_lo + 8;
+                let sprite_pattern_addr_hi = sprite_pattern_addr_lo + 8;
 
-                sprite_pattern_bits_lo = self.bus.read(sprite_pattern_addr_lo);
-                sprite_pattern_bits_hi = self.bus.read(sprite_pattern_addr_hi);
+                let sprite_pattern_bits_lo = self.bus.read(sprite_pattern_addr_lo);
+                let sprite_pattern_bits_hi = self.bus.read(sprite_pattern_addr_hi);
 
                 self.sprite_shifter_pattern_lo[i] = sprite_pattern_bits_lo;
                 self.sprite_shifter_pattern_hi[i] = sprite_pattern_bits_hi;

@@ -102,13 +102,9 @@ impl<'a> Nes<'a> {
     pub fn clock(&mut self) {
         self.ppu.borrow_mut().clock();
 
-        if self.ppu.borrow().raise_nmi {
-            self.ppu.borrow_mut().raise_nmi = false;
-            self.cpu.nmi();
-        }
-
         if self.ticks % 3 == 0 {
             if self.oam_dma_controller.borrow().dma_in_progress {
+                // println!("DMA IN PROGRESS {}", self.ticks);
                 self.oam_dma_controller.borrow_mut().transfer(
                     self.ticks,
                     &self.cpu.bus,
@@ -117,6 +113,11 @@ impl<'a> Nes<'a> {
             } else {
                 self.cpu.clock();
             }
+        }
+
+        if self.ppu.borrow().raise_nmi {
+            self.ppu.borrow_mut().raise_nmi = false;
+            self.cpu.nmi();
         }
 
         self.ticks += 1;

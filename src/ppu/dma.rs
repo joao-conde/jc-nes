@@ -33,6 +33,8 @@ impl OAMDMA {
                 if self.addr == 0x00 {
                     self.dma_in_progress = false;
                     self.synched = false;
+                    self.page = 0x00;
+                    self.buffer = 0x00;
                 }
             }
         } else {
@@ -47,7 +49,9 @@ impl Device for OAMDMA {
         panic!("can not read from OAMDMA ($4014)");
     }
 
-    fn write(&mut self, _address: u16, _data: u8) {
+    fn write(&mut self, _address: u16, data: u8) {
         self.dma_in_progress = true;
+        self.page = data;
+        self.addr = 0x00;
     }
 }
