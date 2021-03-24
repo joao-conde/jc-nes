@@ -195,23 +195,17 @@ impl<'a> PPU<'a> {
             }
         }
 
-        // background pixel
-        let mut bg_pixel = 0x00;
-        let mut bg_palette = 0x00;
-
-        if self.mask.render_background {
+        // background pixel and
+        let (bg_pixel, bg_palette) = if self.mask.render_background {
             let bit_offset = 0x8000 >> self.fine_x;
-
-            // pixel
-            let p0_pixel = ((self.bg_shifter_pattern_lo & bit_offset) > 0) as u8;
-            let p1_pixel = ((self.bg_shifter_pattern_hi & bit_offset) > 0) as u8;
-            bg_pixel = (p1_pixel << 1) | p0_pixel;
-
-            // palette
-            let bg_pal0 = ((self.bg_shifter_attrib_lo & bit_offset) > 0) as u8;
-            let bg_pal1 = ((self.bg_shifter_attrib_hi & bit_offset) > 0) as u8;
-            bg_palette = (bg_pal1 << 1) | bg_pal0;
-        }
+            let pixel_0 = ((self.bg_shifter_pattern_lo & bit_offset) > 0) as u8;
+            let pixel_1 = ((self.bg_shifter_pattern_hi & bit_offset) > 0) as u8;
+            let palette_0 = ((self.bg_shifter_attrib_lo & bit_offset) > 0) as u8;
+            let palette_1 = ((self.bg_shifter_attrib_hi & bit_offset) > 0) as u8;
+            ((pixel_1 << 1) | pixel_0, (palette_1 << 1) | palette_0)
+        } else {
+            (0x00, 0x00)
+        };
 
         // foreground pixel
         let mut fg_pixel = 0x00;
@@ -234,24 +228,18 @@ impl<'a> PPU<'a> {
             }
         }
 
-        // determine background and foreground priorities
-        let mut pixel = 0x00;
-        let mut palette = 0x00;
-        if bg_pixel == 0 && fg_pixel > 0 {
-            pixel = fg_pixel;
-            palette = fg_palette;
+        // resolve foreground/background priority
+        let (pixel, palette) = if bg_pixel == 0 && fg_pixel == 0 {
+            (0x00, 0x00)
+        } else if bg_pixel == 0 && fg_pixel > 0 {
+            (fg_pixel, fg_palette)
         } else if bg_pixel > 0 && fg_pixel == 0 {
-            pixel = bg_pixel;
-            palette = bg_palette;
-        } else if bg_pixel > 0 && fg_pixel > 0 {
-            if fg_priority {
-                pixel = fg_pixel;
-                palette = fg_palette;
-            } else {
-                pixel = bg_pixel;
-                palette = bg_palette;
-            }
-        }
+            (bg_pixel, bg_palette)
+        } else if fg_priority {
+            (fg_pixel, fg_palette)
+        } else {
+            (bg_pixel, bg_palette)
+        };
 
         if self.cycle > 0
             && self.cycle < WIDTH
@@ -270,7 +258,7 @@ impl<'a> PPU<'a> {
 
         self.cycle += 1;
 
-        // reset cycle
+        // reset cycles
         if self.cycle >= 341 {
             self.cycle = 0;
             self.scanline += 1;
@@ -280,7 +268,6 @@ impl<'a> PPU<'a> {
         if self.scanline >= 261 {
             self.scanline = -1;
             self.frame_complete = true;
-            // println!("{:?}", Sprite::from(&self.oam.mem[0..4])); // TODO remove debug
         }
 
         // sprite evaluation phase
@@ -330,8 +317,19 @@ impl<'a> PPU<'a> {
 
                 let sprite_pattern_addr_hi = sprite_pattern_addr_lo + 8;
 
-                let sprite_pattern_bits_lo = self.bus.read(sprite_pattern_addr_lo);
-                let sprite_pattern_bits_hi = self.bus.read(sprite_pattern_addr_hi);
+                let mut sprite_pattern_bits_lo = self.bus.read(sprite_pattern_addr_lo);
+                let mut sprite_pattern_bits_hi = self.bus.read(sprite_pattern_addr_hi);
+
+                if sprite.attr & 0x40 != 0 {
+                    let flip_byte = |mut b: u8| -> u8 {
+                        b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+                        b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+                        b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+                        return b;
+                    };
+                    sprite_pattern_bits_lo = flip_byte(sprite_pattern_bits_lo);
+                    sprite_pattern_bits_hi = flip_byte(sprite_pattern_bits_hi);
+                }
 
                 self.sprite_shifter_pattern_lo[i] = sprite_pattern_bits_lo;
                 self.sprite_shifter_pattern_hi[i] = sprite_pattern_bits_hi;
@@ -358,18 +356,6 @@ impl<'a> PPU<'a> {
         self.control = Control::from(0x00);
         self.vram_address = VRAMAddress::from(0x0000);
         self.tram_address = VRAMAddress::from(0x0000);
-    }
-
-    pub fn debug(&self) {
-        println!(" PPU {}, {}", self.scanline, self.cycle);
-    }
-
-    pub fn pause(&self) {
-        use std::io::stdin;
-        let mut s = String::new();
-        stdin()
-            .read_line(&mut s)
-            .expect("Did not enter a correct string");
     }
 }
 
@@ -470,7 +456,7 @@ impl<'a> Device for PPU<'a> {
                 data
             }
             0x0003 => {
-                // not readable
+                eprintln!("can not read from OAMADDR ($2003)");
                 0x00
             }
             0x0004 => self.oam.mem[self.oam.addr],
@@ -488,7 +474,10 @@ impl<'a> Device for PPU<'a> {
                 self.vram_address = (u16::from(self.vram_address) + increment).into();
                 data
             }
-            _ => panic!("unknown ppu register"),
+            _ => {
+                eprintln!("unknown PPU register (${})", address);
+                0x00
+            }
         }
     }
 
@@ -543,7 +532,7 @@ impl<'a> Device for PPU<'a> {
                 let increment = if self.control.increment_mode { 32 } else { 1 } as u16;
                 self.vram_address = (u16::from(self.vram_address) + increment).into();
             }
-            _ => panic!("unknown PPU register"),
+            _ => eprintln!("unknown PPU register"),
         }
     }
 }

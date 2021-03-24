@@ -310,10 +310,7 @@ impl<'a> CPU<'a> {
             0x80 => self.execute(CPU::imm, CPU::nop_unoff, 2, false),
 
             // Unknown Opcode
-            _ => panic!(format!(
-                "Unknown opcode 0x{:0X} at 0x{:0X}",
-                opcode, self.pc
-            )),
+            _ => eprintln!("Unknown opcode 0x{:0X} at 0x{:0X}", opcode, self.pc),
         };
     }
 

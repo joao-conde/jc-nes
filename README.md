@@ -6,3 +6,4 @@ Nintendo Entertainment System (NES) emulator. Check the [docs folder](docs/READM
 
 - proper name table mirroring
 - CTRL + F for "TODO" and deal with those
+- bus params original address? remove oam dma controller

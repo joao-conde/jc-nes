@@ -55,7 +55,7 @@ impl<'a> Nes<'a> {
         cpu_bus.connect(0x4016..=0x4016, &controller1);
         cpu_bus.connect(0x4017..=0x4017, &controller2);
 
-        // TODO remove tmps
+        // TODO remove temporary memory fillers (APU or IO related)
         cpu_bus.connect(0x4000..=0x4013, &tmp);
         cpu_bus.connect(0x4015..=0x4015, &tmp);
         cpu_bus.connect(0x4018..=0x401F, &tmp);
@@ -142,7 +142,7 @@ impl<'a> Nes<'a> {
         match controller {
             1 => self.controller1.borrow_mut().down(btn),
             2 => self.controller2.borrow_mut().down(btn),
-            _ => panic!("expected either controller 1 or 2"),
+            _ => eprintln!("expected either controller 1 or 2"),
         }
     }
 

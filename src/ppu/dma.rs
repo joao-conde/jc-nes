@@ -31,27 +31,37 @@ impl OAMDMA {
 
                 self.addr = self.addr.wrapping_add(1);
                 if self.addr == 0x00 {
-                    self.dma_in_progress = false;
-                    self.synched = false;
-                    self.page = 0x00;
-                    self.buffer = 0x00;
+                    self.stop();
                 }
             }
         } else {
             self.synched = cur_cyc % 2 == 1;
         }
     }
+
+    fn start(&mut self, page: u8) {
+        self.dma_in_progress = true;
+        self.page = page;
+        self.synched = false;
+        self.buffer = 0x00;
+    }
+
+    fn stop(&mut self) {
+        self.dma_in_progress = false;
+        self.page = 0x00;
+        self.synched = false;
+        self.buffer = 0x00;
+    }
 }
 
 // This interface is exposed for OAMDMA (address $4014 on CPU Bus)
 impl Device for OAMDMA {
     fn read(&mut self, _address: u16) -> u8 {
-        panic!("can not read from OAMDMA ($4014)");
+        eprintln!("can not read from OAMDMA ($4014)");
+        0x00
     }
 
     fn write(&mut self, _address: u16, data: u8) {
-        self.dma_in_progress = true;
-        self.page = data;
-        self.addr = 0x00;
+        self.start(data);
     }
 }
