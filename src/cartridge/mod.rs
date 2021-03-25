@@ -3,22 +3,16 @@ pub mod mappers;
 use std::{fs::File, io::Read};
 
 pub struct Cartridge {
-    pub(in crate::cartridge) prg_rom: Vec<u8>,
-    pub(in crate::cartridge) chr_rom: Vec<u8>,
-    pub(in crate) meta: Meta,
-}
-
-#[derive(Clone)]
-pub struct Meta {
+    pub(in crate) prg_rom: Vec<u8>,
+    pub(in crate) chr_rom: Vec<u8>,
     pub(in crate) mapper_id: u8,
     pub(in crate) name: String,
     pub(in crate) prg_banks: u8,
     pub(in crate) chr_banks: u8,
-    pub(in crate) mirror: Mirror,
+    pub(in crate) mirror: MirrorMode,
 }
 
-#[derive(Clone)]
-pub enum Mirror {
+pub enum MirrorMode {
     Horizontal,
     Vertical,
 }
@@ -53,9 +47,9 @@ impl Cartridge {
 
         let mapper_id = ((mapper2 >> 4) << 4) | (mapper1 >> 4);
         let mirror = if mapper1 & 0x01 == 1 {
-            Mirror::Vertical
+            MirrorMode::Vertical
         } else {
-            Mirror::Horizontal
+            MirrorMode::Horizontal
         };
 
         let file_type = 1; // TODO not hard-code (works for DK and nestest)
@@ -75,13 +69,11 @@ impl Cartridge {
         Cartridge {
             prg_rom,
             chr_rom,
-            meta: Meta {
-                mapper_id,
-                name,
-                prg_banks,
-                chr_banks,
-                mirror,
-            },
+            mapper_id,
+            name,
+            prg_banks,
+            chr_banks,
+            mirror,
         }
     }
 }

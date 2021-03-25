@@ -1,64 +1,54 @@
-use crate::cartridge::mappers::MapperMemoryPin;
-use crate::cartridge::Cartridge;
-use crate::{bus::Device, nes::SharedMut};
-use std::rc::Rc;
+use crate::bus::Device;
 
-pub struct Mapper000 {
-    pin: MapperMemoryPin,
-    cartridge: SharedMut<Cartridge>,
+pub struct PRGMapper000 {
+    prg_rom: Vec<u8>,
     prg_banks: u8,
 }
 
-impl Device for Mapper000 {
-    fn read(&mut self, address: u16) -> u8 {
-        match self.pin {
-            MapperMemoryPin::PrgROM => self.read_prg_rom(address),
-            MapperMemoryPin::ChrROM => self.read_chr_rom(address),
-        }
-    }
-
-    fn write(&mut self, address: u16, data: u8) {
-        match self.pin {
-            MapperMemoryPin::PrgROM => self.write_prg_rom(address, data),
-            MapperMemoryPin::ChrROM => self.write_chr_rom(address, data),
-        };
+impl PRGMapper000 {
+    pub fn new(prg_rom: Vec<u8>, prg_banks: u8) -> PRGMapper000 {
+        PRGMapper000 { prg_rom, prg_banks }
     }
 }
 
-impl Mapper000 {
-    pub fn new(pin: MapperMemoryPin, cartridge: &SharedMut<Cartridge>) -> Mapper000 {
-        Mapper000 {
-            pin,
-            prg_banks: cartridge.borrow().meta.prg_banks,
-            cartridge: Rc::clone(cartridge),
-        }
-    }
-
-    fn read_prg_rom(&self, address: u16) -> u8 {
+impl Device for PRGMapper000 {
+    fn read(&mut self, address: u16) -> u8 {
         let address = if self.prg_banks == 1 {
             address & 0x3FFF
         } else {
             address
         };
 
-        (*self.cartridge).borrow().prg_rom[address as usize]
+        self.prg_rom[address as usize]
     }
 
-    fn write_prg_rom(&mut self, address: u16, data: u8) {
+    fn write(&mut self, address: u16, data: u8) {
         let address = if self.prg_banks == 1 {
             address & 0x3FFF
         } else {
             address
         };
 
-        (*self.cartridge).borrow_mut().prg_rom[address as usize] = data;
+        self.prg_rom[address as usize] = data;
+    }
+}
+
+pub struct CHRMapper000 {
+    chr_rom: Vec<u8>,
+}
+
+impl CHRMapper000 {
+    pub fn new(chr_rom: Vec<u8>) -> CHRMapper000 {
+        CHRMapper000 { chr_rom }
+    }
+}
+
+impl Device for CHRMapper000 {
+    fn read(&mut self, address: u16) -> u8 {
+        self.chr_rom[address as usize]
     }
 
-    fn read_chr_rom(&self, address: u16) -> u8 {
-        (*self.cartridge).borrow_mut().chr_rom[address as usize]
-    }
-
-    fn write_chr_rom(&mut self, address: u16, data: u8) {
-        (*self.cartridge).borrow_mut().chr_rom[address as usize] = data;
+    fn write(&mut self, address: u16, data: u8) {
+        self.chr_rom[address as usize] = data;
     }
 }

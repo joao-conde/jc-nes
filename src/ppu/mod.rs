@@ -14,7 +14,7 @@ use crate::ppu::status::Status;
 use crate::ppu::vram_address::VRAMAddress;
 use crate::{
     bus::{Bus, Device},
-    cartridge::Mirror,
+    cartridge::MirrorMode,
 };
 
 use crate::ppu::oam::{Sprite, OAM};
@@ -28,7 +28,7 @@ pub struct PPU {
     pub(in crate) raise_nmi: bool,
     pub(in crate) bus: Bus,
     pub(in crate) oam: OAM,
-    pub(in crate) cartridge_mirror_mode: Mirror,
+    pub(in crate) cartridge_mirror_mode: MirrorMode,
 
     // current screen pixel
     cycle: u16,
@@ -69,6 +69,7 @@ pub struct PPU {
 impl PPU {
     pub fn new(bus: Bus) -> PPU {
         PPU {
+            bus,
             cycle: 0,
             scanline: 0,
             frame_complete: false,
@@ -90,8 +91,7 @@ impl PPU {
             bg_shifter_pattern_hi: 0x0000,
             bg_shifter_attrib_lo: 0x0000,
             bg_shifter_attrib_hi: 0x0000,
-            cartridge_mirror_mode: Mirror::Horizontal,
-            bus: bus,
+            cartridge_mirror_mode: MirrorMode::Horizontal,
             oam: OAM::default(),
             scanline_sprites: vec![],
             sprite_shifter_pattern_lo: [0u8; 8],
@@ -186,12 +186,10 @@ impl PPU {
             }
         }
         // post-render
-        else if self.scanline >= 241 && self.scanline < 261 {
-            if self.scanline == 241 && self.cycle == 1 {
-                self.status.vertical_blank = true;
-                if self.control.enable_nmi {
-                    self.raise_nmi = true;
-                }
+        else if self.scanline == 241 && self.cycle == 1 {
+            self.status.vertical_blank = true;
+            if self.control.enable_nmi {
+                self.raise_nmi = true;
             }
         }
 
@@ -520,11 +518,11 @@ impl Device for PPU {
             }
             0x0007 => {
                 match self.cartridge_mirror_mode {
-                    Mirror::Horizontal => {
+                    MirrorMode::Horizontal => {
                         self.bus.write(0x2000 | u16::from(self.vram_address), data);
                         self.bus.write(0x2400 | u16::from(self.vram_address), data);
                     }
-                    Mirror::Vertical => {
+                    MirrorMode::Vertical => {
                         todo!();
                     }
                 }

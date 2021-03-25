@@ -10,16 +10,14 @@ use sdl2::{
     video::Window,
     Sdl,
 };
-use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
-use std::rc::Rc;
 
 const SCALE: f32 = 4.0;
 
 fn main() {
     // play("roms/nestest.nes");
-    play("roms/ignored/donkey-kong.nes");
+    play("roms/ignored/pacman.nes");
 }
 
 fn play(rom_path: &str) {
@@ -72,7 +70,7 @@ fn nestest() {
 
     // connect ram to the bus
     // give bus to CPU to read/write
-    let ram = Rc::new(RefCell::new(RAM::new(mem)));
+    let ram = RAM::new(mem);
     let mut bus = Bus::default();
     bus.connect(0x0000..=0xFFFF, ram);
 
@@ -104,13 +102,13 @@ fn play_60fps(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<W
                 sdl2::event::Event::KeyDown {
                     keycode: Some(keycode),
                     ..
-                } => key_to_btn(keycode).map(|btn| nes.down(1, btn)),
+                } => key_to_btn(keycode).map(|btn| nes.btn_down(1, btn)),
 
                 // key up
                 sdl2::event::Event::KeyUp {
                     keycode: Some(keycode),
                     ..
-                } => key_to_btn(keycode).map(|btn| nes.up(1, btn)),
+                } => key_to_btn(keycode).map(|btn| nes.btn_up(1, btn)),
 
                 _ => None,
             };
@@ -124,7 +122,7 @@ fn play_60fps(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<W
             for _ in 0..30 {
                 nes.clock();
             }
-            if let Some(screen) = nes.frame() {
+            if let Some(screen) = nes.get_frame() {
                 timer_subsystem.delay(tick_interval - delta_t); // energy saving
                 texture.update(None, &screen, WIDTH as usize * 3).unwrap();
                 canvas.copy(&texture, None, None).unwrap();
