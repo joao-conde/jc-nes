@@ -64,6 +64,7 @@ pub struct PPU {
     scanline_sprites: Vec<Sprite>,
     sprite_shifter_pattern_lo: [u8; 8],
     sprite_shifter_pattern_hi: [u8; 8],
+    sprite_zero_selected: bool,
 }
 
 impl PPU {
@@ -96,6 +97,7 @@ impl PPU {
             scanline_sprites: vec![],
             sprite_shifter_pattern_lo: [0u8; 8],
             sprite_shifter_pattern_hi: [0u8; 8],
+            sprite_zero_selected: false,
         }
     }
 
@@ -112,7 +114,7 @@ impl PPU {
             if self.scanline == -1 && self.cycle == 1 {
                 self.status.vertical_blank = false;
                 self.status.sprite_overflow = false;
-
+                self.status.sprite_zero_hit = false;
                 //TODO clear shifters (0)
             }
 
@@ -209,6 +211,7 @@ impl PPU {
         let mut fg_pixel = 0x00;
         let mut fg_palette = 0x00;
         let mut fg_priority = false;
+        let mut sprite_zero_visible = false;
         if self.mask.render_sprites {
             for (i, sprite) in self.scanline_sprites.iter().enumerate() {
                 if sprite.x == 0 {
@@ -220,6 +223,9 @@ impl PPU {
                     fg_priority = (sprite.attr & 0x20) == 0;
 
                     if fg_pixel != 0 {
+                        if i == 0 {
+                            sprite_zero_visible = true;
+                        }
                         break;
                     }
                 }
@@ -233,10 +239,25 @@ impl PPU {
             (fg_pixel, fg_palette)
         } else if bg_pixel > 0 && fg_pixel == 0 {
             (bg_pixel, bg_palette)
-        } else if fg_priority {
-            (fg_pixel, fg_palette)
         } else {
-            (bg_pixel, bg_palette)
+            self.status.sprite_zero_hit = self.sprite_zero_selected
+                && sprite_zero_visible
+                && self.mask.render_background
+                && self.mask.render_sprites
+                && (!self.mask.render_background_left
+                    && !self.mask.render_sprites_left
+                    && self.cycle >= 9
+                    && self.cycle < 258
+                    || self.mask.render_background_left
+                        && self.mask.render_sprites_left
+                        && self.cycle >= 1
+                        && self.cycle < 258);
+
+            if fg_priority {
+                (fg_pixel, fg_palette)
+            } else {
+                (bg_pixel, bg_palette)
+            }
         };
 
         if self.cycle > 0
@@ -270,6 +291,7 @@ impl PPU {
 
         // sprite evaluation phase
         if self.cycle == 257 && self.scanline >= 0 {
+            self.sprite_zero_selected = false;
             self.scanline_sprites = vec![];
 
             let sprite_size = if self.control.sprite_size { 16 } else { 8 };
@@ -279,12 +301,16 @@ impl PPU {
                 let sprite = Sprite::from(&self.oam.mem[oam_i * 4..oam_i * 4 + 4]);
                 let diff = self.scanline - sprite.y as i16;
                 if diff >= 0 && diff < sprite_size {
-                    sprite_cnt += 1;
-                    if sprite_cnt > 8 {
+                    if sprite_cnt >= 8 {
                         self.status.sprite_overflow = true;
                     } else {
                         self.scanline_sprites.push(sprite);
+                        if sprite_cnt == 0 {
+                            // sprite-zero present
+                            self.sprite_zero_selected = true;
+                        }
                     }
+                    sprite_cnt += 1;
                 }
                 oam_i += 1;
             }
@@ -293,51 +319,49 @@ impl PPU {
         // populate shifters with next scanline data
         if self.cycle == 340 {
             for (i, sprite) in self.scanline_sprites.iter().enumerate() {
-                let sprite_pattern_addr_lo;
-
-                if self.control.sprite_size {
-                    // 8*16 mode
+                let sprite_pattern_addr_lo = if self.control.sprite_size {
+                    // 8x16 mode
                     if sprite.attr & 0x80 == 0 {
                         // sprite normal
                         if self.scanline - (sprite.y as i16) < 8 {
                             // top half
-                            sprite_pattern_addr_lo = ((sprite.tile_id as u16 & 0x01) << 12)
+                            ((sprite.tile_id as u16 & 0x01) << 12)
                                 | ((sprite.tile_id & 0xFE) << 4) as u16
-                                | (self.scanline - (sprite.y as i16) & 0x07) as u16;
+                                | (self.scanline - (sprite.y as i16) & 0x07) as u16
                         } else {
                             // bottom half
-                            sprite_pattern_addr_lo = ((sprite.tile_id as u16 & 0x01) << 12) 
+                            ((sprite.tile_id as u16 & 0x01) << 12)
                                 | (((sprite.tile_id & 0xFE) + 1) << 4) as u16
-                                | (self.scanline - (sprite.y as i16) & 0x07) as u16;
+                                | (self.scanline - (sprite.y as i16) & 0x07) as u16
                         }
                     } else {
                         // sprite flipped vertically
                         if self.scanline - (sprite.y as i16) < 8 {
                             // top half
-                            sprite_pattern_addr_lo = ((sprite.tile_id as u16 & 0x01) << 12) 
+                            ((sprite.tile_id as u16 & 0x01) << 12)
                                 | (((sprite.tile_id & 0xFE) + 1) << 4) as u16
-                                | (7 - (self.scanline - (sprite.y as i16)) & 0x07) as u16;
+                                | (7 - (self.scanline - (sprite.y as i16)) & 0x07) as u16
                         } else {
                             // bottom half
-                            sprite_pattern_addr_lo = ((sprite.tile_id as u16 & 0x01) << 12) 
+                            ((sprite.tile_id as u16 & 0x01) << 12)
                                 | ((sprite.tile_id & 0xFE) << 4) as u16
-                                | (7 - (self.scanline - (sprite.y as i16)) & 0x07) as u16;
+                                | (7 - (self.scanline - (sprite.y as i16)) & 0x07) as u16
                         }
                     }
                 } else {
-                    // 8*8 mode
+                    // 8x8 mode
                     if sprite.attr & 0x80 == 0 {
                         // sprite normal
-                        sprite_pattern_addr_lo = ((self.control.pattern_sprite as u16) << 12)
+                        ((self.control.pattern_sprite as u16) << 12)
                             | ((sprite.tile_id as u16) << 4)
-                            | (self.scanline as u16 - sprite.y as u16);
+                            | (self.scanline as u16 - sprite.y as u16)
                     } else {
                         // sprite flipped vertically
-                        sprite_pattern_addr_lo = ((self.control.pattern_sprite as u16) << 12)
+                        ((self.control.pattern_sprite as u16) << 12)
                             | ((sprite.tile_id as u16) << 4)
-                            | (7 - (self.scanline as u16 - sprite.y as u16));
+                            | (7 - (self.scanline as u16 - sprite.y as u16))
                     }
-                }
+                };
 
                 let sprite_pattern_addr_hi = sprite_pattern_addr_lo + 8;
 
