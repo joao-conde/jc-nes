@@ -30,7 +30,7 @@ impl Device for Gamepad {
 }
 
 impl Gamepad {
-    pub fn down(&mut self, btn: Button) {
+    pub fn btn_down(&mut self, btn: Button) {
         match btn {
             Button::Right => self.state |= 0x01,
             Button::Left => self.state |= 0x02,
@@ -43,7 +43,7 @@ impl Gamepad {
         }
     }
 
-    pub fn up(&mut self, btn: Button) {
+    pub fn btn_up(&mut self, btn: Button) {
         match btn {
             Button::Right => self.state &= !0x01,
             Button::Left => self.state &= !0x02,

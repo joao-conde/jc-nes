@@ -131,16 +131,16 @@ impl Nes {
 
     pub fn btn_down(&mut self, controller: u8, btn: Button) {
         match controller {
-            1 => self.gamepad1.borrow_mut().down(btn),
-            2 => self.gamepad2.borrow_mut().down(btn),
+            1 => self.gamepad1.borrow_mut().btn_down(btn),
+            2 => self.gamepad2.borrow_mut().btn_down(btn),
             _ => eprintln!("expected either controller 1 or 2"),
         }
     }
 
     pub fn btn_up(&mut self, controller: u8, btn: Button) {
         match controller {
-            1 => self.gamepad1.borrow_mut().up(btn),
-            2 => self.gamepad2.borrow_mut().up(btn),
+            1 => self.gamepad1.borrow_mut().btn_up(btn),
+            2 => self.gamepad2.borrow_mut().btn_up(btn),
             _ => panic!("expected either controller '1' or '2'"),
         }
     }
