@@ -1,7 +1,7 @@
 use crate::bus::Device;
 
 #[derive(Default)]
-pub struct Controller {
+pub struct Gamepad {
     state: u8,
     state_snapshot: u8,
 }
@@ -17,7 +17,7 @@ pub enum Button {
     A,
 }
 
-impl Device for Controller {
+impl Device for Gamepad {
     fn read(&mut self, _address: u16) -> u8 {
         let data = (self.state_snapshot & 0x80) >> 7;
         self.state_snapshot <<= 1;
@@ -29,7 +29,7 @@ impl Device for Controller {
     }
 }
 
-impl Controller {
+impl Gamepad {
     pub fn down(&mut self, btn: Button) {
         match btn {
             Button::Right => self.state |= 0x01,

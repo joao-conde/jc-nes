@@ -1,7 +1,7 @@
 use crate::bus::{Bus, SharedMut};
 use crate::cartridge::mappers::mapper000::{CHRMapper000, PRGMapper000};
 use crate::cartridge::Cartridge;
-use crate::controller::{Button, Controller};
+use crate::gamepad::{Button, Gamepad};
 use crate::cpu::CPU;
 use crate::ppu::dma::OAMDMA;
 use crate::ppu::{HEIGHT, PPU, WIDTH};
@@ -13,8 +13,8 @@ pub struct Nes {
     cpu: CPU,
     ppu: SharedMut<PPU>,
     dma_controller: SharedMut<OAMDMA>,
-    controller1: SharedMut<Controller>,
-    controller2: SharedMut<Controller>,
+    gamepad1: SharedMut<Gamepad>,
+    gamepad2: SharedMut<Gamepad>,
     ticks: usize,
 }
 
@@ -41,8 +41,8 @@ impl Nes {
 
         // CPU bus devices
         let ram = RAM::new(vec![0u8; 2 * 1024]);
-        let controller1 = Rc::new(RefCell::new(Controller::default()));
-        let controller2 = Rc::new(RefCell::new(Controller::default()));
+        let controller1 = Rc::new(RefCell::new(Gamepad::default()));
+        let controller2 = Rc::new(RefCell::new(Gamepad::default()));
         let dma_controller = Rc::new(RefCell::new(OAMDMA::default()));
 
         let mut cpu_bus = Bus::default();
@@ -68,8 +68,8 @@ impl Nes {
             cpu,
             ppu,
             dma_controller,
-            controller1,
-            controller2,
+            gamepad1: controller1,
+            gamepad2: controller2,
             ticks: 0,
         }
     }
@@ -132,16 +132,16 @@ impl Nes {
 
     pub fn btn_down(&mut self, controller: u8, btn: Button) {
         match controller {
-            1 => self.controller1.borrow_mut().down(btn),
-            2 => self.controller2.borrow_mut().down(btn),
+            1 => self.gamepad1.borrow_mut().down(btn),
+            2 => self.gamepad2.borrow_mut().down(btn),
             _ => eprintln!("expected either controller 1 or 2"),
         }
     }
 
     pub fn btn_up(&mut self, controller: u8, btn: Button) {
         match controller {
-            1 => self.controller1.borrow_mut().up(btn),
-            2 => self.controller2.borrow_mut().up(btn),
+            1 => self.gamepad1.borrow_mut().up(btn),
+            2 => self.gamepad2.borrow_mut().up(btn),
             _ => panic!("expected either controller '1' or '2'"),
         }
     }

@@ -1,4 +1,4 @@
-use jc_nes::controller::Button;
+use jc_nes::gamepad::Button;
 use jc_nes::cpu::CPU;
 use jc_nes::ppu::{HEIGHT, WIDTH};
 use jc_nes::ram::RAM;
