@@ -20,7 +20,6 @@ pub struct CPU {
     /// Implementation specific
     pub cycle: u8,
     pub total_cycles: usize, // TODO remove ?
-    pub debug: bool,
     extra_cycles: bool,
     pub(in crate) bus: Bus,
 }
@@ -85,9 +84,6 @@ impl CPU {
 /// Opcode processing and execution and utility functions
 impl CPU {
     fn process_opcode(&mut self, opcode: u8) {
-        if self.debug {
-            self.debug(opcode);
-        }
         match opcode {
             // Official Opcodes
             0x00 => self.execute(CPU::imp, CPU::brk, 7, false),
@@ -359,27 +355,5 @@ impl CPU {
 
     fn is_negative(&self, operand: u8) -> bool {
         (operand & 0x80) >> 7 == 1
-    }
-
-    pub fn debug(&self, opcode: u8) {
-        println!(
-            "{:04X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
-            self.pc,
-            opcode,
-            self.a,
-            self.x,
-            self.y,
-            u8::from(self.status),
-            self.sp,
-            self.total_cycles
-        );
-    }
-
-    pub fn pause(&self) {
-        use std::io::stdin;
-        let mut s = String::new();
-        stdin()
-            .read_line(&mut s)
-            .expect("Did not enter a correct string");
     }
 }

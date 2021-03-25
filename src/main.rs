@@ -1,8 +1,6 @@
-use jc_nes::cpu::CPU;
 use jc_nes::gamepad::Button;
+use jc_nes::nes::Nes;
 use jc_nes::ppu::{HEIGHT, WIDTH};
-use jc_nes::ram::RAM;
-use jc_nes::{bus::Bus, nes::Nes};
 use sdl2::{
     keyboard::Keycode,
     pixels::PixelFormatEnum,
@@ -10,15 +8,11 @@ use sdl2::{
     video::Window,
     Sdl,
 };
-use std::fs::File;
-use std::io::Read;
 
 const SCALE: f32 = 4.0;
 
 fn main() {
-    // play("roms/nestest.nes");
-    // play("roms/ignored/pacman.nes");
-    nestest();
+    play("roms/nestest.nes");
 }
 
 fn play(rom_path: &str) {
@@ -54,37 +48,10 @@ fn play(rom_path: &str) {
         .create_texture_streaming(PixelFormatEnum::RGB24, WIDTH as u32, HEIGHT as u32)
         .unwrap();
 
-    play_60fps(nes, sdl, texture, main_canvas);
+    render_60fps(nes, sdl, texture, main_canvas);
 }
 
-fn nestest() {
-    // read test rom
-    let mut rom = File::open("roms/nestest.nes").unwrap();
-    let mut buffer = Vec::new();
-    rom.read_to_end(&mut buffer).expect("buffer overflow");
-
-    // make test rom address start at 0xC000
-    // and discard 16-bit header
-    let mut mem = Vec::new();
-    (0..0xC000).for_each(|_| mem.push(0));
-    buffer[16..0x4F00].iter().for_each(|byte| mem.push(*byte));
-
-    // connect ram to the bus
-    // give bus to CPU to read/write
-    let ram = RAM::new(mem);
-    let mut bus = Bus::default();
-    bus.connect(0x0000..=0xFFFF, ram);
-
-    let mut cpu = CPU::new(bus);
-    cpu.debug = true;
-
-    // emulate clock cycle
-    for _ in 0..26553 {
-        cpu.clock();
-    }
-}
-
-fn play_60fps(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<Window>) {
+fn render_60fps(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<Window>) {
     // emulate clock ticks
     let mut timer_subsystem = sdl.timer().expect("failed to get timer system");
     let tick_interval = 1000 / 120; // frequency in Hz to period in ms
