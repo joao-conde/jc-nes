@@ -17,8 +17,10 @@ fn main() {
     match game {
         Some(game) => {
             play(&game);
-        },
-        None => eprintln!("No <GAME_PATH> specified.\nRun 'cargo run --release --example sdl <GAME_PATH>")
+        }
+        None => eprintln!(
+            "No <GAME_PATH> specified.\nRun 'cargo run --release --example sdl <GAME_PATH>"
+        ),
     };
 }
 
@@ -50,15 +52,14 @@ fn play(rom_path: &str) {
     main_canvas.present();
 
     let texture_creator = main_canvas.texture_creator();
-
     let texture = texture_creator
         .create_texture_streaming(PixelFormatEnum::RGB24, WIDTH as u32, HEIGHT as u32)
         .unwrap();
 
-    render_60fps(nes, sdl, texture, main_canvas);
+    game_loop(nes, sdl, texture, main_canvas);
 }
 
-fn render_60fps(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<Window>) {
+fn game_loop(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<Window>) {
     // emulate clock ticks
     let mut timer_subsystem = sdl.timer().expect("failed to get timer system");
     let tick_interval = 1000 / 120; // frequency in Hz to period in ms
