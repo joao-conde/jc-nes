@@ -13,13 +13,12 @@ pub struct CPU {
     a: u8,
     x: u8,
     y: u8,
-    pub pc: u16,
+    pc: u16,
     sp: u8,
     status: Status,
 
     /// Implementation specific
-    pub cycle: u8,
-    pub total_cycles: usize, // TODO remove ?
+    cycle: u8,
     extra_cycles: bool,
     pub(in crate) bus: Bus,
 }
@@ -28,12 +27,6 @@ impl CPU {
     pub fn new(bus: Bus) -> CPU {
         let mut cpu = CPU::default();
         cpu.bus = bus;
-        // nestest.nes
-        cpu.pc = 0xC000;
-        cpu.status = Status::from(0x24);
-        cpu.total_cycles = 7;
-        cpu.sp = 0xFD;
-        cpu.cycle = 0;
         cpu
     }
 
@@ -57,7 +50,6 @@ impl CPU {
         self.status = Status::from(0x00);
 
         self.cycle = 8;
-        self.total_cycles = 8;
     }
 
     pub fn nmi(&mut self) {
@@ -318,14 +310,10 @@ impl CPU {
         cycles: u8,
         extra_cycles: bool,
     ) {
-        let tmp = self.cycle; // TODO remove ?
-
         self.extra_cycles = extra_cycles;
         let address = address_mode_fn(self);
         opcode_fn(self, address);
         self.cycle += cycles;
-
-        self.total_cycles += (self.cycle - tmp) as usize; // TODO remove ?
     }
 
     fn push_stack(&mut self, val: u8) {

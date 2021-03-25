@@ -38,7 +38,7 @@ impl Cartridge {
 
         let _unused = bytes.by_ref().take(5).flatten().collect::<Vec<u8>>();
 
-        // ff a "trainer" exists
+        // if a "trainer" exists
         if (mapper1 & 0x04) >> 2 == 1 {
             let _trainer = bytes.by_ref().take(512).flatten().collect::<Vec<u8>>();
         }
