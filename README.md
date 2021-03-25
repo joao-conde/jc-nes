@@ -6,7 +6,6 @@ Nintendo Entertainment System (NES) emulator written in Rust. Check the [docs fo
 
 - proper name table mirroring
 - CTRL + F for "TODO" and deal with those
-- bus params original address? remove oam dma controller
 
 ```bash
 $ cargo run --release --example sdl

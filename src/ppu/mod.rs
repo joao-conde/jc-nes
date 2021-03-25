@@ -517,13 +517,25 @@ impl Device for PPU {
                 }
             }
             0x0007 => {
+                let vram_address = u16::from(self.vram_address);
+                let nametable_i = ((vram_address - 0x2000) / 0x400) % 4;
+                self.bus.write(vram_address, data);
                 match self.cartridge_mirror_mode {
+                    //nametables: [A, A, B, B]
                     MirrorMode::Horizontal => {
-                        self.bus.write(0x2000 | u16::from(self.vram_address), data);
-                        self.bus.write(0x2400 | u16::from(self.vram_address), data);
+                        if nametable_i % 2 == 0 {
+                            self.bus.write(vram_address + 0x400, data);
+                        } else {
+                            self.bus.write(vram_address - 0x400, data);
+                        };
                     }
+                    //nametables: [A, B, A, B]
                     MirrorMode::Vertical => {
-                        todo!();
+                        if nametable_i % 2 == 0 {
+                            self.bus.write(vram_address + 0x800, data);
+                        } else {
+                            self.bus.write(vram_address - 0x800, data);
+                        };
                     }
                 }
 
