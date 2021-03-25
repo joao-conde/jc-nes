@@ -94,7 +94,7 @@ impl PPU {
             bg_shifter_attrib_hi: 0x0000,
             cartridge_mirror_mode: MirrorMode::Horizontal,
             oam: OAM::default(),
-            scanline_sprites: vec![],
+            scanline_sprites: Vec::with_capacity(8),
             sprite_shifter_pattern_lo: [0u8; 8],
             sprite_shifter_pattern_hi: [0u8; 8],
             sprite_zero_selected: false,
