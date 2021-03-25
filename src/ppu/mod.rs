@@ -293,13 +293,39 @@ impl PPU {
         // populate shifters with next scanline data
         if self.cycle == 340 {
             for (i, sprite) in self.scanline_sprites.iter().enumerate() {
-                let mut sprite_pattern_addr_lo: u16 = 0x0000;
+                let sprite_pattern_addr_lo;
 
                 if self.control.sprite_size {
-                    // 16-bit mode
-                    // TODO
+                    // 8*16 mode
+                    if sprite.attr & 0x80 == 0 {
+                        // sprite normal
+                        if self.scanline - (sprite.y as i16) < 8 {
+                            // top half
+                            sprite_pattern_addr_lo = ((sprite.tile_id as u16 & 0x01) << 12)
+                                | ((sprite.tile_id & 0xFE) << 4) as u16
+                                | (self.scanline - (sprite.y as i16) & 0x07) as u16;
+                        } else {
+                            // bottom half
+                            sprite_pattern_addr_lo = ((sprite.tile_id as u16 & 0x01) << 12) 
+                                | (((sprite.tile_id & 0xFE) + 1) << 4) as u16
+                                | (self.scanline - (sprite.y as i16) & 0x07) as u16;
+                        }
+                    } else {
+                        // sprite flipped vertically
+                        if self.scanline - (sprite.y as i16) < 8 {
+                            // top half
+                            sprite_pattern_addr_lo = ((sprite.tile_id as u16 & 0x01) << 12) 
+                                | (((sprite.tile_id & 0xFE) + 1) << 4) as u16
+                                | (7 - (self.scanline - (sprite.y as i16)) & 0x07) as u16;
+                        } else {
+                            // bottom half
+                            sprite_pattern_addr_lo = ((sprite.tile_id as u16 & 0x01) << 12) 
+                                | ((sprite.tile_id & 0xFE) << 4) as u16
+                                | (7 - (self.scanline - (sprite.y as i16)) & 0x07) as u16;
+                        }
+                    }
                 } else {
-                    // 8-bit mode
+                    // 8*8 mode
                     if sprite.attr & 0x80 == 0 {
                         // sprite normal
                         sprite_pattern_addr_lo = ((self.control.pattern_sprite as u16) << 12)
@@ -518,8 +544,11 @@ impl Device for PPU {
             }
             0x0007 => {
                 let vram_address = u16::from(self.vram_address);
-                let nametable_i = ((vram_address - 0x2000) / 0x400) % 4;
+
                 self.bus.write(vram_address, data);
+
+                // nametable index (0-3)
+                let nametable_i = ((vram_address - 0x2000) / 0x400) % 4;
                 match self.cartridge_mirror_mode {
                     //nametables: [A, A, B, B]
                     MirrorMode::Horizontal => {
