@@ -8,11 +8,18 @@ use sdl2::{
     video::Window,
     Sdl,
 };
+use std::env;
 
 const SCALE: f32 = 4.0;
 
 fn main() {
-    play("roms/nestest.nes");
+    let game = env::args().nth(1);
+    match game {
+        Some(game) => {
+            play(&game);
+        },
+        None => eprintln!("No <GAME_PATH> specified.\nRun 'cargo run --release --example sdl <GAME_PATH>")
+    };
 }
 
 fn play(rom_path: &str) {
