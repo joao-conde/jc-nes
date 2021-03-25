@@ -40,13 +40,14 @@ impl Bus {
     }
 
     fn mirror(&self, address: u16) -> u16 {
-        match self
+        if let Some((_, max)) = self
             .mirrors
             .iter()
             .find(|(addressable_range, _)| addressable_range.contains(&address))
         {
-            Some((_, max)) => address & max,
-            _ => address,
+            address & max
+        } else {
+            address
         }
     }
 }
