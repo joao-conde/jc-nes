@@ -22,11 +22,11 @@ use crate::ppu::oam::{Sprite, OAM};
 pub const WIDTH: u16 = 256;
 pub const HEIGHT: u16 = 240;
 
-pub struct PPU<'a> {
+pub struct PPU {
     pub(in crate) frame_complete: bool,
     pub(in crate) screen: [u8; WIDTH as usize * HEIGHT as usize * 3],
     pub(in crate) raise_nmi: bool,
-    pub(in crate) bus: Bus<'a>,
+    pub(in crate) bus: Bus,
     pub(in crate) oam: OAM,
     pub(in crate) cartridge_mirror_mode: Mirror,
 
@@ -66,8 +66,8 @@ pub struct PPU<'a> {
     sprite_shifter_pattern_hi: [u8; 8],
 }
 
-impl<'a> PPU<'a> {
-    pub fn new(bus: Bus<'a>) -> PPU<'a> {
+impl PPU {
+    pub fn new(bus: Bus) -> PPU {
         PPU {
             cycle: 0,
             scanline: 0,
@@ -359,7 +359,7 @@ impl<'a> PPU<'a> {
     }
 }
 
-impl<'a> PPU<'a> {
+impl PPU {
     fn inc_x(&mut self) {
         if self.mask.render_background || self.mask.render_sprites {
             self.vram_address.coarse_x += 1;
@@ -444,7 +444,7 @@ impl<'a> PPU<'a> {
     }
 }
 
-impl<'a> Device for PPU<'a> {
+impl Device for PPU {
     fn read(&mut self, address: u16) -> u8 {
         match address {
             0x0000 => 0x00,

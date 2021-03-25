@@ -1,12 +1,8 @@
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::{collections::HashMap, ops::RangeInclusive};
 
-use crate::nes::SharedMut;
-
 #[derive(Default)]
-pub struct Bus<'a> {
-    devices: HashMap<RangeInclusive<u16>, SharedMut<dyn Device + 'a>>,
+pub struct Bus {
+    devices: HashMap<RangeInclusive<u16>, Box<dyn Device>>,
     mirrors: HashMap<RangeInclusive<u16>, u16>,
 }
 
@@ -15,26 +11,26 @@ pub trait Device {
     fn write(&mut self, address: u16, data: u8);
 }
 
-impl<'a> Bus<'a> {
-    pub fn connect<D: Device + 'a>(
+impl Bus {
+    pub fn connect(
         &mut self,
         addressable_range: RangeInclusive<u16>,
-        device: &SharedMut<D>,
+        device: impl Device + 'static,
     ) {
         self.devices
-            .insert(addressable_range, Rc::<RefCell<D>>::clone(device));
+            .insert(addressable_range, Box::new(device));
     }
 
     pub fn add_mirror(&mut self, addressable_range: RangeInclusive<u16>, max: u16) {
         self.mirrors.insert(addressable_range, max);
     }
 
-    pub fn read(&self, address: u16) -> u8 {
+    pub fn read(&mut self, address: u16) -> u8 {
         let address = self.mirror(address);
         self.devices
-            .iter()
+            .iter_mut()
             .find(|(addressable_range, _)| addressable_range.contains(&address))
-            .map(|(range, device)| device.borrow_mut().read(address - range.start()))
+            .map(|(range, device)| device.read(address - range.start()))
             .unwrap_or_else(|| panic!("no byte to be read at address 0x{:04X}", address))
     }
 
@@ -43,7 +39,7 @@ impl<'a> Bus<'a> {
         self.devices
             .iter_mut()
             .find(|(addressable_range, _)| addressable_range.contains(&address))
-            .map(|(range, device)| device.borrow_mut().write(address - range.start(), data))
+            .map(|(range, device)| device.write(address - range.start(), data))
             .unwrap_or_else(|| panic!("can not write to address 0x{:04X}", address))
     }
 

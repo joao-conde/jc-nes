@@ -1,7 +1,7 @@
 use crate::cpu::{Status, CPU};
 
 /// Instructions
-impl<'a> CPU<'a> {
+impl CPU {
     pub(in crate::cpu) fn adc(&mut self, address: u16) {
         let operand = self.bus.read(address);
         let tmp = self.a as u16 + operand as u16 + self.status.carry as u16;
@@ -46,15 +46,18 @@ impl<'a> CPU<'a> {
     }
 
     pub(in crate::cpu) fn bcc(&mut self, address: u16) {
-        self.relative_jump(!self.status.carry, self.bus.read(address) as i8);
+        let opcode = self.bus.read(address);
+        self.relative_jump(!self.status.carry, opcode as i8);
     }
 
     pub(in crate::cpu) fn bcs(&mut self, address: u16) {
-        self.relative_jump(self.status.carry, self.bus.read(address) as i8);
+        let opcode = self.bus.read(address);
+        self.relative_jump(self.status.carry, opcode as i8);
     }
 
     pub(in crate::cpu) fn beq(&mut self, address: u16) {
-        self.relative_jump(self.status.zero, self.bus.read(address) as i8);
+        let opcode = self.bus.read(address);
+        self.relative_jump(self.status.zero, opcode as i8);
     }
 
     pub(in crate::cpu) fn bit(&mut self, address: u16) {
@@ -66,15 +69,18 @@ impl<'a> CPU<'a> {
     }
 
     pub(in crate::cpu) fn bmi(&mut self, address: u16) {
-        self.relative_jump(self.status.negative, self.bus.read(address) as i8);
+        let opcode = self.bus.read(address);
+        self.relative_jump(self.status.negative, opcode as i8);
     }
 
     pub(in crate::cpu) fn bne(&mut self, address: u16) {
-        self.relative_jump(!self.status.zero, self.bus.read(address) as i8);
+        let opcode = self.bus.read(address);
+        self.relative_jump(!self.status.zero, opcode as i8);
     }
 
     pub(in crate::cpu) fn bpl(&mut self, address: u16) {
-        self.relative_jump(!self.status.negative, self.bus.read(address) as i8);
+        let opcode = self.bus.read(address);
+        self.relative_jump(!self.status.negative, opcode as i8);
     }
 
     pub(in crate::cpu) fn brk(&mut self, _imp: ()) {
@@ -83,11 +89,13 @@ impl<'a> CPU<'a> {
     }
 
     pub(in crate::cpu) fn bvc(&mut self, address: u16) {
-        self.relative_jump(!self.status.overflow, self.bus.read(address) as i8);
+        let opcode = self.bus.read(address);
+        self.relative_jump(!self.status.overflow, opcode as i8);
     }
 
     pub(in crate::cpu) fn bvs(&mut self, address: u16) {
-        self.relative_jump(self.status.overflow, self.bus.read(address) as i8);
+        let opcode = self.bus.read(address);
+        self.relative_jump(self.status.overflow, opcode as i8);
     }
 
     pub(in crate::cpu) fn clc(&mut self, _imp: ()) {
@@ -424,7 +432,7 @@ impl<'a> CPU<'a> {
 }
 
 /// Unofficial instructions
-impl<'a> CPU<'a> {
+impl CPU {
     pub(in crate::cpu) fn dcp(&mut self, address: u16) {
         let operand = self.bus.read(address).wrapping_sub(1);
         self.bus.write(address, operand);

@@ -8,7 +8,7 @@ use crate::cpu::status::Status;
 const STACK_BASE: u16 = 0x0100;
 
 #[derive(Default)]
-pub struct CPU<'a> {
+pub struct CPU {
     /// CPU registers
     a: u8,
     x: u8,
@@ -22,11 +22,11 @@ pub struct CPU<'a> {
     pub total_cycles: usize, // TODO remove ?
     pub debug: bool,
     extra_cycles: bool,
-    pub(in crate) bus: Bus<'a>,
+    pub(in crate) bus: Bus,
 }
 
-impl<'a> CPU<'a> {
-    pub fn new(bus: Bus<'a>) -> CPU<'a> {
+impl CPU {
+    pub fn new(bus: Bus) -> CPU {
         let mut cpu = CPU::default();
         cpu.bus = bus;
         // nestest.nes
@@ -40,7 +40,8 @@ impl<'a> CPU<'a> {
 
     pub fn clock(&mut self) {
         if self.cycle == 0 {
-            self.process_opcode(self.bus.read(self.pc));
+            let opcode = self.bus.read(self.pc);
+            self.process_opcode(opcode);
         }
         self.cycle -= 1;
     }
@@ -82,7 +83,7 @@ impl<'a> CPU<'a> {
 }
 
 /// Opcode processing and execution and utility functions
-impl<'a> CPU<'a> {
+impl CPU {
     fn process_opcode(&mut self, opcode: u8) {
         if self.debug {
             self.debug(opcode);
@@ -316,8 +317,8 @@ impl<'a> CPU<'a> {
 
     fn execute<T>(
         &mut self,
-        address_mode_fn: fn(&mut CPU<'a>) -> T,
-        opcode_fn: fn(&mut CPU<'a>, T),
+        address_mode_fn: fn(&mut CPU) -> T,
+        opcode_fn: fn(&mut CPU, T),
         cycles: u8,
         extra_cycles: bool,
     ) {
