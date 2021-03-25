@@ -6,9 +6,7 @@ pub struct Cartridge {
     pub(in crate) prg_rom: Vec<u8>,
     pub(in crate) chr_rom: Vec<u8>,
     pub(in crate) mapper_id: u8,
-    pub(in crate) name: String,
     pub(in crate) prg_banks: u8,
-    pub(in crate) chr_banks: u8,
     pub(in crate) mirror: MirrorMode,
 }
 
@@ -26,7 +24,7 @@ impl Cartridge {
 
         let mut bytes = rom.bytes();
 
-        let name = String::from_utf8(bytes.by_ref().take(4).flatten().collect()).unwrap();
+        let _name = String::from_utf8(bytes.by_ref().take(4).flatten().collect()).unwrap();
         let prg_banks = bytes.by_ref().next().unwrap().unwrap();
         let chr_banks = bytes.by_ref().next().unwrap().unwrap();
 
@@ -70,9 +68,7 @@ impl Cartridge {
             prg_rom,
             chr_rom,
             mapper_id,
-            name,
             prg_banks,
-            chr_banks,
             mirror,
         }
     }

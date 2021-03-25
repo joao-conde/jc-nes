@@ -1,5 +1,5 @@
-use jc_nes::gamepad::Button;
 use jc_nes::cpu::CPU;
+use jc_nes::gamepad::Button;
 use jc_nes::ppu::{HEIGHT, WIDTH};
 use jc_nes::ram::RAM;
 use jc_nes::{bus::Bus, nes::Nes};

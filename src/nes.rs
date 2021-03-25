@@ -1,8 +1,8 @@
 use crate::bus::{Bus, SharedMut};
 use crate::cartridge::mappers::mapper000::{CHRMapper000, PRGMapper000};
 use crate::cartridge::Cartridge;
-use crate::gamepad::{Button, Gamepad};
 use crate::cpu::CPU;
+use crate::gamepad::{Button, Gamepad};
 use crate::ppu::dma::OAMDMA;
 use crate::ppu::{HEIGHT, PPU, WIDTH};
 use crate::ram::RAM;
@@ -33,7 +33,7 @@ impl Nes {
         ppu_bus.connect(0x2800..=0x2BFF, nametbl3);
         ppu_bus.connect(0x2C00..=0x2FFF, nametbl4);
         ppu_bus.connect(0x3F00..=0x3FFF, palette);
-        
+
         ppu_bus.add_mirror(0x3000..=0x3EFF, 0x2EFF);
         ppu_bus.add_mirror(0x4000..=0xFFFF, 0x3FFF);
 
