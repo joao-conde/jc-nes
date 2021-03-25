@@ -17,7 +17,8 @@ const SCALE: f32 = 4.0;
 
 fn main() {
     // play("roms/nestest.nes");
-    play("roms/ignored/pacman.nes");
+    // play("roms/ignored/pacman.nes");
+    nestest();
 }
 
 fn play(rom_path: &str) {
@@ -75,6 +76,7 @@ fn nestest() {
     bus.connect(0x0000..=0xFFFF, ram);
 
     let mut cpu = CPU::new(bus);
+    cpu.debug = true;
 
     // emulate clock cycle
     for _ in 0..26553 {

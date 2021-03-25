@@ -30,11 +30,11 @@ impl CPU {
         let mut cpu = CPU::default();
         cpu.bus = bus;
         // nestest.nes
-        // cpu.pc = 0xC000;
-        // cpu.status = Status::from(0x24);
-        // cpu.total_cycles = 7;
-        // cpu.sp = 0xFD;
-        // cpu.cycle = 0;
+        cpu.pc = 0xC000;
+        cpu.status = Status::from(0x24);
+        cpu.total_cycles = 7;
+        cpu.sp = 0xFD;
+        cpu.cycle = 0;
         cpu
     }
 
@@ -362,7 +362,7 @@ impl CPU {
     }
 
     pub fn debug(&self, opcode: u8) {
-        print!(
+        println!(
             "{:04X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
             self.pc,
             opcode,

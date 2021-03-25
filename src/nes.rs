@@ -62,7 +62,7 @@ impl Nes {
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
 
         let mut cpu = CPU::new(cpu_bus);
-        cpu.debug = false;
+        cpu.debug = true;
 
         Nes {
             cpu,
