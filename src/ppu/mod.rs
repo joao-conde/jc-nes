@@ -1,4 +1,5 @@
 pub mod dma;
+pub mod palette;
 
 mod control;
 mod dac;

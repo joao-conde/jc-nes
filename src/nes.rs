@@ -4,6 +4,7 @@ use crate::cartridge::Cartridge;
 use crate::cpu::CPU;
 use crate::gamepad::{Button, Gamepad};
 use crate::ppu::dma::OAMDMA;
+use crate::ppu::palette::Palette;
 use crate::ppu::{HEIGHT, PPU, WIDTH};
 use crate::ram::RAM;
 use std::cell::RefCell;
@@ -25,7 +26,7 @@ impl Nes {
         let nametbl2 = RAM::new(vec![0u8; 1024]);
         let nametbl3 = RAM::new(vec![0u8; 1024]);
         let nametbl4 = RAM::new(vec![0u8; 1024]);
-        let palette = RAM::new(vec![0u8; 256]);
+        let palette = Palette::new(vec![0u8; 256]);
 
         let mut ppu_bus = Bus::default();
         ppu_bus.connect(0x2000..=0x23FF, nametbl1);
@@ -35,6 +36,7 @@ impl Nes {
         ppu_bus.connect(0x3F00..=0x3FFF, palette);
 
         ppu_bus.add_mirror(0x3000..=0x3EFF, 0x2EFF);
+        ppu_bus.add_mirror(0x3F20..=0x3FFF, 0x3F1F);
         ppu_bus.add_mirror(0x4000..=0xFFFF, 0x3FFF);
 
         let ppu = Rc::new(RefCell::new(PPU::new(ppu_bus)));
