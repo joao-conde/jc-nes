@@ -541,7 +541,10 @@ impl Device for PPU {
             }
             0x0002 => (),
             0x0003 => self.oam.addr = data as usize,
-            0x0004 => self.oam.mem[self.oam.addr] = data,
+            0x0004 => {
+                self.oam.mem[self.oam.addr] = data;
+                self.oam.addr += 1;
+            },
             0x0005 => {
                 if self.write_flip_flop {
                     self.fine_x = data & 0x07;
