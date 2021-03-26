@@ -24,6 +24,7 @@ impl Default for OAMDMA {
 impl OAMDMA {
     pub fn transfer(&mut self, cur_cyc: usize, bus: &mut Bus, oam: &mut OAM) {
         if self.synched {
+            println!("{} 0x{:04X}", cur_cyc, (self.page as u16) << 8 | self.addr as u16);
             if cur_cyc % 2 == 0 {
                 self.buffer = bus.read((self.page as u16) << 8 | self.addr as u16);
             } else {

@@ -1,12 +1,12 @@
 use crate::bus::Device;
 
 pub struct Palette {
-    mem: Vec<u8>,
+    mem: [u8; 256],
 }
 
 impl Palette {
-    pub fn new(mem: Vec<u8>) -> Palette {
-        Palette { mem }
+    pub fn new() -> Palette {
+        Palette { mem: [0u8; 256] }
     }
 
     // http://forums.nesdev.com/viewtopic.php?t=7719

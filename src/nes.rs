@@ -26,7 +26,7 @@ impl Nes {
         let nametbl2 = RAM::new(vec![0u8; 1024]);
         let nametbl3 = RAM::new(vec![0u8; 1024]);
         let nametbl4 = RAM::new(vec![0u8; 1024]);
-        let palette = Palette::new(vec![0u8; 256]);
+        let palette = Palette::new();
 
         let mut ppu_bus = Bus::default();
         ppu_bus.connect(0x2000..=0x23FF, nametbl1);
