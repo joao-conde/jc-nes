@@ -37,9 +37,9 @@ impl Cartridge {
         let _prg_ram_len = bytes.by_ref().next().unwrap().unwrap();
         let _flags9 = bytes.by_ref().next().unwrap().unwrap();
         let _flags10 = bytes.by_ref().next().unwrap().unwrap();
-        
+
         let _unused = bytes.by_ref().take(5).flatten().collect::<Vec<u8>>();
-        
+
         // if a "trainer" exists
         if (flags6 & 0x04) >> 2 == 1 {
             let _trainer = bytes.by_ref().take(512).flatten().collect::<Vec<u8>>();

@@ -116,7 +116,7 @@ impl PPU {
                 self.status.vertical_blank = false;
                 self.status.sprite_overflow = false;
                 self.status.sprite_zero_hit = false;
-                //TODO clear shifters (0)
+                //TODO clear shifters ?
             }
 
             if (self.cycle >= 2 && self.cycle < 258) || (self.cycle >= 321 && self.cycle < 338) {
@@ -545,7 +545,7 @@ impl Device for PPU {
             0x0004 => {
                 self.oam.mem[self.oam.addr] = data;
                 self.oam.addr += 1;
-            },
+            }
             0x0005 => {
                 if self.write_flip_flop {
                     self.fine_x = data & 0x07;

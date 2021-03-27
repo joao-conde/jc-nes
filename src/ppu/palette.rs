@@ -16,7 +16,7 @@ impl Palette {
             0x0014 => 0x0004,
             0x0018 => 0x0008,
             0x001C => 0x000C,
-            address => address
+            address => address,
         }) as usize
     }
 }

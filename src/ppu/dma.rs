@@ -6,7 +6,7 @@ pub struct OAMDMA {
     synched: bool,
     buffer: u8,
     page: u8,
-    addr: u8,
+    transfered: usize,
 }
 
 impl Default for OAMDMA {
@@ -16,7 +16,7 @@ impl Default for OAMDMA {
             synched: false,
             buffer: 0x00,
             page: 0x00,
-            addr: 0x00,
+            transfered: 0,
         }
     }
 }
@@ -24,14 +24,14 @@ impl Default for OAMDMA {
 impl OAMDMA {
     pub fn transfer(&mut self, cur_cyc: usize, bus: &mut Bus, oam: &mut OAM) {
         if self.synched {
-            println!("{} 0x{:04X}", cur_cyc, (self.page as u16) << 8 | self.addr as u16);
             if cur_cyc % 2 == 0 {
-                self.buffer = bus.read((self.page as u16) << 8 | self.addr as u16);
+                let lo = self.transfered as u8 + oam.addr as u8;
+                let from = (self.page as u16) << 8 | lo as u16;
+                self.buffer = bus.read(from);
             } else {
-                oam.mem[self.addr as usize] = self.buffer;
-
-                self.addr = self.addr.wrapping_add(1);
-                if self.addr == 0x00 {
+                oam.mem[self.transfered] = self.buffer;
+                self.transfered += 1;
+                if self.transfered == 256 {
                     self.stop();
                 }
             }
@@ -42,16 +42,18 @@ impl OAMDMA {
 
     fn start(&mut self, page: u8) {
         self.dma_in_progress = true;
-        self.page = page;
         self.synched = false;
         self.buffer = 0x00;
+        self.transfered = 0;
+        self.page = page;
     }
 
     fn stop(&mut self) {
         self.dma_in_progress = false;
-        self.page = 0x00;
         self.synched = false;
         self.buffer = 0x00;
+        self.transfered = 0;
+        self.page = 0x00;
     }
 }
 

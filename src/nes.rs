@@ -21,45 +21,44 @@ pub struct Nes {
 
 impl Nes {
     pub fn new() -> Nes {
-        // PPU bus devices
+        // build PPU bus
+        let mut ppu_bus = Bus::default();
         let nametbl1 = RAM::new(vec![0u8; 1024]);
         let nametbl2 = RAM::new(vec![0u8; 1024]);
         let nametbl3 = RAM::new(vec![0u8; 1024]);
         let nametbl4 = RAM::new(vec![0u8; 1024]);
         let palette = Palette::new();
 
-        let mut ppu_bus = Bus::default();
+        // connect (and mirror) devices to PPU bus
         ppu_bus.connect(0x2000..=0x23FF, nametbl1);
         ppu_bus.connect(0x2400..=0x27FF, nametbl2);
         ppu_bus.connect(0x2800..=0x2BFF, nametbl3);
         ppu_bus.connect(0x2C00..=0x2FFF, nametbl4);
         ppu_bus.connect(0x3F00..=0x3FFF, palette);
-
         ppu_bus.add_mirror(0x3000..=0x3EFF, 0x2EFF);
         ppu_bus.add_mirror(0x3F20..=0x3FFF, 0x3F1F);
         ppu_bus.add_mirror(0x4000..=0xFFFF, 0x3FFF);
 
         let ppu = Rc::new(RefCell::new(PPU::new(ppu_bus)));
 
-        // CPU bus devices
+        // build CPU bus
+        let mut cpu_bus = Bus::default();
         let ram = RAM::new(vec![0u8; 2 * 1024]);
         let controller1 = Rc::new(RefCell::new(Gamepad::default()));
         let controller2 = Rc::new(RefCell::new(Gamepad::default()));
         let dma_controller = Rc::new(RefCell::new(OAMDMA::default()));
 
-        let mut cpu_bus = Bus::default();
+        // connect (and mirror) devices to CPU bus
         cpu_bus.connect(0x0000..=0x1FFF, ram);
         cpu_bus.connect(0x2000..=0x3FFF, ppu.clone());
         cpu_bus.connect(0x4014..=0x4014, dma_controller.clone());
         cpu_bus.connect(0x4016..=0x4016, controller1.clone());
         cpu_bus.connect(0x4017..=0x4017, controller2.clone());
-
         // TODO remove temporary memory fillers (APU or IO related)
-        // TODO: remove tmp hack (APU)
         cpu_bus.connect(0x4000..=0x4013, RAM::new(vec![0u8; 32]));
         cpu_bus.connect(0x4015..=0x4015, RAM::new(vec![0u8; 32]));
         cpu_bus.connect(0x4018..=0x401F, RAM::new(vec![0u8; 32]));
-
+        //
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
 
@@ -77,6 +76,7 @@ impl Nes {
 
     pub fn load_rom(&mut self, rom_path: &str) {
         let cartridge = Cartridge::new(rom_path);
+        self.ppu.borrow_mut().cartridge_mirror_mode = cartridge.mirror;
         match cartridge.mapper_id {
             0 => {
                 let prg_mapper = PRGMapper000::new(cartridge.prg_rom, cartridge.prg_banks);
@@ -87,10 +87,8 @@ impl Nes {
                     .borrow_mut()
                     .bus
                     .connect(0x0000..=0x1FFF, chr_mapper);
-
-                self.ppu.borrow_mut().cartridge_mirror_mode = cartridge.mirror;
             }
-            _ => panic!("unknown mapper!"),
+            id => panic!("unknown mapper {}", id),
         }
     }
 
