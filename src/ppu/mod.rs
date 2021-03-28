@@ -508,7 +508,7 @@ impl Device for PPU {
                 eprintln!("can not read from OAMADDR ($2003)");
                 0x00
             }
-            0x0004 => self.oam.mem[self.oam.addr],
+            0x0004 => self.oam.mem[self.oam.addr as usize],
             0x0005 => 0x00,
             0x0006 => 0x00,
             0x0007 => {
@@ -541,10 +541,10 @@ impl Device for PPU {
                 self.mask = Mask::from(data);
             }
             0x0002 => (),
-            0x0003 => self.oam.addr = data as usize,
+            0x0003 => self.oam.addr = data,
             0x0004 => {
-                self.oam.mem[self.oam.addr] = data;
-                self.oam.addr += 1;
+                self.oam.mem[self.oam.addr as usize] = data;
+                self.oam.addr = self.oam.addr.wrapping_add(1);
             }
             0x0005 => {
                 if self.write_flip_flop {

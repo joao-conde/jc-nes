@@ -1,12 +1,11 @@
 use crate::bus::{Bus, Device};
-use crate::ppu::oam::OAM;
 
 pub struct OAMDMA {
-    pub dma_in_progress: bool,
+    pub(in crate) dma_in_progress: bool,
     synched: bool,
     buffer: u8,
     page: u8,
-    transfered: usize,
+    transfered: u8,
 }
 
 impl Default for OAMDMA {
@@ -16,26 +15,31 @@ impl Default for OAMDMA {
             synched: false,
             buffer: 0x00,
             page: 0x00,
-            transfered: 0,
+            transfered: 0x00,
         }
     }
 }
 
 impl OAMDMA {
-    pub fn transfer(&mut self, cur_cyc: usize, bus: &mut Bus, oam: &mut OAM) {
+    pub fn transfer(&mut self, cur_cyc: usize, cpu_bus: &mut Bus) {
         if self.synched {
             if cur_cyc % 2 == 0 {
-                let lo = self.transfered as u8 + oam.addr as u8;
-                let from = (self.page as u16) << 8 | lo as u16;
-                self.buffer = bus.read(from);
+                // read byte from mem based on page
+                let address = (self.page as u16) << 8 | self.transfered as u16;
+                self.buffer = cpu_bus.read(address);
             } else {
-                oam.mem[self.transfered] = self.buffer;
-                self.transfered += 1;
-                if self.transfered == 256 {
+                // write buffered byte to OAMDATA ($2004)
+                cpu_bus.write(0x2004, self.buffer);
+
+                // increment transfered count and stop if
+                // 256 bytes were transfered (count overflow)
+                self.transfered = self.transfered.wrapping_add(1);
+                if self.transfered == 0x00 {
                     self.stop();
                 }
             }
         } else {
+            // next cycle is even and can start
             self.synched = cur_cyc % 2 == 1;
         }
     }
@@ -44,7 +48,7 @@ impl OAMDMA {
         self.dma_in_progress = true;
         self.synched = false;
         self.buffer = 0x00;
-        self.transfered = 0;
+        self.transfered = 0x00;
         self.page = page;
     }
 
@@ -52,7 +56,7 @@ impl OAMDMA {
         self.dma_in_progress = false;
         self.synched = false;
         self.buffer = 0x00;
-        self.transfered = 0;
+        self.transfered = 0x00;
         self.page = 0x00;
     }
 }

@@ -97,11 +97,9 @@ impl Nes {
 
         if self.ticks % 3 == 0 {
             if self.dma_controller.borrow().dma_in_progress {
-                self.dma_controller.borrow_mut().transfer(
-                    self.ticks,
-                    &mut self.cpu.bus,
-                    &mut self.ppu.borrow_mut().oam,
-                );
+                self.dma_controller
+                    .borrow_mut()
+                    .transfer(self.ticks, &mut self.cpu.bus);
             } else {
                 self.cpu.clock();
             }

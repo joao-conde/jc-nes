@@ -1,5 +1,5 @@
 pub struct OAM {
-    pub(in crate::ppu) addr: usize,
+    pub(in crate::ppu) addr: u8,
     pub(in crate::ppu) mem: [u8; 256],
 }
 
