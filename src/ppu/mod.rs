@@ -514,7 +514,8 @@ impl Device for PPU {
                 self.buffer = self.bus.read(u16::from(self.vram_address));
 
                 if u16::from(self.vram_address) >= 0x3F00 {
-                    data = self.buffer
+                    data = self.buffer;
+                    self.buffer = self.bus.read(u16::from(self.vram_address) - 0x1000);
                 };
 
                 let increment = if self.control.increment_mode { 32 } else { 1 };
