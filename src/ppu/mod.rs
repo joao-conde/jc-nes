@@ -513,13 +513,13 @@ impl Device for PPU {
             0x0006 => 0x00,
             0x0007 => {
                 let mut data = self.buffer;
-                self.buffer = self.bus.read(0x2000 | u16::from(self.vram_address));
+                self.buffer = self.bus.read(u16::from(self.vram_address));
 
                 if u16::from(self.vram_address) >= 0x3F00 {
                     data = self.buffer
                 };
 
-                let increment = if self.control.increment_mode { 32 } else { 1 } as u16;
+                let increment = if self.control.increment_mode { 32 } else { 1 };
                 self.vram_address = (u16::from(self.vram_address) + increment).into();
                 data
             }
