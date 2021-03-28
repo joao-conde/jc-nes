@@ -2,23 +2,21 @@ pub mod dma;
 pub mod palette;
 
 mod control;
-mod dac;
 mod mask;
 mod oam;
 mod status;
 mod vram_address;
 
 use crate::ppu::control::Control;
-use crate::ppu::dac::DAC;
 use crate::ppu::mask::Mask;
+use crate::ppu::oam::{Sprite, OAM};
+use crate::ppu::palette::PALETTE;
 use crate::ppu::status::Status;
 use crate::ppu::vram_address::VRAMAddress;
 use crate::{
     bus::{Bus, Device},
     cartridge::MirrorMode,
 };
-
-use crate::ppu::oam::{Sprite, OAM};
 
 pub const WIDTH: u16 = 256;
 pub const HEIGHT: u16 = 240;
@@ -271,9 +269,9 @@ impl PPU {
 
             let tex_addr =
                 WIDTH as usize * 3 * (self.scanline as usize) + (self.cycle as usize - 1) * 3;
-            self.screen[tex_addr as usize] = DAC[color_i as usize].0;
-            self.screen[tex_addr as usize + 1] = DAC[color_i as usize].1;
-            self.screen[tex_addr as usize + 2] = DAC[color_i as usize].2;
+            self.screen[tex_addr as usize] = PALETTE[color_i as usize].0;
+            self.screen[tex_addr as usize + 1] = PALETTE[color_i as usize].1;
+            self.screen[tex_addr as usize + 2] = PALETTE[color_i as usize].2;
         }
 
         self.cycle += 1;
