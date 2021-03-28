@@ -16,7 +16,7 @@ pub struct Nes {
     dma_controller: SharedMut<OAMDMA>,
     gamepad1: SharedMut<Gamepad>,
     gamepad2: SharedMut<Gamepad>,
-    ticks: usize,
+    cycles: usize,
 }
 
 impl Nes {
@@ -70,7 +70,7 @@ impl Nes {
             dma_controller,
             gamepad1: controller1,
             gamepad2: controller2,
-            ticks: 0,
+            cycles: 0,
         }
     }
 
@@ -95,11 +95,11 @@ impl Nes {
     pub fn clock(&mut self) {
         self.ppu.borrow_mut().clock();
 
-        if self.ticks % 3 == 0 {
+        if self.cycles % 3 == 0 {
             if self.dma_controller.borrow().dma_in_progress {
                 self.dma_controller
                     .borrow_mut()
-                    .transfer(self.ticks, &mut self.cpu.bus);
+                    .transfer(self.cycles, &mut self.cpu.bus);
             } else {
                 self.cpu.clock();
             }
@@ -110,7 +110,7 @@ impl Nes {
             self.cpu.nmi();
         }
 
-        self.ticks += 1;
+        self.cycles += 1;
     }
 
     pub fn reset(&mut self) {
