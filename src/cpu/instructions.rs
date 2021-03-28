@@ -1,4 +1,7 @@
-use crate::cpu::{Status, CPU};
+use crate::{
+    bus::Device,
+    cpu::{Status, CPU},
+};
 
 /// Instructions
 impl CPU {

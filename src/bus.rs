@@ -8,6 +8,14 @@ pub struct Bus {
     mirrors: Vec<(RangeInclusive<u16>, u16)>,
 }
 
+pub trait Device {
+    fn read(&mut self, address: u16) -> u8;
+    fn write(&mut self, address: u16, data: u8);
+}
+
+// Interior mutability pattern (used sparingly)
+pub type SharedMut<T> = Rc<RefCell<T>>;
+
 impl Bus {
     pub fn connect(
         &mut self,
@@ -19,24 +27,6 @@ impl Bus {
 
     pub fn add_mirror(&mut self, addressable_range: RangeInclusive<u16>, max: u16) {
         self.mirrors.push((addressable_range, max));
-    }
-
-    pub fn read(&mut self, address: u16) -> u8 {
-        let address = self.mirror(address);
-        self.devices
-            .iter_mut()
-            .find(|(addressable_range, _)| addressable_range.contains(&address))
-            .map(|(range, device)| device.read(address - range.start()))
-            .unwrap_or_else(|| panic!("no device to read from at address 0x{:04X}", address))
-    }
-
-    pub fn write(&mut self, address: u16, data: u8) {
-        let address = self.mirror(address);
-        self.devices
-            .iter_mut()
-            .find(|(addressable_range, _)| addressable_range.contains(&address))
-            .map(|(range, device)| device.write(address - range.start(), data))
-            .unwrap_or_else(|| panic!("no device to write to at address 0x{:04X}", address))
     }
 
     fn mirror(&self, address: u16) -> u16 {
@@ -52,13 +42,26 @@ impl Bus {
     }
 }
 
-pub trait Device {
-    fn read(&mut self, address: u16) -> u8;
-    fn write(&mut self, address: u16, data: u8);
+impl Device for Bus {
+    fn read(&mut self, address: u16) -> u8 {
+        let address = self.mirror(address);
+        self.devices
+            .iter_mut()
+            .find(|(addressable_range, _)| addressable_range.contains(&address))
+            .map(|(range, device)| device.read(address - range.start()))
+            .unwrap_or_else(|| panic!("no device to read from at address 0x{:04X}", address))
+    }
+
+    fn write(&mut self, address: u16, data: u8) {
+        let address = self.mirror(address);
+        self.devices
+            .iter_mut()
+            .find(|(addressable_range, _)| addressable_range.contains(&address))
+            .map(|(range, device)| device.write(address - range.start(), data))
+            .unwrap_or_else(|| panic!("no device to write to at address 0x{:04X}", address))
+    }
 }
 
-// Interior mutability pattern (used sparingly)
-pub type SharedMut<T> = Rc<RefCell<T>>;
 impl<T: Device> Device for SharedMut<T> {
     fn read(&mut self, address: u16) -> u8 {
         self.borrow_mut().read(address)

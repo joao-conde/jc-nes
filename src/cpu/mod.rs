@@ -2,7 +2,7 @@ mod addressing;
 mod instructions;
 mod status;
 
-use crate::bus::Bus;
+use crate::bus::{Bus, Device};
 use crate::cpu::status::Status;
 
 const STACK_BASE: u16 = 0x0100;
