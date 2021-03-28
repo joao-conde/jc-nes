@@ -1,11 +1,11 @@
 use std::cell::RefCell;
+use std::ops::RangeInclusive;
 use std::rc::Rc;
-use std::{collections::HashMap, ops::RangeInclusive};
 
 #[derive(Default)]
 pub struct Bus {
-    devices: HashMap<RangeInclusive<u16>, Box<dyn Device>>,
-    mirrors: HashMap<RangeInclusive<u16>, u16>,
+    devices: Vec<(RangeInclusive<u16>, Box<dyn Device>)>,
+    mirrors: Vec<(RangeInclusive<u16>, u16)>,
 }
 
 impl Bus {
@@ -14,11 +14,11 @@ impl Bus {
         addressable_range: RangeInclusive<u16>,
         device: impl Device + 'static,
     ) {
-        self.devices.insert(addressable_range, Box::new(device));
+        self.devices.push((addressable_range, Box::new(device)));
     }
 
     pub fn add_mirror(&mut self, addressable_range: RangeInclusive<u16>, max: u16) {
-        self.mirrors.insert(addressable_range, max);
+        self.mirrors.push((addressable_range, max));
     }
 
     pub fn read(&mut self, address: u16) -> u8 {
