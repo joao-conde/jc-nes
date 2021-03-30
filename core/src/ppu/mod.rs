@@ -507,10 +507,7 @@ impl Device for PPU {
                 self.write_flip_flop = true;
                 data
             }
-            0x0003 => {
-                eprintln!("can not read from OAMADDR ($2003)");
-                0x00
-            }
+            0x0003 => 0x00,
             0x0004 => self.oam.mem[self.oam.addr as usize],
             0x0005 => 0x00,
             0x0006 => 0x00,
@@ -527,10 +524,7 @@ impl Device for PPU {
                 self.vram_address = (u16::from(self.vram_address) + increment).into();
                 data
             }
-            _ => {
-                eprintln!("unknown PPU register (${})", address);
-                0x00
-            }
+            _ => 0x00,
         }
     }
 
@@ -603,7 +597,7 @@ impl Device for PPU {
                 let increment = if self.control.increment_mode { 32 } else { 1 } as u16;
                 self.vram_address = (u16::from(self.vram_address) + increment).into();
             }
-            _ => eprintln!("unknown PPU register"),
+            _ => (),
         }
     }
 }

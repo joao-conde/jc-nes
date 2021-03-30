@@ -12,26 +12,24 @@ impl PRGMapper000 {
             banks: prg_banks,
         }
     }
+
+    fn map_address(&self, address: u16) -> u16 {
+        if self.banks == 1 {
+            address & 0x3FFF
+        } else {
+            address
+        }
+    }
 }
 
 impl Device for PRGMapper000 {
     fn read(&mut self, address: u16) -> u8 {
-        let address = if self.banks == 1 {
-            address & 0x3FFF
-        } else {
-            address
-        };
-
+        let address = self.map_address(address);
         self.mem[address as usize]
     }
 
     fn write(&mut self, address: u16, data: u8) {
-        let address = if self.banks == 1 {
-            address & 0x3FFF
-        } else {
-            address
-        };
-
+        let address = self.map_address(address);
         self.mem[address as usize] = data;
     }
 }
