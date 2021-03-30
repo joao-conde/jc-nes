@@ -373,14 +373,8 @@ impl PPU {
                 let mut sprite_pattern_bits_hi = self.bus.read(sprite_pattern_addr_hi);
 
                 if sprite.attr & 0x40 != 0 {
-                    let flip_byte = |mut b: u8| -> u8 {
-                        b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-                        b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-                        b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-                        return b;
-                    };
-                    sprite_pattern_bits_lo = flip_byte(sprite_pattern_bits_lo);
-                    sprite_pattern_bits_hi = flip_byte(sprite_pattern_bits_hi);
+                    sprite_pattern_bits_lo = sprite_pattern_bits_lo.reverse_bits();
+                    sprite_pattern_bits_hi = sprite_pattern_bits_hi.reverse_bits();
                 }
 
                 self.sprite_shifter_pattern_lo[i] = sprite_pattern_bits_lo;

@@ -88,7 +88,7 @@ impl Nes {
                     .borrow_mut()
                     .bus
                     .connect(0x0000..=0x1FFF, chr_mapper);
-            },
+            }
             2 => {
                 let prg_mapper = PRGMapper002::new(cartridge.prg_rom, cartridge.prg_banks);
                 self.cpu.bus.connect(0x8000..=0xFFFF, prg_mapper);

@@ -17,9 +17,13 @@ impl PRGMapper002 {
 
     fn map_address(&self, address: u16) -> u16 {
         if address <= 0x3FFF {
-            (self.cur_bank_lo as u16).wrapping_mul(0x4000).wrapping_add(address & 0x3FFF)
-        } else if address > 0x3FFF {
-            (self.cur_bank_hi as u16).wrapping_mul(0x4000).wrapping_add(address & 0x3FFF)
+            (self.cur_bank_lo as u16)
+                .wrapping_mul(0x4000)
+                .wrapping_add(address & 0x3FFF)
+        } else if address >= 0xC000 {
+            (self.cur_bank_hi as u16)
+                .wrapping_mul(0x4000)
+                .wrapping_add(address & 0x3FFF)
         } else {
             address
         }
@@ -33,7 +37,7 @@ impl Device for PRGMapper002 {
     }
 
     fn write(&mut self, _address: u16, data: u8) {
-        self.cur_bank_lo = data;
+        self.cur_bank_lo = data & 0x0F;
     }
 }
 
