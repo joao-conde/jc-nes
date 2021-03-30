@@ -11,8 +11,8 @@ version = "0.34.3"
 features = ["bundled", "static-link"]
 git = "https://github.com/joao-conde/rust-sdl2"
 
-[dependencies.jc_nes]
-git = "https://github.com/joao-conde/jc-nes/tree/master/jc-nes"
+[dependencies.jc-nes]
+path = "../jc-nes"
 
 [profile.release]
 debug = false
