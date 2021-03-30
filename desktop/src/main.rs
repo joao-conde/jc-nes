@@ -19,7 +19,7 @@ fn main() {
             play(&game);
         }
         None => eprintln!(
-            "No <GAME_PATH> specified.\nRun 'cargo run --release --example sdl <GAME_PATH>"
+            "No <ROM PATH> specified.\nRun 'cargo run --release <ROM PATH>"
         ),
     };
 }
