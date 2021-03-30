@@ -20,12 +20,10 @@ impl PRGMapper002 {
             (self.cur_bank_lo as u16)
                 .wrapping_mul(0x4000)
                 .wrapping_add(address & 0x3FFF)
-        } else if address >= 0xC000 {
+        } else {
             (self.cur_bank_hi as u16)
                 .wrapping_mul(0x4000)
                 .wrapping_add(address & 0x3FFF)
-        } else {
-            address
         }
     }
 }
