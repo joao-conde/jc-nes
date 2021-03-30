@@ -4,6 +4,9 @@ version = "1.0.0"
 authors = ["João Conde <joaodiasconde@gmail.com>"]
 edition = "2018"
 description = "NES Emulator in Rust"
-repository = "https://github.com/joao-conde/jc-nes"
+repository = "https://github.com/joao-conde/jc-nes/tree/master/jc-nes"
 license = "MIT"
 keywords = ["Nintendo Entertainment System", "NES", "emulator", "rust"]
+
+[lib]
+name = "jc_nes"
