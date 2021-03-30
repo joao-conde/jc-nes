@@ -18,9 +18,7 @@ fn main() {
         Some(game) => {
             play(&game);
         }
-        None => eprintln!(
-            "No <ROM PATH> specified.\nRun 'cargo run --release <ROM PATH>"
-        ),
+        None => eprintln!("No <ROM PATH> specified.\nRun 'cargo run --release <ROM PATH>"),
     };
 }
 

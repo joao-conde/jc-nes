@@ -193,14 +193,14 @@ impl PPU {
             }
         }
 
-        // background pixel and
+        // background pixel
         let (bg_pixel, bg_palette) = if self.mask.render_background {
             let bit_offset = 0x8000 >> self.fine_x;
-            let pixel_0 = ((self.bg_shifter_pattern_lo & bit_offset) > 0) as u8;
-            let pixel_1 = ((self.bg_shifter_pattern_hi & bit_offset) > 0) as u8;
-            let palette_0 = ((self.bg_shifter_attrib_lo & bit_offset) > 0) as u8;
-            let palette_1 = ((self.bg_shifter_attrib_hi & bit_offset) > 0) as u8;
-            ((pixel_1 << 1) | pixel_0, (palette_1 << 1) | palette_0)
+            let pixel_lo = ((self.bg_shifter_pattern_lo & bit_offset) != 0) as u8;
+            let pixel_hi = ((self.bg_shifter_pattern_hi & bit_offset) != 0) as u8;
+            let palette_lo = ((self.bg_shifter_attrib_lo & bit_offset) != 0) as u8;
+            let palette_hi = ((self.bg_shifter_attrib_hi & bit_offset) != 0) as u8;
+            ((pixel_hi << 1) | pixel_lo, (palette_hi << 1) | palette_lo)
         } else {
             (0x00, 0x00)
         };
@@ -268,6 +268,12 @@ impl PPU {
 
             let tex_addr =
                 WIDTH as usize * 3 * (self.scanline as usize) + (self.cycle as usize - 1) * 3;
+
+            if self.scanline == 130 && self.cycle == 150 && color_i == 41 {
+                // println!("pix: 0x{:02X} pal: 0x{:02X} addr: 0x{:04X}", pixel, palette, addr);
+                // println!("bgpix: 0x{:02X} fgpix: 0x{:02X}", bg_pixel, fg_pixel);
+            }
+
             self.screen[tex_addr as usize] = PALETTE[color_i as usize].0;
             self.screen[tex_addr as usize + 1] = PALETTE[color_i as usize].1;
             self.screen[tex_addr as usize + 2] = PALETTE[color_i as usize].2;

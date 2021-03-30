@@ -12,7 +12,7 @@ features = ["bundled", "static-link"]
 git = "https://github.com/joao-conde/rust-sdl2"
 
 [dependencies.jc-nes]
-path = "../jc-nes"
+path = "../core"
 
 [profile.release]
 debug = false
