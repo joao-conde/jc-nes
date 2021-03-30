@@ -1,5 +1,6 @@
 use crate::bus::{Bus, SharedMut};
 use crate::cartridge::mappers::mapper000::{CHRMapper000, PRGMapper000};
+use crate::cartridge::mappers::mapper002::{CHRMapper002, PRGMapper002};
 use crate::cartridge::Cartridge;
 use crate::cpu::CPU;
 use crate::gamepad::{Button, Gamepad};
@@ -83,6 +84,16 @@ impl Nes {
                 self.cpu.bus.connect(0x8000..=0xFFFF, prg_mapper);
 
                 let chr_mapper = CHRMapper000::new(cartridge.chr_rom, cartridge.chr_banks);
+                self.ppu
+                    .borrow_mut()
+                    .bus
+                    .connect(0x0000..=0x1FFF, chr_mapper);
+            },
+            2 => {
+                let prg_mapper = PRGMapper002::new(cartridge.prg_rom, cartridge.prg_banks);
+                self.cpu.bus.connect(0x8000..=0xFFFF, prg_mapper);
+
+                let chr_mapper = CHRMapper002::new(cartridge.chr_rom, cartridge.chr_banks);
                 self.ppu
                     .borrow_mut()
                     .bus

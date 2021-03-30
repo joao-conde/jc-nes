@@ -52,8 +52,7 @@ impl Cartridge {
             MirrorMode::Horizontal
         };
 
-        // TODO find other formats
-        let file_type = 1;
+        let file_type = if flags7 & 0x0C == 0x08 { 2 } else { 1 };
         let (prg_rom, chr_rom) = match file_type {
             1 => {
                 let prg_len = prg_banks as usize * 16 * 1024;
