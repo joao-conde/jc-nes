@@ -1,0 +1,20 @@
+[package]
+name = "desktop"
+version = "1.0.0"
+authors = ["João Conde <joaodiasconde@gmail.com>"]
+edition = "2018"
+description = "NES Emulator Desktop Application"
+license = "MIT"
+
+[dependencies.sdl2]
+version = "0.34.3"
+features = ["bundled", "static-link"]
+git = "https://github.com/joao-conde/rust-sdl2"
+
+[dependencies.jc_nes]
+git = "https://github.com/joao-conde/jc-nes/tree/master/jc-nes"
+
+[profile.release]
+debug = false
+lto = true
+opt-level = 3

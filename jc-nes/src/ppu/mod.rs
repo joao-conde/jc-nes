@@ -114,7 +114,6 @@ impl PPU {
                 self.status.vertical_blank = false;
                 self.status.sprite_overflow = false;
                 self.status.sprite_zero_hit = false;
-                //TODO clear shifters ?
             }
 
             if (self.cycle >= 2 && self.cycle < 258) || (self.cycle >= 321 && self.cycle < 338) {

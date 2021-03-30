@@ -7,13 +7,3 @@ description = "NES Emulator in Rust"
 repository = "https://github.com/joao-conde/jc-nes"
 license = "MIT"
 keywords = ["Nintendo Entertainment System", "NES", "emulator", "rust"]
-
-[profile.release]
-debug = false
-lto = true
-opt-level = 3
-
-[dev-dependencies.sdl2]
-version = "0.34.3"
-features = ["bundled", "static-link"]
-git = "https://github.com/joao-conde/rust-sdl2"
