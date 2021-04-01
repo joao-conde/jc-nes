@@ -27,7 +27,7 @@ pub struct PPU {
     pub(in crate) raise_nmi: bool,
     pub(in crate) bus: Bus,
     pub(in crate) oam: OAM,
-    pub(in crate) cartridge_mirror_mode: MirrorMode,
+    pub(in crate) mirror_mode: MirrorMode,
 
     // current screen pixel
     cycle: u16,
@@ -91,7 +91,7 @@ impl PPU {
             bg_shifter_pattern_hi: 0x0000,
             bg_shifter_attrib_lo: 0x0000,
             bg_shifter_attrib_hi: 0x0000,
-            cartridge_mirror_mode: MirrorMode::Horizontal,
+            mirror_mode: MirrorMode::Horizontal,
             oam: OAM::default(),
             scanline_sprites: Vec::with_capacity(8),
             sprite_shifter_pattern_lo: [0u8; 8],
@@ -569,7 +569,7 @@ impl Device for PPU {
 
                 // nametable index (0-3)
                 let nametable_i = ((vram_address - 0x2000) / 0x400) % 4;
-                match self.cartridge_mirror_mode {
+                match self.mirror_mode {
                     //nametables: [A, A, B, B]
                     MirrorMode::Horizontal => {
                         if nametable_i == 0 || nametable_i == 2 {
@@ -586,6 +586,7 @@ impl Device for PPU {
                             self.bus.write(vram_address - 0x800, data);
                         };
                     }
+                    _ => panic!("unhandled mirror mode for now"),
                 }
 
                 let increment = if self.control.increment_mode { 32 } else { 1 } as u16;

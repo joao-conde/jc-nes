@@ -1,6 +1,5 @@
-use crate::bus::{Bus, SharedMut};
-use crate::cartridge::mappers::mapper000::{CHRMapper000, PRGMapper000};
-use crate::cartridge::mappers::mapper002::{CHRMapper002, PRGMapper002};
+use crate::bus::{Bus, Device, SharedMut};
+use crate::cartridge::mappers::{mapper000, mapper003};
 use crate::cartridge::Cartridge;
 use crate::cpu::CPU;
 use crate::gamepad::{Button, Gamepad};
@@ -55,11 +54,14 @@ impl Nes {
         cpu_bus.connect(0x4014..=0x4014, dma_controller.clone());
         cpu_bus.connect(0x4016..=0x4016, controller1.clone());
         cpu_bus.connect(0x4017..=0x4017, controller2.clone());
-        // TODO remove temporary memory fillers (APU or IO related)
+
+        // TODO remove temporary memory fillers
         cpu_bus.connect(0x4000..=0x4013, RAM::new(vec![0u8; 32]));
         cpu_bus.connect(0x4015..=0x4015, RAM::new(vec![0u8; 32]));
         cpu_bus.connect(0x4018..=0x401F, RAM::new(vec![0u8; 32]));
+        cpu_bus.connect(0x4020..=0x7FFF, RAM::new(vec![0u8; 15 * 1024]));
         //
+
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
 
@@ -77,30 +79,13 @@ impl Nes {
 
     pub fn load_rom(&mut self, rom_path: &str) {
         let cartridge = Cartridge::new(rom_path);
-        self.ppu.borrow_mut().cartridge_mirror_mode = cartridge.mirror;
+        self.ppu.borrow_mut().mirror_mode = cartridge.mirror;
+        println!("MAPPER ID: {}", cartridge.mapper_id);
         match cartridge.mapper_id {
-            0 => {
-                let prg_mapper = PRGMapper000::new(cartridge.prg_rom, cartridge.prg_banks);
-                self.cpu.bus.connect(0x8000..=0xFFFF, prg_mapper);
-
-                let chr_mapper = CHRMapper000::new(cartridge.chr_rom, cartridge.chr_banks);
-                self.ppu
-                    .borrow_mut()
-                    .bus
-                    .connect(0x0000..=0x1FFF, chr_mapper);
-            }
-            2 => {
-                let prg_mapper = PRGMapper002::new(cartridge.prg_rom, cartridge.prg_banks);
-                self.cpu.bus.connect(0x8000..=0xFFFF, prg_mapper);
-
-                let chr_mapper = CHRMapper002::new(cartridge.chr_rom, cartridge.chr_banks);
-                self.ppu
-                    .borrow_mut()
-                    .bus
-                    .connect(0x0000..=0x1FFF, chr_mapper);
-            }
+            0 => self.connect_mapper(mapper000::new_mapper(&cartridge)),
+            3 => self.connect_mapper(mapper003::new_mapper(&cartridge)),
             id => panic!("unknown mapper {}", id),
-        }
+        };
     }
 
     pub fn clock(&mut self) {
@@ -152,5 +137,16 @@ impl Nes {
             2 => self.gamepad2.borrow_mut().btn_up(btn),
             _ => panic!("expected either controller '1' or '2'"),
         }
+    }
+
+    fn connect_mapper<'a>(
+        &mut self,
+        (prg_mapper, chr_mapper): (impl Device + 'static, impl Device + 'static),
+    ) {
+        self.cpu.bus.connect(0x8000..=0xFFFF, prg_mapper);
+        self.ppu
+            .borrow_mut()
+            .bus
+            .connect(0x0000..=0x1FFF, chr_mapper);
     }
 }

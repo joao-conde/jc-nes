@@ -2,15 +2,18 @@
 
 Nintendo Entertainment System (NES) emulator written in Rust.
 
+## Example: Desktop Application (with SDL)
+
+```
+$ cd desktop/
+$ cargo run --release <ROM PATH>
+```
+
 ### TODOs
 
 - proper name table mirroring
 - CTRL + F for "TODO" and deal with those
+- bubble up errors rather than panic
 
-
-## Example: Desktop Application (with SDL)
-
-```bash
-$ cd desktop/
-$ cargo run --release <ROM PATH>
-```
+## MAPPERS WORKING:
+0, 3
