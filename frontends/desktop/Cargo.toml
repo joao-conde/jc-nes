@@ -11,7 +11,7 @@ version = "0.34.4"
 features = ["bundled", "static-link"]
 
 [dependencies.jc-nes]
-path = "../core"
+path = "../../core"
 
 [profile.release]
 debug = false
