@@ -7,9 +7,8 @@ description = "NES Emulator Desktop Application"
 license = "MIT"
 
 [dependencies.sdl2]
-version = "0.34.3"
+version = "0.34.4"
 features = ["bundled", "static-link"]
-git = "https://github.com/joao-conde/rust-sdl2"
 
 [dependencies.jc-nes]
 path = "../core"
