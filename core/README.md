@@ -1,13 +1,6 @@
 # NES Emulator
 
-This is the emulator crate itself, called `jc-nes`. It emulates the NES and exposes a public API to interact with it to retrieve screen pixels or sound information and feed controller.
-
-Multiple frontends can be used with this core like:
-- browser APIS (if you compile it to WASM and use `canvas`, `Audio`, `onkeydown/up`, ...)
-- desktop media libraries (like `SDL`, `SFML`)
-- mobile apps (using for example the `Android NDK`)
-
-At the moment there is only one frontend, built with SDL and targetting desktops.
+This is the emulator crate itself, called `jc-nes`. It emulates the NES and exposes a public API to interact with it to retrieve screen pixels or audio data, and to provide gamepad/controller input.
 
 ## Main Modules
 
