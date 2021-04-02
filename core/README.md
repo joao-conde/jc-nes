@@ -1,6 +1,6 @@
 # NES Emulator
 
-This is the core crate called `jc-nes`. It takes care of all emulator related stuff and exposes a public API to interact with it to retrieve screen pixels or sound information and feed controller.
+This is the emulator crate itself, called `jc-nes`. It emulates the NES and exposes a public API to interact with it to retrieve screen pixels or sound information and feed controller.
 
 Multiple frontends can be used with this core like:
 - browser APIS (if you compile it to WASM and use `canvas`, `Audio`, `onkeydown/up`, ...)
