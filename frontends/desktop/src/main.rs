@@ -60,7 +60,7 @@ fn play(rom_path: &str) {
 fn game_loop(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<Window>) {
     // emulate clock ticks
     let mut timer_subsystem = sdl.timer().expect("failed to get timer system");
-    let tick_interval = 1000 / 120; // frequency in Hz to period in ms
+    let tick_interval = 1000 / 240; // frequency in Hz to period in ms
     let mut last_update_time = 0;
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {

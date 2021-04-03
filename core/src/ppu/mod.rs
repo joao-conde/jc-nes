@@ -309,7 +309,7 @@ impl PPU {
                         self.status.sprite_overflow = true;
                     } else {
                         self.scanline_sprites.push(sprite);
-                        if sprite_cnt == 0 {
+                        if oam_i == 0 {
                             // sprite-zero present
                             self.sprite_zero_selected = true;
                         }
