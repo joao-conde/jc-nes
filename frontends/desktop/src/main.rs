@@ -10,7 +10,7 @@ use sdl2::{
 };
 use std::env;
 
-const SCALE: f32 = 4.0;
+const SCALE: f32 = 3.75;
 
 fn main() {
     let game = env::args().nth(1);
