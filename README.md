@@ -4,7 +4,7 @@ Nintendo Entertainment System (NES) emulator written in Rust.
 
 
 <p align="center">
-  <img width="40%" height="40%" align="center" src="https://drive.google.com/uc?export=view&id=165-0HS7UfhjN3sHJG7l3kGcDYuPH-QQE">
+  <img width="40%" height="40%" align="center" src="https://drive.google.com/uc?export=view&id=1TIk4afXnPGvEJpSsquIfG0Y_VuTPDeMl">
   <img width="40%" height="40%" align="center" src="https://drive.google.com/uc?export=view&id=1UpJ0S0gQ-Ybjt4UOFihcRkUtUimmE0J3">
 </p>
 
