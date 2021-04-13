@@ -18,12 +18,12 @@ Nintendo Entertainment System (NES) emulator written in Rust.
 `core` contains the Rust emulator crate.
 
 `frontends` contains multiple usages of this crate like:
-- `frontends/desktop`: a desktop NES emulator
-- `frontends/web`: a browser NES emulator powered by WebAssembly
-- `frontends/mobile`: a mobile NES emulator powered by Android's NDK
+- `frontends/desktop`: powered by SDL
+- `frontends/web`: powered by WASM
+- `frontends/android`: powered by Android's NDK
 
 # Running
-## Desktop Application (with SDL)
+## Desktop Application
 
 ```
 $ cd frontends/desktop/
