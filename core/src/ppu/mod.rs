@@ -564,29 +564,29 @@ impl Device for PPU {
             }
             0x0007 => {
                 let vram_address = u16::from(self.vram_address);
-
                 self.bus.write(vram_address, data);
 
-                // nametable index (0-3)
-                let nametable_i = ((vram_address - 0x2000) / 0x400) % 4;
-                match self.mirror_mode {
-                    //nametables: [A, A, B, B]
-                    MirrorMode::Horizontal => {
-                        if nametable_i == 0 || nametable_i == 2 {
-                            self.bus.write(vram_address + 0x400, data);
-                        } else if nametable_i == 1 || nametable_i == 3 {
-                            self.bus.write(vram_address - 0x400, data);
-                        };
+                if vram_address < 0x3F00 {
+                    let nametable_i = ((vram_address - 0x2000) / 0x400) % 4;
+                    match self.mirror_mode {
+                        //nametables: [A, A, B, B]
+                        MirrorMode::Horizontal => {
+                            if nametable_i == 0 || nametable_i == 2 {
+                                self.bus.write(vram_address + 0x400, data);
+                            } else if nametable_i == 1 || nametable_i == 3 {
+                                self.bus.write(vram_address - 0x400, data);
+                            };
+                        }
+                        //nametables: [A, B, A, B]
+                        MirrorMode::Vertical => {
+                            if nametable_i == 0 || nametable_i == 1 {
+                                self.bus.write(vram_address + 0x800, data);
+                            } else if nametable_i == 2 || nametable_i == 3 {
+                                self.bus.write(vram_address - 0x800, data);
+                            };
+                        }
+                        _ => panic!("unhandled mirror mode for now"),
                     }
-                    //nametables: [A, B, A, B]
-                    MirrorMode::Vertical => {
-                        if nametable_i == 0 || nametable_i == 1 {
-                            self.bus.write(vram_address + 0x800, data);
-                        } else if nametable_i == 2 || nametable_i == 3 {
-                            self.bus.write(vram_address - 0x800, data);
-                        };
-                    }
-                    _ => panic!("unhandled mirror mode for now"),
                 }
 
                 let increment = if self.control.increment_mode { 32 } else { 1 } as u16;

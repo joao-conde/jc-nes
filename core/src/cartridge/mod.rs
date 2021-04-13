@@ -29,7 +29,7 @@ impl Cartridge {
 
         // iNES initial 4 bytes "NES<EOF>"
         let nes_signature = bytes.by_ref().take(4).flatten().collect::<Vec<u8>>();
-        assert!(nes_signature == [0x4E, 0x45, 0x53, 0x1A]);
+        assert!(nes_signature == [0x4E, 0x45, 0x53, 0x1A], "not a .nes file");
 
         let prg_banks = bytes.by_ref().next().unwrap().unwrap() as usize;
         let chr_banks = bytes.by_ref().next().unwrap().unwrap() as usize;
