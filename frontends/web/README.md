@@ -1,3 +1,3 @@
-# Web NES emulator (WASM)
+# Web NES emulator
 
 Coming soon...
