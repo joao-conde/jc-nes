@@ -1,5 +1,5 @@
 use crate::bus::{Bus, Device, SharedMut};
-use crate::cartridge::mappers::{mapper000, mapper003};
+use crate::cartridge::mappers;
 use crate::cartridge::Cartridge;
 use crate::cpu::CPU;
 use crate::gamepad::{Button, Gamepad};
@@ -81,8 +81,8 @@ impl Nes {
         let cartridge = Cartridge::new(rom_path);
         self.ppu.borrow_mut().mirror_mode = cartridge.mirror;
         match cartridge.mapper_id {
-            0 => self.connect_mapper(mapper000::new_mapper(&cartridge)),
-            3 => self.connect_mapper(mapper003::new_mapper(&cartridge)),
+            0 => self.connect_mapper(mappers::mapper000::new_mapper(&cartridge)),
+            3 => self.connect_mapper(mappers::mapper003::new_mapper(&cartridge)),
             id => panic!("unknown mapper {}", id),
         };
     }
