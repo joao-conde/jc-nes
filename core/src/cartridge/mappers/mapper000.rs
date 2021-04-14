@@ -2,7 +2,7 @@ use crate::bus::{Device, SharedMut};
 use crate::cartridge::Cartridge;
 use std::{cell::RefCell, rc::Rc};
 
-pub fn new_mapper(cartridge: &Cartridge) -> (PrgMapper, ChrMapper) {
+pub fn new_mapper(cartridge: Cartridge) -> (PrgMapper, ChrMapper) {
     let state = Rc::new(RefCell::new(MapperState {
         prg_mem: cartridge.prg_rom.clone(),
         prg_banks: cartridge.prg_banks as usize,

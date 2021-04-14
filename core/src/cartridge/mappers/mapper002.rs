@@ -5,13 +5,13 @@ use std::{cell::RefCell, rc::Rc};
 pub fn new_mapper(cartridge: Cartridge) -> (PrgMapper, ChrMapper) {
     let state = Rc::new(RefCell::new(MapperState {
         prg_mem: cartridge.prg_rom.clone(),
-        prg_banks: cartridge.prg_banks as usize,
-        cur_bank: 0,
         chr_mem: if cartridge.chr_banks == 0 {
             [0u8; 8 * 1024].to_vec()
         } else {
             cartridge.chr_rom.clone()
         },
+        cur_bank: 0,
+        last_bank: cartridge.prg_banks - 1
     }));
 
     let prg_mapper = PrgMapper {
@@ -24,9 +24,9 @@ pub fn new_mapper(cartridge: Cartridge) -> (PrgMapper, ChrMapper) {
 
 struct MapperState {
     prg_mem: Vec<u8>,
-    prg_banks: usize,
-    cur_bank: usize,
     chr_mem: Vec<u8>,
+    cur_bank: usize,
+    last_bank: usize,
 }
 
 pub struct PrgMapper {
@@ -35,10 +35,10 @@ pub struct PrgMapper {
 
 impl PrgMapper {
     fn map_address(&self, address: u16) -> u16 {
-        if self.state.borrow().prg_banks == 1 {
-            address & 0x3FFF
+        if address <= 0x3FFF {
+            self.state.borrow().cur_bank as u16 * 0x4000 + (address & 0x3FFF)
         } else {
-            address & 0x7FFF
+            self.state.borrow().last_bank as u16 * 0x4000 + (address & 0x3FFF)
         }
     }
 }
@@ -50,7 +50,7 @@ impl Device for PrgMapper {
     }
 
     fn write(&mut self, _address: u16, data: u8) {
-        self.state.borrow_mut().cur_bank = (data & 0x03) as usize;
+        self.state.borrow_mut().cur_bank = (data & 0x0F) as usize;
     }
 }
 
@@ -60,7 +60,6 @@ pub struct ChrMapper {
 
 impl Device for ChrMapper {
     fn read(&mut self, address: u16) -> u8 {
-        let address = self.state.borrow().cur_bank * 0x2000 + address as usize;
         self.state.borrow().chr_mem[address as usize]
     }
 

@@ -16,7 +16,7 @@ This is the emulator crate itself, called `jc-nes`. It emulates the NES and expo
   - intercepts cartridge reads and writes and maps the addresses
   - different games use different mappers
   - there are 700+ mappers
-  - by implementing mappers 0, 1, 2 and 3 most of the NES games are covered
+  - by implementing mappers 0, 1, 2 and 3 1355 out of the 2437 NES games are covered
 
 ## Missing Features
 
@@ -28,4 +28,3 @@ This is the emulator crate itself, called `jc-nes`. It emulates the NES and expo
 ## Known Bugs
 
 - `KungFu` does not start
-- `Super Mario Brothers` visual corruption, random pixels
