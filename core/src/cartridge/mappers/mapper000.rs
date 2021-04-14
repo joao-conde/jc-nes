@@ -47,9 +47,8 @@ impl Device for PrgMapper {
         self.state.borrow().prg_mem[address as usize]
     }
 
-    fn write(&mut self, address: u16, data: u8) {
-        let address = self.map_address(address);
-        self.state.borrow_mut().prg_mem[address as usize] = data;
+    fn write(&mut self, _address: u16, _data: u8) {
+        panic!("cant write to ROM");
     }
 }
 
@@ -62,7 +61,7 @@ impl Device for ChrMapper {
         self.state.borrow().chr_mem[address as usize]
     }
 
-    fn write(&mut self, address: u16, data: u8) {
-        self.state.borrow_mut().chr_mem[address as usize] = data;
+    fn write(&mut self, _address: u16, _data: u8) {
+        panic!("cant write to ROM");
     }
 }
