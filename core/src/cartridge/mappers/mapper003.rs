@@ -2,40 +2,39 @@ use crate::bus::{Device, SharedMut};
 use crate::cartridge::Cartridge;
 use std::{cell::RefCell, rc::Rc};
 
-pub fn new_mapper(cartridge: Cartridge) -> (PrgMapper, ChrMapper) {
-    let state = Rc::new(RefCell::new(MapperState {
-        prg_mem: cartridge.prg_rom.clone(),
-        prg_banks: cartridge.prg_banks as usize,
-        cur_bank: 0,
-        chr_mem: if cartridge.chr_banks == 0 {
-            [0u8; 8 * 1024].to_vec()
-        } else {
-            cartridge.chr_rom.clone()
-        },
-    }));
-
-    let prg_mapper = PrgMapper {
-        state: state.clone(),
-    };
-    let chr_mapper = ChrMapper { state: state };
-
-    (prg_mapper, chr_mapper)
-}
-
-struct MapperState {
+pub struct PrgMapper {
+    cur_bank: SharedMut<usize>,
     prg_mem: Vec<u8>,
     prg_banks: usize,
-    cur_bank: usize,
+}
+
+pub struct ChrMapper {
+    cur_bank: SharedMut<usize>,
     chr_mem: Vec<u8>,
 }
 
-pub struct PrgMapper {
-    state: SharedMut<MapperState>,
+pub fn new_mapper(cartridge: Cartridge) -> (PrgMapper, ChrMapper) {
+    let cur_bank = Rc::new(RefCell::new(0));
+
+    let prg_mapper = PrgMapper {
+        cur_bank: cur_bank.clone(),
+        prg_mem: cartridge.prg_rom,
+        prg_banks: cartridge.prg_banks as usize,
+    };
+    let chr_mapper = ChrMapper {
+        cur_bank: cur_bank,
+        chr_mem: if cartridge.chr_banks == 0 {
+            [0u8; 8 * 1024].to_vec()
+        } else {
+            cartridge.chr_rom
+        },
+    };
+    (prg_mapper, chr_mapper)
 }
 
 impl PrgMapper {
     fn map_address(&self, address: u16) -> u16 {
-        if self.state.borrow().prg_banks == 1 {
+        if self.prg_banks == 1 {
             address & 0x3FFF
         } else {
             address & 0x7FFF
@@ -46,25 +45,19 @@ impl PrgMapper {
 impl Device for PrgMapper {
     fn read(&mut self, address: u16) -> u8 {
         let address = self.map_address(address);
-        self.state.borrow().prg_mem[address as usize]
+        self.prg_mem[address as usize]
     }
 
     fn write(&mut self, _address: u16, data: u8) {
-        self.state.borrow_mut().cur_bank = (data & 0x03) as usize;
+        self.cur_bank.replace((data & 0x03) as usize);
     }
-}
-
-pub struct ChrMapper {
-    state: SharedMut<MapperState>,
 }
 
 impl Device for ChrMapper {
     fn read(&mut self, address: u16) -> u8 {
-        let address = self.state.borrow().cur_bank * 0x2000 + address as usize;
-        self.state.borrow().chr_mem[address as usize]
+        let address = *self.cur_bank.borrow() * 0x2000 + address as usize;
+        self.chr_mem[address as usize]
     }
 
-    fn write(&mut self, _address: u16, _data: u8) {
-        panic!("cant write to ROM");
-    }
+    fn write(&mut self, _address: u16, _data: u8) {}
 }
