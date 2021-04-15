@@ -4,12 +4,14 @@ use std::{cell::RefCell, rc::Rc};
 
 pub struct PrgMapper {
     cur_bank: SharedMut<usize>,
+
     prg_mem: Vec<u8>,
     prg_banks: usize,
 }
 
 pub struct ChrMapper {
     cur_bank: SharedMut<usize>,
+
     chr_mem: Vec<u8>,
 }
 
