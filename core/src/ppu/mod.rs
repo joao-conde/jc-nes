@@ -585,7 +585,7 @@ impl Device for PPU {
                                 self.bus.write(vram_address - 0x800, data);
                             };
                         }
-                        _ => panic!("unhandled mirror mode for now"),
+                        _ => panic!("unhandled mirror mode"),
                     }
                 }
 
