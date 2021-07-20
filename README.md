@@ -14,13 +14,8 @@ Nintendo Entertainment System (NES) emulator written in Rust.
 
 # Running
 
-## Desktop Application
-
-```
-$ cd examples/desktop/
-$ cargo run --release <ROM PATH>
-```
+See the [`examples`](./examples) folder.
 
 # Contributing
 
-Each game uses a specific mapper, and there are a ton of them. I will not implement them all. Incoming PRs with new mapper implementations are welcome. Check the [mappers module](./src/cartridge/mappers) to see the current implementation and the [NESDev Wiki](https://wiki.nesdev.com/w/index.php/Mapper) for more information.
+Each game uses a specific mapper, and there are a ton of them. I will not implement them all. Incoming PRs with new mapper implementations are welcome. Check the [`mappers` source code module](./src/cartridge/mappers) to see the current implementation and the [NESDev Wiki](https://wiki.nesdev.com/w/index.php/Mapper) for more information.

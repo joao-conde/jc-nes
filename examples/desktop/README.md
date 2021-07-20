@@ -7,3 +7,16 @@ Utilizes the `jc-nes` crate and the [SDL crate](https://github.com/Rust-SDL2/rus
 ```
 $ cargo run --release <ROM PATH>
 ```
+
+## Single Player Controls
+
+| Keyboard   | Gamepad |
+| ---------- | ------- |
+| a          | A       |
+| b          | B       |
+| z          | Start   |
+| X          | Select  |
+| UpArrow    | Up      |
+| DownArrow  | Down    |
+| LeftArrow  | Left    |
+| RightArrow | Right   |
