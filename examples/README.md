@@ -1,0 +1,3 @@
+## Examples
+
+Example usage of the core crate with multiple frontends: desktop with SDL, web with WASM, mobile with android NDK, ...
