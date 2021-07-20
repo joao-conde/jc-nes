@@ -66,7 +66,7 @@ impl Cartridge {
 
                 (prg_rom, chr_rom)
             }
-            _ => panic!("unknown file type {}", file_type),
+            _ => panic!("Unknown file type {}", file_type),
         };
 
         Cartridge {
