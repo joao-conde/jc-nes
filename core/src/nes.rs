@@ -82,9 +82,8 @@ impl Nes {
         self.ppu.borrow_mut().mirror_mode = cartridge.mirror;
         match cartridge.mapper_id {
             0 => self.connect_mapper(mappers::mapper000::new_mapper(cartridge)),
-            1 => self.connect_mapper(mappers::mapper001::new_mapper(cartridge, self.ppu.clone())),
             3 => self.connect_mapper(mappers::mapper003::new_mapper(cartridge)),
-            id => panic!("unknown mapper {}", id),
+            id => panic!("Unimplemented mapper {}", id),
         };
     }
 

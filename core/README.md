@@ -15,16 +15,4 @@ This is the emulator crate itself, called `jc-nes`. It emulates the NES and expo
 - `cartridge/mappers`:
   - intercepts cartridge reads and writes and maps the addresses
   - different games use different mappers
-  - there are 700+ mappers
-  - by implementing mappers 0, 1, 2 and 3 1355 out of the 2437 NES games are covered
-
-## Missing Features
-
-- mappers 1 & 2
-- Audio Processing Unit (APU)
-- name table mirroring for `ONESCREEN_LO` and `ONESCREEN_HI`
-- bubble up errors to the library user rather than `panic!`
-
-## Known Bugs
-
-- `KungFu` does not start
+  - there are 700+ mappers so some games might not run because of the missing mapper
