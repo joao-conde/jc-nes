@@ -5,7 +5,7 @@
 - `bus`: 
   - abstracts communications between devices
   - devices can be connected with given address ranges
-  - exposes a `read/write` interface that redirects to the approriate device
+  - exposes a `read/write` interface that redirects to the appropriate device
   - takes care of address mirroring
 - `cartridge`: metadata about the ROM/game inserted
 - `cartridge/mappers`:
