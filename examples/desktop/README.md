@@ -10,13 +10,10 @@ $ cargo run --release <ROM PATH>
 
 ## Single Player Controls
 
-| Keyboard   | Gamepad |
-| ---------- | ------- |
-| a          | A       |
-| b          | B       |
-| z          | Start   |
-| X          | Select  |
-| UpArrow    | Up      |
-| DownArrow  | Down    |
-| LeftArrow  | Left    |
-| RightArrow | Right   |
+| Keyboard   | Gamepad       |
+| ---------- | ------------- |
+| a          | A             |
+| b          | B             |
+| z          | Start         |
+| x          | Select        |
+| Arrow Keys | Arrow Buttons |
