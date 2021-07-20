@@ -44,24 +44,24 @@ impl Nes {
         // build CPU bus
         let mut cpu_bus = Bus::default();
         let ram = RAM::new(vec![0u8; 2 * 1024]);
-        let controller1 = Rc::new(RefCell::new(Gamepad::default()));
-        let controller2 = Rc::new(RefCell::new(Gamepad::default()));
+        let gamepad1 = Rc::new(RefCell::new(Gamepad::default()));
+        let gamepad2 = Rc::new(RefCell::new(Gamepad::default()));
         let dma_controller = Rc::new(RefCell::new(OAMDMA::default()));
 
         // connect (and mirror) devices to CPU bus
         cpu_bus.connect(0x0000..=0x1FFF, ram);
         cpu_bus.connect(0x2000..=0x3FFF, ppu.clone());
         cpu_bus.connect(0x4014..=0x4014, dma_controller.clone());
-        cpu_bus.connect(0x4016..=0x4016, controller1.clone());
-        cpu_bus.connect(0x4017..=0x4017, controller2.clone());
+        cpu_bus.connect(0x4016..=0x4016, gamepad1.clone());
+        cpu_bus.connect(0x4017..=0x4017, gamepad2.clone());
 
-        // TODO remove temporary memory fillers
+        // (APU address space and others)
         cpu_bus.connect(0x4000..=0x4013, RAM::new(vec![0u8; 32]));
         cpu_bus.connect(0x4015..=0x4015, RAM::new(vec![0u8; 32]));
         cpu_bus.connect(0x4018..=0x401F, RAM::new(vec![0u8; 32]));
         cpu_bus.connect(0x4020..=0x7FFF, RAM::new(vec![0u8; 15 * 1024]));
-        //
 
+        // add mirrors
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
 
@@ -71,8 +71,8 @@ impl Nes {
             cpu,
             ppu,
             dma_controller,
-            gamepad1: controller1,
-            gamepad2: controller2,
+            gamepad1,
+            gamepad2,
             cycles: 0,
         }
     }
