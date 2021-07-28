@@ -1,6 +1,4 @@
-use jc_nes::gamepad::Button;
-use jc_nes::nes::Nes;
-use jc_nes::ppu::{HEIGHT, WIDTH};
+use jc_nes::{Button, Nes, HEIGHT, WIDTH};
 use sdl2::{keyboard::Keycode, pixels::PixelFormatEnum};
 use std::{fs::File, io::Read};
 

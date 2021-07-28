@@ -1,7 +1,11 @@
-pub mod bus;
-pub mod cartridge;
-pub mod cpu;
-pub mod gamepad;
-pub mod nes;
-pub mod ppu;
-pub mod ram;
+mod bus;
+mod cartridge;
+mod cpu;
+mod gamepad;
+mod nes;
+mod ppu;
+mod ram;
+
+pub use crate::gamepad::Button;
+pub use crate::nes::Nes;
+pub use crate::ppu::{HEIGHT, WIDTH};
