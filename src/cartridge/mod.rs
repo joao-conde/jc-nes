@@ -11,8 +11,6 @@ pub struct Cartridge {
 
 #[derive(Clone, Copy)]
 pub enum MirrorMode {
-    OneScreenLo,
-    OneScreenHi,
     Horizontal,
     Vertical,
 }
