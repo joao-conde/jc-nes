@@ -138,7 +138,7 @@ impl Nes {
         }
     }
 
-    fn connect_mapper<'a>(
+    fn connect_mapper(
         &mut self,
         (prg_mapper, chr_mapper): (impl Device + 'static, impl Device + 'static),
     ) {

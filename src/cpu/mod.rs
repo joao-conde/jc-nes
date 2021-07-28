@@ -25,9 +25,10 @@ pub struct CPU {
 
 impl CPU {
     pub fn new(bus: Bus) -> CPU {
-        let mut cpu = CPU::default();
-        cpu.bus = bus;
-        cpu
+        CPU {
+            bus,
+            ..Default::default()
+        }
     }
 
     pub fn clock(&mut self) {

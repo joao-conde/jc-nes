@@ -24,7 +24,7 @@ pub fn new_mapper(cartridge: Cartridge) -> (PrgMapper, ChrMapper) {
         prg_banks: cartridge.prg_banks as usize,
     };
     let chr_mapper = ChrMapper {
-        cur_bank: cur_bank,
+        cur_bank,
         chr_mem: if cartridge.chr_banks == 0 {
             [0u8; 8 * 1024].to_vec()
         } else {
