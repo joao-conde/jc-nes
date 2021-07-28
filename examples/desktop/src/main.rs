@@ -1,66 +1,43 @@
 use jc_nes::gamepad::Button;
 use jc_nes::nes::Nes;
 use jc_nes::ppu::{HEIGHT, WIDTH};
-use sdl2::{
-    keyboard::Keycode,
-    pixels::PixelFormatEnum,
-    render::{Canvas, Texture},
-    video::Window,
-    Sdl,
-};
-use std::env;
+use sdl2::{keyboard::Keycode, pixels::PixelFormatEnum};
 use std::{fs::File, io::Read};
 
 const SCALE: f32 = 3.75;
 
 fn main() {
-    let game = env::args().nth(1);
-    match game {
-        Some(game) => {
-            play(&game);
-        }
-        None => eprintln!("No <ROM PATH> specified.\nRun 'cargo run --release <ROM PATH>"),
-    };
-}
-
-fn play(rom_path: &str) {
-    let rom = read_file(rom_path);
-
-    let mut nes = Nes::new();
-    nes.load_rom(&rom);
-    nes.reset();
-
     let sdl = sdl2::init().expect("failed to init SDL");
     let video_subsystem = sdl.video().expect("failed to get video context");
 
-    let main_window = video_subsystem
+    let window = video_subsystem
         .window(
-            rom_path,
+            "Drag and drop a ROM to play",
             SCALE as u32 * WIDTH as u32,
             SCALE as u32 * WIDTH as u32,
         )
         .resizable()
         .build()
         .expect("failed to build window");
-    let mut main_canvas = main_window
+
+    let mut canvas = window
         .into_canvas()
         .build()
         .expect("failed to build window's canvas");
-    main_canvas
+    canvas
         .set_scale(SCALE, SCALE)
         .expect("failed setting window scale");
-    main_canvas.clear();
-    main_canvas.present();
+    canvas.clear();
+    canvas.present();
 
-    let texture_creator = main_canvas.texture_creator();
-    let texture = texture_creator
+    let texture_creator = canvas.texture_creator();
+    let mut texture = texture_creator
         .create_texture_streaming(PixelFormatEnum::RGB24, WIDTH as u32, HEIGHT as u32)
         .unwrap();
 
-    game_loop(nes, sdl, texture, main_canvas);
-}
+    let mut nes = Nes::new();
+    let mut game_loaded = false;
 
-fn game_loop(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<Window>) {
     // emulate clock ticks
     let mut timer_subsystem = sdl.timer().expect("failed to get timer system");
     let tick_interval = 1000 / 240; // frequency in Hz to period in ms
@@ -76,17 +53,24 @@ fn game_loop(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<Wi
                     ..
                 } => break 'main,
 
-                // key down
+                sdl2::event::Event::DropFile { filename, .. } => {
+                    game_loaded = true;
+                    let rom = read_file(&filename);
+                    nes = Nes::new();
+                    nes.load_rom(&rom);
+                    nes.reset();
+                    None
+                }
+
                 sdl2::event::Event::KeyDown {
                     keycode: Some(keycode),
                     ..
-                } => key_to_btn(keycode).map(|btn| nes.btn_down(1, btn)),
+                } if game_loaded => key_to_btn(keycode).map(|btn| nes.btn_down(1, btn)),
 
-                // key up
                 sdl2::event::Event::KeyUp {
                     keycode: Some(keycode),
                     ..
-                } => key_to_btn(keycode).map(|btn| nes.btn_up(1, btn)),
+                } if game_loaded => key_to_btn(keycode).map(|btn| nes.btn_up(1, btn)),
 
                 _ => None,
             };
@@ -94,7 +78,7 @@ fn game_loop(mut nes: Nes, sdl: Sdl, mut texture: Texture, mut canvas: Canvas<Wi
 
         let current_time = timer_subsystem.ticks();
         let delta_t = current_time - last_update_time;
-        if tick_interval > delta_t {
+        if game_loaded && tick_interval > delta_t {
             // 1.79MHz / 60Hz
             (0..30).for_each(|_| nes.clock());
             if let Some(screen) = nes.get_frame() {
