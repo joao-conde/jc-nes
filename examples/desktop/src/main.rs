@@ -5,28 +5,25 @@ use sdl2::{keyboard::Keycode, pixels::PixelFormatEnum};
 use std::{fs::File, io::Read};
 
 const SCALE: f32 = 3.75;
+const SYSTEM_HZ: u32 = 240;
+const TITLE: &str = "Drag and drop the ROM file to play";
 
 fn main() {
-    let sdl = sdl2::init().expect("failed to init SDL");
-    let video_subsystem = sdl.video().expect("failed to get video context");
+    let sdl = sdl2::init().unwrap();
+    let video_subsystem = sdl.video().unwrap();
 
     let window = video_subsystem
         .window(
-            "Drag and drop a ROM to play",
+            TITLE,
             SCALE as u32 * WIDTH as u32,
             SCALE as u32 * WIDTH as u32,
         )
         .resizable()
         .build()
-        .expect("failed to build window");
+        .unwrap();
 
-    let mut canvas = window
-        .into_canvas()
-        .build()
-        .expect("failed to build window's canvas");
-    canvas
-        .set_scale(SCALE, SCALE)
-        .expect("failed setting window scale");
+    let mut canvas = window.into_canvas().build().unwrap();
+    canvas.set_scale(SCALE, SCALE).unwrap();
     canvas.clear();
     canvas.present();
 
@@ -39,14 +36,13 @@ fn main() {
     let mut game_loaded = false;
 
     // emulate clock ticks
-    let mut timer_subsystem = sdl.timer().expect("failed to get timer system");
-    let tick_interval = 1000 / 240; // frequency in Hz to period in ms
+    let mut timer_subsystem = sdl.timer().unwrap();
+    let tick_interval = 1000 / SYSTEM_HZ; // frequency in Hz to period in ms
     let mut last_update_time = 0;
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
         while let Some(event) = event_pump.poll_event() {
             match event {
-                // close window
                 sdl2::event::Event::Quit { .. } => break 'main,
                 sdl2::event::Event::KeyDown {
                     keycode: Some(Keycode::Escape),
@@ -54,11 +50,15 @@ fn main() {
                 } => break 'main,
 
                 sdl2::event::Event::DropFile { filename, .. } => {
-                    game_loaded = true;
                     let rom = read_file(&filename);
                     nes = Nes::new();
                     nes.load_rom(&rom);
                     nes.reset();
+                    game_loaded = true;
+                    canvas
+                        .window_mut()
+                        .set_title(&format!("{} [Currently playing: {}]", TITLE, filename))
+                        .unwrap();
                     None
                 }
 
