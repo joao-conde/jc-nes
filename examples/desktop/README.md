@@ -5,8 +5,10 @@ Utilizes the `jc-nes` crate and the [SDL crate](https://github.com/Rust-SDL2/rus
 ## Running
 
 ```
-$ cargo run --release <ROM PATH>
+$ cargo run --release
 ```
+
+And then drag and drop your game's ROM file.
 
 ## Single Player Controls
 
