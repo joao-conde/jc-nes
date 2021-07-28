@@ -16,7 +16,7 @@ fn main() {
         .window(
             TITLE,
             SCALE as u32 * WIDTH as u32,
-            SCALE as u32 * WIDTH as u32,
+            SCALE as u32 * HEIGHT as u32,
         )
         .resizable()
         .build()
