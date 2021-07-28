@@ -77,8 +77,8 @@ impl Nes {
         }
     }
 
-    pub fn load_rom(&mut self, rom_path: &str) {
-        let cartridge = Cartridge::new(rom_path);
+    pub fn load_rom(&mut self, rom: &[u8]) {
+        let cartridge = Cartridge::new(&rom);
         self.ppu.borrow_mut().mirror_mode = cartridge.mirror;
         match cartridge.mapper_id {
             0 => self.connect_mapper(mappers::mapper000::new_mapper(cartridge)),

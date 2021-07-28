@@ -9,6 +9,7 @@ use sdl2::{
     Sdl,
 };
 use std::env;
+use std::{fs::File, io::Read};
 
 const SCALE: f32 = 3.75;
 
@@ -23,8 +24,10 @@ fn main() {
 }
 
 fn play(rom_path: &str) {
+    let rom = read_file(rom_path);
+
     let mut nes = Nes::new();
-    nes.load_rom(rom_path);
+    nes.load_rom(&rom);
     nes.reset();
 
     let sdl = sdl2::init().expect("failed to init SDL");
@@ -117,4 +120,11 @@ fn key_to_btn(keycode: Keycode) -> Option<Button> {
         Keycode::X => Some(Button::Select),
         _ => None,
     }
+}
+
+fn read_file(path: &str) -> Vec<u8> {
+    let mut file = File::open(path).unwrap();
+    let mut rom = Vec::new();
+    file.read_to_end(&mut rom).unwrap();
+    rom
 }
