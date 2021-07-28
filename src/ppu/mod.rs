@@ -384,11 +384,19 @@ impl PPU {
     }
 
     pub fn reset(&mut self) {
-        self.fine_x = 0x00;
+        self.cycle = 0;
+        self.scanline = 0;
+        self.frame_complete = false;
+        self.status = Status::from(0x00);
+        self.mask = Mask::from(0x00);
+        self.control = Control::from(0x00);
         self.write_flip_flop = true;
         self.buffer = 0x00;
-        self.scanline = 0;
-        self.cycle = 0;
+        self.screen = [0; WIDTH as usize * HEIGHT as usize * 3];
+        self.raise_nmi = false;
+        self.vram_address = VRAMAddress::from(0x0000);
+        self.tram_address = VRAMAddress::from(0x0000);
+        self.fine_x = 0x00;
         self.bg_next_tile_id = 0x00;
         self.bg_next_tile_attrib = 0x00;
         self.bg_next_tile_lsb = 0x00;
@@ -397,11 +405,11 @@ impl PPU {
         self.bg_shifter_pattern_hi = 0x0000;
         self.bg_shifter_attrib_lo = 0x0000;
         self.bg_shifter_attrib_hi = 0x0000;
-        self.status = Status::from(0x00);
-        self.mask = Mask::from(0x00);
-        self.control = Control::from(0x00);
-        self.vram_address = VRAMAddress::from(0x0000);
-        self.tram_address = VRAMAddress::from(0x0000);
+        self.oam = OAM::default();
+        self.scanline_sprites = Vec::with_capacity(8);
+        self.sprite_shifter_pattern_lo = [0u8; 8];
+        self.sprite_shifter_pattern_hi = [0u8; 8];
+        self.sprite_zero_selected = false;
     }
 }
 
