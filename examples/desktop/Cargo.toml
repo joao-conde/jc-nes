@@ -7,7 +7,7 @@ description = "NES Emulator Desktop Application"
 license = "MIT"
 
 [dependencies.sdl2]
-version = "0.34.4"
+version = "0.34.5"
 features = ["bundled", "static-link"]
 
 [dependencies.jc-nes]
