@@ -13,7 +13,6 @@ pub trait Device {
     fn write(&mut self, address: u16, data: u8);
 }
 
-// Interior mutability pattern (used sparingly)
 pub type SharedMut<T> = Rc<RefCell<T>>;
 
 impl Bus {

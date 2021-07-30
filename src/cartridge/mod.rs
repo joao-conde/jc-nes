@@ -17,7 +17,6 @@ pub enum MirrorMode {
 
 impl Cartridge {
     pub fn new(rom: &[u8]) -> Cartridge {
-        // iNES initial 4 bytes "NES<EOF>"
         let nes_signature = &rom[0..4];
         assert!(
             nes_signature == [0x4E, 0x45, 0x53, 0x1A],

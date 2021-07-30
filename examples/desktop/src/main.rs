@@ -33,9 +33,8 @@ fn main() {
     let mut nes = Nes::new();
     let mut game_loaded = false;
 
-    // emulate clock ticks
     let mut timer_subsystem = sdl.timer().unwrap();
-    let tick_interval = 1000 / SYSTEM_HZ; // frequency in Hz to period in ms
+    let tick_interval = 1000 / SYSTEM_HZ;
     let mut last_update_time = 0;
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
@@ -80,7 +79,7 @@ fn main() {
             // 1.79MHz / 60Hz
             (0..30).for_each(|_| nes.clock());
             if let Some(screen) = nes.get_frame() {
-                timer_subsystem.delay(tick_interval - delta_t); // energy saving
+                timer_subsystem.delay(tick_interval - delta_t);
                 texture.update(None, &screen, WIDTH as usize * 3).unwrap();
                 canvas.copy(&texture, None, None).unwrap();
                 canvas.present();
