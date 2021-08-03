@@ -1,27 +1,29 @@
 use jc_nes::{Button, Nes, HEIGHT, WIDTH};
-use sdl2::{keyboard::Keycode, pixels::PixelFormatEnum};
+use sdl2::{event::Event, keyboard::Keycode, pixels::PixelFormatEnum};
 use std::{fs::File, io::Read};
 
-const SCALE: f32 = 3.75;
 const SYSTEM_HZ: u32 = 240;
+const SCREEN_SCALE: f32 = 3.75;
 const TITLE: &str = "Drag and drop the ROM file to play";
 
 fn main() {
     let sdl = sdl2::init().unwrap();
     let video_subsystem = sdl.video().unwrap();
+    let mut timer_subsystem = sdl.timer().unwrap();
 
     let window = video_subsystem
         .window(
             TITLE,
-            SCALE as u32 * WIDTH as u32,
-            SCALE as u32 * HEIGHT as u32,
+            SCREEN_SCALE as u32 * WIDTH as u32,
+            SCREEN_SCALE as u32 * HEIGHT as u32,
         )
         .resizable()
+        .position_centered()
         .build()
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
-    canvas.set_scale(SCALE, SCALE).unwrap();
+    canvas.set_scale(SCREEN_SCALE, SCREEN_SCALE).unwrap();
     canvas.clear();
     canvas.present();
 
@@ -33,20 +35,19 @@ fn main() {
     let mut nes = Nes::new();
     let mut game_loaded = false;
 
-    let mut timer_subsystem = sdl.timer().unwrap();
     let tick_interval = 1000 / SYSTEM_HZ;
     let mut last_update_time = 0;
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
         while let Some(event) = event_pump.poll_event() {
             match event {
-                sdl2::event::Event::Quit { .. } => break 'main,
-                sdl2::event::Event::KeyDown {
+                Event::Quit { .. } => break 'main,
+                Event::KeyDown {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'main,
 
-                sdl2::event::Event::DropFile { filename, .. } => {
+                Event::DropFile { filename, .. } => {
                     let rom = read_file(&filename);
                     nes = Nes::new();
                     nes.load_rom(&rom);
@@ -59,12 +60,12 @@ fn main() {
                     None
                 }
 
-                sdl2::event::Event::KeyDown {
+                Event::KeyDown {
                     keycode: Some(keycode),
                     ..
                 } if game_loaded => key_to_btn(keycode).map(|btn| nes.btn_down(1, btn)),
 
-                sdl2::event::Event::KeyUp {
+                Event::KeyUp {
                     keycode: Some(keycode),
                     ..
                 } if game_loaded => key_to_btn(keycode).map(|btn| nes.btn_up(1, btn)),
