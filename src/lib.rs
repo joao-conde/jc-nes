@@ -8,4 +8,4 @@ mod ram;
 
 pub use crate::gamepad::Button;
 pub use crate::nes::Nes;
-pub use crate::ppu::{HEIGHT, WIDTH};
+pub use crate::ppu::{HEIGHT as SCREEN_HEIGHT, WIDTH as SCREEN_WIDTH};

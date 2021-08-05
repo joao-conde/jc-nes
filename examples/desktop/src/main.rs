@@ -1,4 +1,4 @@
-use jc_nes::{Button, Nes, HEIGHT, WIDTH};
+use jc_nes::{Button, Nes, SCREEN_HEIGHT, SCREEN_WIDTH};
 use sdl2::{event::Event, keyboard::Keycode, pixels::PixelFormatEnum};
 use std::{fs::File, io::Read};
 
@@ -14,8 +14,8 @@ fn main() {
     let window = video_subsystem
         .window(
             TITLE,
-            SCREEN_SCALE as u32 * WIDTH as u32,
-            SCREEN_SCALE as u32 * HEIGHT as u32,
+            SCREEN_SCALE as u32 * SCREEN_WIDTH as u32,
+            SCREEN_SCALE as u32 * SCREEN_HEIGHT as u32,
         )
         .resizable()
         .position_centered()
@@ -29,7 +29,11 @@ fn main() {
 
     let texture_creator = canvas.texture_creator();
     let mut texture = texture_creator
-        .create_texture_streaming(PixelFormatEnum::RGB24, WIDTH as u32, HEIGHT as u32)
+        .create_texture_streaming(
+            PixelFormatEnum::RGB24,
+            SCREEN_WIDTH as u32,
+            SCREEN_HEIGHT as u32,
+        )
         .unwrap();
 
     let mut nes = Nes::new();
@@ -81,7 +85,9 @@ fn main() {
             (0..8).for_each(|_| nes.clock());
             if let Some(screen) = nes.get_frame() {
                 timer_subsystem.delay(tick_interval - delta_t);
-                texture.update(None, &screen, WIDTH as usize * 3).unwrap();
+                texture
+                    .update(None, &screen, SCREEN_WIDTH as usize * 3)
+                    .unwrap();
                 canvas.copy(&texture, None, None).unwrap();
                 canvas.present();
             }

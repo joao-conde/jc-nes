@@ -10,12 +10,12 @@ $ cargo run --release
 
 And then drag and drop your game's ROM file.
 
-## Single Player Controls
+## Player Controls
 
 | Keyboard   | Gamepad       |
 | ---------- | ------------- |
-| a          | A             |
-| b          | B             |
-| z          | Start         |
-| x          | Select        |
+| A          | A             |
+| B          | B             |
+| Z          | Start         |
+| X          | Select        |
 | Arrow Keys | Arrow Buttons |
