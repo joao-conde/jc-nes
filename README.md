@@ -55,6 +55,7 @@ loop {
     ... => nes.btn_down(1, Button::B)
     ... => nes.btn_up(1, Button::A)
     ... => nes.btn_up(2, Button::Down)
+    ...
   }
 }
 ```
