@@ -14,7 +14,7 @@ Nintendo Entertainment System (NES) emulator written in Rust.
 
 # Running
 
-See the [`examples`](./examples) folder.
+See the [`bin`](./bin) folder.
 
 # API Reference
 
