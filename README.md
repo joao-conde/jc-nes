@@ -3,16 +3,16 @@
 Nintendo Entertainment System (NES) emulator written in Rust.
 
 <p align="center">
-  <img width="40%" height="40%" align="center" src="https://drive.google.com/uc?export=view&id=1TIk4afXnPGvEJpSsquIfG0Y_VuTPDeMl">
-  <img width="40%" height="40%" align="center" src="https://drive.google.com/uc?export=view&id=1UpJ0S0gQ-Ybjt4UOFihcRkUtUimmE0J3">
+  <img width="40%" height="40%" align="center" src="https://user-images.githubusercontent.com/16060539/135888265-476158f3-48a2-47b2-b115-1457616983f1.gif">
+  <img width="40%" height="40%" align="center" src="https://user-images.githubusercontent.com/16060539/135888276-6051768f-b0e0-4f45-91ae-8f5fd954d607.gif">
 </p>
 
 <p align="center">
-  <img width="40%" height="40%" align="center" src="https://drive.google.com/uc?export=view&id=1Jbl0HxsG46ijFEdCGPEi5WeebvkpZ8PA">
-  <img width="40%" height="40%" align="center" src="https://drive.google.com/uc?export=view&id=1q-iU_ODlkV9vbK6A7YPtifDpRVPCGISE">
+  <img width="40%" height="40%" align="center" src="https://user-images.githubusercontent.com/16060539/135888259-7c8f5907-d9e7-4e70-8379-995c164ea55e.gif">
+  <img width="40%" height="40%" align="center" src="https://user-images.githubusercontent.com/16060539/135888282-949c9667-b140-4276-9aaa-88cd14615687.gif">
 </p>
 
-# Running
+# Running!
 
 See the [`bin`](./bin) folder.
 
