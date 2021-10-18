@@ -32,7 +32,7 @@ impl Nes {
 }
 ```
 
-Typical usage:
+Basic usage:
 
 ```rust
 use jc_nes::{Button, Nes, SCREEN_HEIGHT, SCREEN_WIDTH};
