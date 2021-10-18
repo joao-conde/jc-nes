@@ -12,7 +12,7 @@ Nintendo Entertainment System (NES) emulator written in Rust.
   <img width="40%" height="40%" align="center" src="https://user-images.githubusercontent.com/16060539/135888282-949c9667-b140-4276-9aaa-88cd14615687.gif">
 </p>
 
-# Running!
+# Running
 
 See the [`bin`](./bin) folder.
 
