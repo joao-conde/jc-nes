@@ -21,15 +21,13 @@ See the [`bin`](./bin) folder.
 Use the `Nes` struct to create an emulator instance and interact with it using the following API:
 
 ```rust
-impl Nes {
-  pub fn new() -> Nes;
-  pub fn load_rom(&mut self, rom: &[u8]);
-  pub fn reset(&mut self);
-  pub fn clock(&mut self);
-  pub fn get_frame(&mut self) -> Option<[u8; SCREEN_WIDTH * SCREEN_HEIGHT * 3]>;
-  pub fn btn_down(&mut self, controller: u8, btn: Button);
-  pub fn btn_up(&mut self, controller: u8, btn: Button);
-}
+pub fn new() -> Nes;
+pub fn load_rom(&mut self, rom: &[u8]);
+pub fn reset(&mut self);
+pub fn clock(&mut self);
+pub fn get_frame(&mut self) -> Option<[u8; SCREEN_WIDTH * SCREEN_HEIGHT * 3]>;
+pub fn btn_down(&mut self, controller: u8, btn: Button);
+pub fn btn_up(&mut self, controller: u8, btn: Button);
 ```
 
 Basic usage:
