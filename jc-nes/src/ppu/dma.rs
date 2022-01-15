@@ -1,23 +1,12 @@
 use crate::bus::{Bus, Device};
 
+#[derive(Default)]
 pub struct OamDma {
     pub(in crate) dma_in_progress: bool,
     synched: bool,
     buffer: u8,
     page: u8,
     transfered: u8,
-}
-
-impl Default for OamDma {
-    fn default() -> OamDma {
-        OamDma {
-            dma_in_progress: false,
-            synched: false,
-            buffer: 0x00,
-            page: 0x00,
-            transfered: 0x00,
-        }
-    }
 }
 
 impl OamDma {
