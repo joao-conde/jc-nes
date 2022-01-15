@@ -1,19 +1,19 @@
 use crate::bus::{Bus, Device, SharedMut};
 use crate::cartridge::mappers;
 use crate::cartridge::Cartridge;
-use crate::cpu::CPU;
+use crate::cpu::Cpu;
 use crate::gamepad::{Button, Gamepad};
-use crate::ppu::dma::OAMDMA;
+use crate::ppu::dma::OamDma;
 use crate::ppu::palette::Palette;
-use crate::ppu::{HEIGHT, PPU, WIDTH};
-use crate::ram::RAM;
+use crate::ppu::{Ppu, HEIGHT, WIDTH};
+use crate::ram::Ram;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 pub struct Nes {
-    cpu: CPU,
-    ppu: SharedMut<PPU>,
-    dma_controller: SharedMut<OAMDMA>,
+    cpu: Cpu,
+    ppu: SharedMut<Ppu>,
+    dma_controller: SharedMut<OamDma>,
     gamepad1: SharedMut<Gamepad>,
     gamepad2: SharedMut<Gamepad>,
     cycles: usize,
@@ -23,10 +23,10 @@ impl Nes {
     pub fn new() -> Nes {
         // build PPU bus
         let mut ppu_bus = Bus::default();
-        let nametbl1 = RAM::new(vec![0u8; 1024]);
-        let nametbl2 = RAM::new(vec![0u8; 1024]);
-        let nametbl3 = RAM::new(vec![0u8; 1024]);
-        let nametbl4 = RAM::new(vec![0u8; 1024]);
+        let nametbl1 = Ram::new(vec![0u8; 1024]);
+        let nametbl2 = Ram::new(vec![0u8; 1024]);
+        let nametbl3 = Ram::new(vec![0u8; 1024]);
+        let nametbl4 = Ram::new(vec![0u8; 1024]);
         let palette = Palette::new();
 
         // connect (and mirror) devices to PPU bus
@@ -39,14 +39,14 @@ impl Nes {
         ppu_bus.add_mirror(0x3F20..=0x3FFF, 0x3F1F);
         ppu_bus.add_mirror(0x4000..=0xFFFF, 0x3FFF);
 
-        let ppu = Rc::new(RefCell::new(PPU::new(ppu_bus)));
+        let ppu = Rc::new(RefCell::new(Ppu::new(ppu_bus)));
 
         // build CPU bus
         let mut cpu_bus = Bus::default();
-        let ram = RAM::new(vec![0u8; 2 * 1024]);
+        let ram = Ram::new(vec![0u8; 2 * 1024]);
         let gamepad1 = Rc::new(RefCell::new(Gamepad::default()));
         let gamepad2 = Rc::new(RefCell::new(Gamepad::default()));
-        let dma_controller = Rc::new(RefCell::new(OAMDMA::default()));
+        let dma_controller = Rc::new(RefCell::new(OamDma::default()));
 
         // connect (and mirror) devices to CPU bus
         cpu_bus.connect(0x0000..=0x1FFF, ram);
@@ -56,16 +56,16 @@ impl Nes {
         cpu_bus.connect(0x4017..=0x4017, gamepad2.clone());
 
         // (APU address space and others)
-        cpu_bus.connect(0x4000..=0x4013, RAM::new(vec![0u8; 32]));
-        cpu_bus.connect(0x4015..=0x4015, RAM::new(vec![0u8; 32]));
-        cpu_bus.connect(0x4018..=0x401F, RAM::new(vec![0u8; 32]));
-        cpu_bus.connect(0x4020..=0x7FFF, RAM::new(vec![0u8; 15 * 1024]));
+        cpu_bus.connect(0x4000..=0x4013, Ram::new(vec![0u8; 32]));
+        cpu_bus.connect(0x4015..=0x4015, Ram::new(vec![0u8; 32]));
+        cpu_bus.connect(0x4018..=0x401F, Ram::new(vec![0u8; 32]));
+        cpu_bus.connect(0x4020..=0x7FFF, Ram::new(vec![0u8; 15 * 1024]));
 
         // add mirrors
         cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
         cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
 
-        let cpu = CPU::new(cpu_bus);
+        let cpu = Cpu::new(cpu_bus);
 
         Nes {
             cpu,
@@ -78,7 +78,7 @@ impl Nes {
     }
 
     pub fn load_rom(&mut self, rom: &[u8]) {
-        let cartridge = Cartridge::new(&rom);
+        let cartridge = Cartridge::new(rom);
         self.ppu.borrow_mut().mirror_mode = cartridge.mirror;
         match cartridge.mapper_id {
             0 => self.connect_mapper(mappers::mapper000::new_mapper(cartridge)),
@@ -147,5 +147,11 @@ impl Nes {
             .borrow_mut()
             .bus
             .connect(0x0000..=0x1FFF, chr_mapper);
+    }
+}
+
+impl Default for Nes {
+    fn default() -> Nes {
+        Nes::new()
     }
 }

@@ -1,11 +1,11 @@
-pub struct OAM {
+pub struct Oam {
     pub(in crate::ppu) addr: u8,
     pub(in crate::ppu) mem: [u8; 256],
 }
 
-impl Default for OAM {
-    fn default() -> OAM {
-        OAM {
+impl Default for Oam {
+    fn default() -> Oam {
+        Oam {
             addr: 0x00,
             mem: [0u8; 256],
         }

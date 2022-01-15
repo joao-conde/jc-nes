@@ -9,7 +9,7 @@ mod vram_address;
 
 use crate::ppu::control::Control;
 use crate::ppu::mask::Mask;
-use crate::ppu::oam::{Sprite, OAM};
+use crate::ppu::oam::{Oam, Sprite};
 use crate::ppu::palette::PALETTE;
 use crate::ppu::status::Status;
 use crate::ppu::vram_address::VRAMAddress;
@@ -21,12 +21,12 @@ use crate::{
 pub const WIDTH: u16 = 256;
 pub const HEIGHT: u16 = 240;
 
-pub struct PPU {
+pub struct Ppu {
     pub(in crate) frame_complete: bool,
     pub(in crate) screen: [u8; WIDTH as usize * HEIGHT as usize * 3],
     pub(in crate) raise_nmi: bool,
     pub(in crate) bus: Bus,
-    pub(in crate) oam: OAM,
+    pub(in crate) oam: Oam,
     pub(in crate) mirror_mode: MirrorMode,
 
     // current screen pixel
@@ -66,9 +66,9 @@ pub struct PPU {
     sprite_zero_selected: bool,
 }
 
-impl PPU {
-    pub fn new(bus: Bus) -> PPU {
-        PPU {
+impl Ppu {
+    pub fn new(bus: Bus) -> Ppu {
+        Ppu {
             bus,
             cycle: 0,
             scanline: 0,
@@ -92,7 +92,7 @@ impl PPU {
             bg_shifter_attrib_lo: 0x0000,
             bg_shifter_attrib_hi: 0x0000,
             mirror_mode: MirrorMode::Horizontal,
-            oam: OAM::default(),
+            oam: Oam::default(),
             scanline_sprites: Vec::with_capacity(8),
             sprite_shifter_pattern_lo: [0u8; 8],
             sprite_shifter_pattern_hi: [0u8; 8],
@@ -331,12 +331,12 @@ impl PPU {
                             // top half
                             ((sprite.tile_id as u16 & 0x01) << 12)
                                 | ((sprite.tile_id & 0xFE) << 4) as u16
-                                | (self.scanline - (sprite.y as i16) & 0x07) as u16
+                                | ((self.scanline - (sprite.y as i16)) & 0x07) as u16
                         } else {
                             // bottom half
                             ((sprite.tile_id as u16 & 0x01) << 12)
                                 | (((sprite.tile_id & 0xFE) + 1) << 4) as u16
-                                | (self.scanline - (sprite.y as i16) & 0x07) as u16
+                                | ((self.scanline - (sprite.y as i16)) & 0x07) as u16
                         }
                     } else {
                         // sprite flipped vertically
@@ -344,12 +344,12 @@ impl PPU {
                             // top half
                             ((sprite.tile_id as u16 & 0x01) << 12)
                                 | (((sprite.tile_id & 0xFE) + 1) << 4) as u16
-                                | (7 - (self.scanline - (sprite.y as i16)) & 0x07) as u16
+                                | ((7 - (self.scanline - (sprite.y as i16))) & 0x07) as u16
                         } else {
                             // bottom half
                             ((sprite.tile_id as u16 & 0x01) << 12)
                                 | ((sprite.tile_id & 0xFE) << 4) as u16
-                                | (7 - (self.scanline - (sprite.y as i16)) & 0x07) as u16
+                                | ((7 - (self.scanline - (sprite.y as i16))) & 0x07) as u16
                         }
                     }
                 } else {
@@ -405,7 +405,7 @@ impl PPU {
         self.bg_shifter_pattern_hi = 0x0000;
         self.bg_shifter_attrib_lo = 0x0000;
         self.bg_shifter_attrib_hi = 0x0000;
-        self.oam = OAM::default();
+        self.oam = Oam::default();
         self.scanline_sprites = Vec::with_capacity(8);
         self.sprite_shifter_pattern_lo = [0u8; 8];
         self.sprite_shifter_pattern_hi = [0u8; 8];
@@ -413,7 +413,7 @@ impl PPU {
     }
 }
 
-impl PPU {
+impl Ppu {
     fn inc_x(&mut self) {
         if self.mask.render_background || self.mask.render_sprites {
             self.vram_address.coarse_x += 1;
@@ -498,7 +498,7 @@ impl PPU {
     }
 }
 
-impl Device for PPU {
+impl Device for Ppu {
     fn read(&mut self, address: u16) -> u8 {
         match address {
             0x0000 => 0x00,

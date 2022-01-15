@@ -1,6 +1,6 @@
 use crate::bus::{Bus, Device};
 
-pub struct OAMDMA {
+pub struct OamDma {
     pub(in crate) dma_in_progress: bool,
     synched: bool,
     buffer: u8,
@@ -8,9 +8,9 @@ pub struct OAMDMA {
     transfered: u8,
 }
 
-impl Default for OAMDMA {
-    fn default() -> OAMDMA {
-        OAMDMA {
+impl Default for OamDma {
+    fn default() -> OamDma {
+        OamDma {
             dma_in_progress: false,
             synched: false,
             buffer: 0x00,
@@ -20,7 +20,7 @@ impl Default for OAMDMA {
     }
 }
 
-impl OAMDMA {
+impl OamDma {
     pub fn transfer(&mut self, cur_cyc: usize, cpu_bus: &mut Bus) {
         if self.synched {
             if cur_cyc % 2 == 0 {
@@ -62,7 +62,7 @@ impl OAMDMA {
 }
 
 // This interface is exposed for OAMDMA (address $4014 on CPU Bus)
-impl Device for OAMDMA {
+impl Device for OamDma {
     fn read(&mut self, _address: u16) -> u8 {
         eprintln!("can not read from OAMDMA ($4014)");
         0x00

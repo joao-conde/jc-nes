@@ -1,10 +1,10 @@
 use crate::{
     bus::Device,
-    cpu::{Status, CPU},
+    cpu::{Cpu, Status},
 };
 
 /// Instructions
-impl CPU {
+impl Cpu {
     pub(in crate::cpu) fn adc(&mut self, address: u16) {
         let operand = self.bus.read(address);
         let tmp = self.a as u16 + operand as u16 + self.status.carry as u16;
@@ -435,7 +435,7 @@ impl CPU {
 }
 
 /// Unofficial instructions
-impl CPU {
+impl Cpu {
     pub(in crate::cpu) fn dcp(&mut self, address: u16) {
         let operand = self.bus.read(address).wrapping_sub(1);
         self.bus.write(address, operand);
