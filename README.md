@@ -1,6 +1,6 @@
 # Nintendo Entertainment System (NES) emulator
 
-Nintendo Entertainment System (NES) emulator written in Rust.
+Nintendo Entertainment System (NES) emulator written in Rust 🦀.
 
 <p align="center">
   <img width="40%" height="40%" align="center" src="https://user-images.githubusercontent.com/16060539/135888265-476158f3-48a2-47b2-b115-1457616983f1.gif">
@@ -14,7 +14,7 @@ Nintendo Entertainment System (NES) emulator written in Rust.
 
 # Running
 
-See the [`bin`](./bin) folder.
+See the [`examples`](./examples) folder.
 
 # API Reference
 

@@ -1,6 +1,6 @@
 # Desktop NES emulator
 
-Utilizes the `jc-nes` crate and the [SDL crate](https://github.com/Rust-SDL2/rust-sdl2) to build a desktop application.
+Utilizes the [`jc-nes`](../../jc-nes/) crate and the [SDL crate](https://github.com/Rust-SDL2/rust-sdl2) to build a desktop application.
 
 ## Running
 
@@ -8,7 +8,7 @@ Utilizes the `jc-nes` crate and the [SDL crate](https://github.com/Rust-SDL2/rus
 $ cargo run --release
 ```
 
-And then drag and drop your game's ROM file.
+Drag and drop your ROM to play.
 
 ## Player Controls
 

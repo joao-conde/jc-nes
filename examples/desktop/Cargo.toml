@@ -6,12 +6,12 @@ edition = "2018"
 description = "NES Emulator Desktop Application"
 license = "MIT"
 
+[dependencies.jc-nes]
+path = "../../jc-nes"
+
 [dependencies.sdl2]
 version = "0.34.5"
 features = ["bundled", "static-link"]
-
-[dependencies.jc-nes]
-path = "../.."
 
 [profile.release]
 debug = false
