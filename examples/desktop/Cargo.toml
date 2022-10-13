@@ -10,7 +10,7 @@ license = "MIT"
 path = "../../jc-nes"
 
 [dependencies.sdl2]
-version = "0.34.5"
+version = "0.35.2"
 features = ["bundled", "static-link"]
 
 [profile.release]
