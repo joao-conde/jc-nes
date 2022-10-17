@@ -2,7 +2,7 @@ use crate::bus::{Bus, Device};
 
 #[derive(Default)]
 pub struct OamDma {
-    pub(in crate) dma_in_progress: bool,
+    pub(crate) dma_in_progress: bool,
     synched: bool,
     buffer: u8,
     page: u8,

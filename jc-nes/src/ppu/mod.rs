@@ -22,12 +22,12 @@ pub const WIDTH: u16 = 256;
 pub const HEIGHT: u16 = 240;
 
 pub struct Ppu {
-    pub(in crate) frame_complete: bool,
-    pub(in crate) screen: [u8; WIDTH as usize * HEIGHT as usize * 3],
-    pub(in crate) raise_nmi: bool,
-    pub(in crate) bus: Bus,
-    pub(in crate) oam: Oam,
-    pub(in crate) mirror_mode: MirrorMode,
+    pub(crate) frame_complete: bool,
+    pub(crate) screen: [u8; WIDTH as usize * HEIGHT as usize * 3],
+    pub(crate) raise_nmi: bool,
+    pub(crate) bus: Bus,
+    pub(crate) oam: Oam,
+    pub(crate) mirror_mode: MirrorMode,
 
     // current screen pixel
     cycle: u16,

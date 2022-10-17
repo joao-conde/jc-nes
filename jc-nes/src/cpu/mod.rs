@@ -20,7 +20,7 @@ pub struct Cpu {
     /// Implementation specific
     cycle: u8,
     extra_cycles: bool,
-    pub(in crate) bus: Bus,
+    pub(crate) bus: Bus,
 }
 
 impl Cpu {

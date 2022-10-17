@@ -1,12 +1,12 @@
 pub mod mappers;
 
 pub struct Cartridge {
-    pub(in crate) prg_rom: Vec<u8>,
-    pub(in crate) chr_rom: Vec<u8>,
-    pub(in crate) mapper_id: usize,
-    pub(in crate) prg_banks: usize,
-    pub(in crate) chr_banks: usize,
-    pub(in crate) mirror: MirrorMode,
+    pub(crate) prg_rom: Vec<u8>,
+    pub(crate) chr_rom: Vec<u8>,
+    pub(crate) mapper_id: usize,
+    pub(crate) prg_banks: usize,
+    pub(crate) chr_banks: usize,
+    pub(crate) mirror: MirrorMode,
 }
 
 #[derive(Clone, Copy)]
