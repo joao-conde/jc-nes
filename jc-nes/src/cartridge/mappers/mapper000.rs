@@ -13,7 +13,7 @@ pub struct ChrMapper {
 pub fn new_mapper(cartridge: Cartridge) -> (PrgMapper, ChrMapper) {
     let prg_mapper = PrgMapper {
         prg_mem: cartridge.prg_rom,
-        prg_banks: cartridge.prg_banks as usize,
+        prg_banks: cartridge.prg_banks,
     };
     let chr_mapper = ChrMapper {
         chr_mem: if cartridge.chr_banks == 0 {

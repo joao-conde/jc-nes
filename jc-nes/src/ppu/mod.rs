@@ -274,9 +274,9 @@ impl Ppu {
                 // println!("bgpix: 0x{:02X} fgpix: 0x{:02X}", bg_pixel, fg_pixel);
             }
 
-            self.screen[tex_addr as usize] = PALETTE[color_i as usize].0;
-            self.screen[tex_addr as usize + 1] = PALETTE[color_i as usize].1;
-            self.screen[tex_addr as usize + 2] = PALETTE[color_i as usize].2;
+            self.screen[tex_addr] = PALETTE[color_i as usize].0;
+            self.screen[tex_addr + 1] = PALETTE[color_i as usize].1;
+            self.screen[tex_addr + 2] = PALETTE[color_i as usize].2;
         }
 
         self.cycle += 1;

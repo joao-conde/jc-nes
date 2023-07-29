@@ -4,14 +4,12 @@ use std::{cell::RefCell, rc::Rc};
 
 pub struct PrgMapper {
     cur_bank: SharedMut<usize>,
-
     prg_mem: Vec<u8>,
     prg_banks: usize,
 }
 
 pub struct ChrMapper {
     cur_bank: SharedMut<usize>,
-
     chr_mem: Vec<u8>,
 }
 
@@ -21,7 +19,7 @@ pub fn new_mapper(cartridge: Cartridge) -> (PrgMapper, ChrMapper) {
     let prg_mapper = PrgMapper {
         cur_bank: cur_bank.clone(),
         prg_mem: cartridge.prg_rom,
-        prg_banks: cartridge.prg_banks as usize,
+        prg_banks: cartridge.prg_banks,
     };
     let chr_mapper = ChrMapper {
         cur_bank,
@@ -58,7 +56,7 @@ impl Device for PrgMapper {
 impl Device for ChrMapper {
     fn read(&mut self, address: u16) -> u8 {
         let address = *self.cur_bank.borrow() * 0x2000 + address as usize;
-        self.chr_mem[address as usize]
+        self.chr_mem[address]
     }
 
     fn write(&mut self, _address: u16, _data: u8) {}

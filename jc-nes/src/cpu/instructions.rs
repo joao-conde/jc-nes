@@ -408,7 +408,7 @@ impl Cpu {
     }
 
     pub(in crate::cpu) fn tsx(&mut self, _imp: ()) {
-        self.x = self.sp as u8;
+        self.x = self.sp;
         self.status.zero = self.x == 0;
         self.status.negative = (self.x & 0x80) >> 7 == 1;
         self.pc += 1;

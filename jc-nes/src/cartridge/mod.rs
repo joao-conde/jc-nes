@@ -43,10 +43,10 @@ impl Cartridge {
             1 => {
                 let index = 16 + if has_trainer { 512 } else { 0 };
 
-                let prg_len = prg_banks as usize * 16 * 1024;
+                let prg_len = prg_banks * 16 * 1024;
                 let prg_rom = rom[index..index + prg_len].to_vec();
 
-                let chr_len = chr_banks as usize * 8 * 1024;
+                let chr_len = chr_banks * 8 * 1024;
                 let chr_rom = rom[index + prg_len..index + prg_len + chr_len].to_vec();
 
                 (prg_rom, chr_rom)
