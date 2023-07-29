@@ -1,19 +1,20 @@
 [package]
-name = "desktop"
+name = "jc-nes-desktop"
 version = "1.0.0"
 authors = ["João Conde <joaodiasconde@gmail.com>"]
 edition = "2018"
-description = "NES Emulator Desktop Application"
+description = "NES Desktop Emulator in Rust"
 license = "MIT"
+keywords = ["NES", "emulator", "rust", "sdl"]
 
 [dependencies.jc-nes]
-path = "../../jc-nes"
+path = "../jc-nes"
 
 [dependencies.sdl2]
-version = "0.35.2"
+version = "0.35"
 features = ["bundled", "static-link"]
 
 [profile.release]
-debug = false
 lto = true
+debug = false
 opt-level = 3

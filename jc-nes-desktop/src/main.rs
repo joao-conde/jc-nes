@@ -2,7 +2,7 @@ use jc_nes::{Button, Nes, SCREEN_HEIGHT, SCREEN_WIDTH};
 use sdl2::{event::Event, keyboard::Keycode, pixels::PixelFormatEnum};
 use std::{fs::File, io::Read};
 
-const SYSTEM_HZ: u32 = 240;
+const SYSTEM_HZ: u32 = 320;
 const SCREEN_SCALE: f32 = 3.75;
 const TITLE: &str = "Drag and drop the ROM file to play";
 

@@ -7,3 +7,6 @@ description = "NES Emulator in Rust"
 repository = "https://github.com/joao-conde/jc-nes"
 license = "MIT"
 keywords = ["Nintendo Entertainment System", "NES", "emulator", "rust"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
