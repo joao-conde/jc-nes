@@ -81,7 +81,6 @@ fn main() {
         let current_time = timer_subsystem.ticks();
         let delta_t = current_time - last_update_time;
         if game_loaded && tick_interval > delta_t {
-            // 1.79MHz / 240Hz
             (0..8).for_each(|_| nes.clock());
             if let Some(screen) = nes.get_frame() {
                 timer_subsystem.delay(tick_interval - delta_t);
