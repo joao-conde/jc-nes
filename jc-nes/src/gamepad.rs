@@ -1,3 +1,6 @@
+#[cfg(feature = "web")]
+use wasm_bindgen::prelude::*;
+
 use crate::bus::Device;
 
 #[derive(Default)]
@@ -6,6 +9,7 @@ pub struct Gamepad {
     state_snapshot: u8,
 }
 
+#[cfg_attr(feature = "web", wasm_bindgen)]
 pub enum Button {
     Right,
     Left,

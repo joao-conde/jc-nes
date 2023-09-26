@@ -1,3 +1,8 @@
+#[cfg(feature = "web")]
+use wasm_bindgen::prelude::*;
+
+use console_error_panic_hook;
+
 use crate::bus::{Bus, Device, SharedMut};
 use crate::cartridge::mappers;
 use crate::cartridge::Cartridge;
@@ -5,11 +10,12 @@ use crate::cpu::Cpu;
 use crate::gamepad::{Button, Gamepad};
 use crate::ppu::dma::OamDma;
 use crate::ppu::palette::Palette;
-use crate::ppu::{Ppu, HEIGHT, WIDTH};
+use crate::ppu::{Ppu, WIDTH, HEIGHT};
 use crate::ram::Ram;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+#[cfg_attr(feature = "web", wasm_bindgen)]
 pub struct Nes {
     cpu: Cpu,
     ppu: SharedMut<Ppu>,
@@ -19,8 +25,12 @@ pub struct Nes {
     cycles: usize,
 }
 
+#[cfg_attr(feature = "web", wasm_bindgen)]
 impl Nes {
+    #[cfg_attr(feature = "web", wasm_bindgen(constructor))]
     pub fn new() -> Nes {
+        console_error_panic_hook::set_once();
+
         // build PPU bus
         let mut ppu_bus = Bus::default();
         let nametbl1 = Ram::new(vec![0u8; 1024]);
