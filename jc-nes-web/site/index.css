@@ -1,0 +1,111 @@
+@font-face {
+    font-family: 'M20';
+    src: url(./public/fonts/m20.ttf);
+}
+
+* {
+    font-family: 'M20';
+    color: #50CB93;
+}   
+
+html, body {
+    margin: 0;
+    height: 100%;
+    background: #1B1A17;
+}
+
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+main {
+    display: flex;
+    padding: 5em 2em;
+    justify-content: center;
+}
+
+main > div {
+    margin: 0 1em;
+}
+
+h1 {
+    margin: 0 0 0.25em 0;
+    font-size: 3rem;
+    font-weight: normal;
+}
+
+canvas {
+    margin-bottom: 0.5em;
+    border: 3px dashed #50CB93;
+}
+
+select {
+    display: flex;
+    background: transparent;
+    margin-left: -0.3em;
+    color: #50CB93;
+    border: unset;
+    font-size: 20px;
+    width: 100%;
+    margin-top: 0.5em;
+}
+
+select option {
+    font-size: 18px;
+    background: #1B1A17;
+}
+
+img {
+    width: 28px;
+    opacity: 0.3;
+}
+
+img:hover {
+    transition: all 0.1s ease;
+    opacity: 1;
+}
+
+a {
+    text-decoration: none;
+}
+
+#keyboard {
+    display: grid;
+    text-align: center;
+    grid-template-columns: repeat(4, 3em);
+    gap: 1em;
+    margin-bottom: 1em;
+}
+
+select:focus {
+    outline: none !important;
+}
+
+.left-sidebar {
+    width: 240px;
+}
+
+.right-sidebar > div:first-child {
+    height: 48px;
+}
+
+.key {
+    padding: 1em;
+    width: 1em;
+    height: 1em;
+    color: #50CB93;
+    outline: 2px solid #50CB93;
+    opacity: 0.3;
+}
+
+.key-overlay > div:first-child {
+    margin-bottom: 1em;
+}
+
+.separator {
+    width: 100%;
+    margin: 0.5em 0 1.5em -0.1em;
+    border-top: 3px dashed #50CB93;
+}

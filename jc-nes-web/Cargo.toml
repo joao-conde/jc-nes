@@ -1,0 +1,24 @@
+[package]
+name = "jc-nes-web"
+version = "1.0.0"
+authors = ["João Conde <joaodiasconde@gmail.com>"]
+edition = "2018"
+description = "CHIP-8 Web Emulator in Rust"
+license = "MIT"
+keywords = ["CHIP-8", "emulator", "rust", "wasm"]
+
+[dependencies.jc-nes]
+path = "../jc-nes"
+
+[dependencies.salvo]
+version = "0.45"
+features = ["serve-static"]
+
+[dependencies.tokio]
+version = "1.29"
+features = ["macros"]
+
+[profile.release]
+lto = true
+debug = false
+opt-level = 3
