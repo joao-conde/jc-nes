@@ -7,6 +7,7 @@ mod status;
 use crate::cpu::status::Status;
 use crate::cpu::bus::CpuBus;
 use crate::device::Device;
+use crate::ppu::Ppu;
 
 const STACK_BASE: u16 = 0x0100;
 
@@ -26,9 +27,9 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new() -> Cpu {
+    pub fn new(ppu: Ppu) -> Cpu {
         Cpu {
-            bus: CpuBus::new(),
+            bus: CpuBus::new(ppu),
             a: 0,
             x: 0,
             y: 0,

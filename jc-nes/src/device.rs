@@ -16,3 +16,13 @@ impl<T: Device> Device for SharedMut<T> {
         self.borrow_mut().write(address, data);
     }
 }
+
+impl<T: Device + ?Sized> Device for Box<T> {
+    fn read(&mut self, address: u16) -> u8 {
+        self.as_mut().read(address)
+    }
+
+    fn write(&mut self, address: u16, data: u8) {
+        self.as_mut().write(address, data);
+    }
+}

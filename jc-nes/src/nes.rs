@@ -1,7 +1,4 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use crate::device::{Device, SharedMut};
+use crate::device::Device;
 use crate::cartridge::mappers;
 use crate::cartridge::Cartridge;
 use crate::cpu::Cpu;
@@ -10,40 +7,22 @@ use crate::ppu::{Ppu, HEIGHT, WIDTH};
 
 pub struct Nes {
     cpu: Cpu,
-    ppu: Ppu,
     cycles: usize,
 }
 
 impl Nes {
     pub fn new() -> Nes {
-        // build PPU bus
-
         let ppu = Ppu::new();
-
-        // build CPU bus
-
-        // (APU address space and others)
-        // cpu_bus.connect(0x4000..=0x4013, Ram::new(vec![0u8; 32]));
-        // cpu_bus.connect(0x4015..=0x4015, Ram::new(vec![0u8; 32]));
-        // cpu_bus.connect(0x4018..=0x401F, Ram::new(vec![0u8; 32]));
-        // cpu_bus.connect(0x4020..=0x7FFF, Ram::new(vec![0u8; 15 * 1024]));
-
-        // add mirrors
-        // cpu_bus.add_mirror(0x0000..=0x1FFF, 0x07FF);
-        // cpu_bus.add_mirror(0x2000..=0x3FFF, 0x2007);
-
-        let cpu = Cpu::new();
-
+        let cpu = Cpu::new(ppu);
         Nes {
             cpu,
-            ppu,
             cycles: 0,
         }
     }
 
     pub fn load_rom(&mut self, rom: &[u8]) {
         let cartridge = Cartridge::new(rom);
-        self.ppu.mirror_mode = cartridge.mirror;
+        self.cpu.bus.ppu.mirror_mode = cartridge.mirror;
         match cartridge.mapper_id {
             0 => self.connect_mapper(mappers::mapper000::new_mapper(cartridge)),
             3 => self.connect_mapper(mappers::mapper003::new_mapper(cartridge)),
@@ -52,18 +31,20 @@ impl Nes {
     }
 
     pub fn clock(&mut self) {
-        self.ppu.clock();
+        self.cpu.bus.ppu.clock();
+
+        let ppu = &mut self.cpu.bus.ppu;
 
         if self.cycles % 3 == 0 {
-            if self.ppu.bus.dma_controller.dma_in_progress {
-                self.ppu.bus.dma_controller.transfer(self.cycles, &mut self.cpu.bus);
+            if ppu.bus.dma_controller.dma_in_progress {
+                ppu.bus.dma_controller.transfer(self.cycles, &mut self.cpu.bus);
             } else {
                 self.cpu.clock();
             }
         }
 
-        if self.ppu.raise_nmi {
-            self.ppu.raise_nmi = false;
+        if self.cpu.bus.ppu.raise_nmi {
+            self.cpu.bus.ppu.raise_nmi = false;
             self.cpu.nmi();
         }
 
@@ -72,13 +53,13 @@ impl Nes {
 
     pub fn reset(&mut self) {
         self.cpu.reset();
-        self.ppu.reset();
+        self.cpu.bus.ppu.reset();
     }
 
     pub fn get_frame(&mut self) -> Option<[u8; WIDTH as usize * HEIGHT as usize * 3]> {
-        if self.ppu.frame_complete {
-            self.ppu.frame_complete = false;
-            Some(self.ppu.screen)
+        if self.cpu.bus.ppu.frame_complete {
+            self.cpu.bus.ppu.frame_complete = false;
+            Some(self.cpu.bus.ppu.screen)
         } else {
             None
         }
@@ -88,7 +69,7 @@ impl Nes {
         match controller {
             1 => self.cpu.bus.gamepad1.btn_down(btn),
             2 => self.cpu.bus.gamepad2.btn_down(btn),
-            _ => eprintln!("expected either controller 1 or 2"),
+            _ => eprintln!("expected either controller '1' or '2'"),
         }
     }
 
@@ -105,13 +86,7 @@ impl Nes {
         (prg_mapper, chr_mapper): (impl Device + 'static, impl Device + 'static),
     ) {
         self.cpu.bus.prg_mapper = Some(Box::new(prg_mapper));
-        self.cpu.bus.chr_mapper = Some(Box::new(chr_mapper));
-
-        // self.cpu.bus.connect(0x8000..=0xFFFF, prg_mapper);
-        // self.ppu
-            
-        //     .bus
-        //     .connect(0x0000..=0x1FFF, chr_mapper);
+        self.cpu.bus.ppu.bus.chr_mapper = Some(Box::new(chr_mapper));
     }
 }
 
