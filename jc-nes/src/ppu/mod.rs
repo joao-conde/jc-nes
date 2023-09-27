@@ -1,12 +1,14 @@
 pub mod dma;
 pub mod palette;
 
+mod bus;
 mod control;
 mod mask;
 mod oam;
 mod status;
 mod vram_address;
 
+use crate::ppu::bus::PpuBus;
 use crate::ppu::control::Control;
 use crate::ppu::mask::Mask;
 use crate::ppu::oam::{Oam, Sprite};
@@ -14,7 +16,7 @@ use crate::ppu::palette::PALETTE;
 use crate::ppu::status::Status;
 use crate::ppu::vram_address::VRAMAddress;
 use crate::{
-    bus::{Bus, Device},
+    device::Device,
     cartridge::MirrorMode,
 };
 
@@ -25,7 +27,7 @@ pub struct Ppu {
     pub(crate) frame_complete: bool,
     pub(crate) screen: [u8; WIDTH as usize * HEIGHT as usize * 3],
     pub(crate) raise_nmi: bool,
-    pub(crate) bus: Bus,
+    pub(crate) bus: PpuBus,
     pub(crate) oam: Oam,
     pub(crate) mirror_mode: MirrorMode,
 
@@ -67,9 +69,9 @@ pub struct Ppu {
 }
 
 impl Ppu {
-    pub fn new(bus: Bus) -> Ppu {
+    pub fn new() -> Ppu {
         Ppu {
-            bus,
+            bus: PpuBus::new(),
             cycle: 0,
             scanline: 0,
             frame_complete: false,

@@ -1,4 +1,5 @@
-use crate::bus::{Bus, Device};
+use crate::device::Device;
+use crate::cpu::bus::CpuBus;
 
 #[derive(Default)]
 pub struct OamDma {
@@ -10,7 +11,7 @@ pub struct OamDma {
 }
 
 impl OamDma {
-    pub fn transfer(&mut self, cur_cyc: usize, cpu_bus: &mut Bus) {
+    pub fn transfer(&mut self, cur_cyc: usize, cpu_bus: &mut CpuBus) {
         if self.synched {
             if cur_cyc % 2 == 0 {
                 // read byte from mem based on page

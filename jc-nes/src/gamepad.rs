@@ -1,4 +1,4 @@
-use crate::bus::Device;
+use crate::device::Device;
 
 #[derive(Default)]
 pub struct Gamepad {

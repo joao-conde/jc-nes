@@ -1,4 +1,4 @@
-use crate::bus::Device;
+use crate::device::Device;
 use crate::cartridge::Cartridge;
 
 pub struct PrgMapper {

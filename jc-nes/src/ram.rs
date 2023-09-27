@@ -1,4 +1,4 @@
-use crate::bus::Device;
+use crate::device::Device;
 
 pub struct Ram {
     mem: Vec<u8>,

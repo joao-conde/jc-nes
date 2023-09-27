@@ -1,4 +1,4 @@
-use crate::bus::{Device, SharedMut};
+use crate::device::{Device, SharedMut};
 use crate::cartridge::Cartridge;
 use std::{cell::RefCell, rc::Rc};
 

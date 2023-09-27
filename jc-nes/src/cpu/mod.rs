@@ -1,13 +1,15 @@
+pub mod bus;
+
 mod addressing;
 mod instructions;
 mod status;
 
-use crate::bus::{Bus, Device};
 use crate::cpu::status::Status;
+use crate::cpu::bus::CpuBus;
+use crate::device::Device;
 
 const STACK_BASE: u16 = 0x0100;
 
-#[derive(Default)]
 pub struct Cpu {
     /// CPU registers
     a: u8,
@@ -20,14 +22,21 @@ pub struct Cpu {
     /// Implementation specific
     cycle: u8,
     extra_cycles: bool,
-    pub(crate) bus: Bus,
+    pub(crate) bus: CpuBus,
 }
 
 impl Cpu {
-    pub fn new(bus: Bus) -> Cpu {
+    pub fn new() -> Cpu {
         Cpu {
-            bus,
-            ..Default::default()
+            bus: CpuBus::new(),
+            a: 0,
+            x: 0,
+            y: 0,
+            pc: 0,
+            sp: 0,
+            status: Status::default(),
+            cycle: 0,
+            extra_cycles: false
         }
     }
 

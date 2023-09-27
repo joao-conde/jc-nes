@@ -1,6 +1,5 @@
 use crate::{
-    bus::Device,
-    cpu::{Cpu, Status},
+    cpu::{Cpu, Status}, device::Device,
 };
 
 /// Instructions
