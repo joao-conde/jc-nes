@@ -12,7 +12,7 @@ path = "../jc-nes"
 
 [dependencies.sdl2]
 version = "0.35"
-features = ["bundled", "static-link"]
+features = ["bundled"]
 
 [profile.release]
 lto = true
