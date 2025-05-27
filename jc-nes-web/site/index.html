@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+   <title>NES Emulator</title>
+   <meta charset="utf-8" />
+   <link rel="stylesheet" type="text/css" href="./index.css">
+</head>
+
+<body>
+   <main>
+      <div class="left-sidebar" />
+      </div>
+
+      <div class="main-wrapper">
+         <h1>NES</h1>
+
+         <canvas id="scaled" width="256" height="240"></canvas>
+
+         <div class="actions">
+            <a href="https://github.com/joao-conde/jc-nes">
+               <img src="./public/icons/github.png">
+            </a>
+            <a href="https://ko-fi.com/joaoconde">
+               <img src="./public/icons/kofi.png">
+            </a>
+         </div>
+      </div>
+
+      <div class="right-sidebar">
+         <div></div>
+
+         <select id="roms">
+            <option value="" disabled selected>Choose a ROM...</option>
+         </select>
+
+         <div class="separator"></div>
+
+         <div class="key-overlay">
+            <div>Keyboard</div>
+            <div id="keyboard"></div>
+         </div>
+      </div>
+   </main>
+
+   <script type="module" src="./index.js"></script>
+</body>
+
+</html>
