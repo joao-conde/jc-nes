@@ -1,0 +1,25 @@
+name: Deploy Web Workflow
+on:
+  push:
+    branches:
+      - master
+env:
+  LIB: jc-nes
+  WEB: jc-nes-web
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - run: wasm-pack build ${{ env.LIB }} --release --target=web --no-typescript -d ../${{ env.WEB }}/site/wasmpack -- --features web
+      - run: rm ${{ env.WEB }}/site/wasmpack/.gitignore ${{ env.WEB }}/site/wasmpack/package.json
+      - run: cp ${{ env.WEB }}/site/wasmpack/* ${{ env.WEB }}/site
+      - run: rm -rf ${{ env.WEB }}/site/wasmpack
+      - uses: s0/git-publish-subdir-action@v2.6.0
+        env:
+          REPO: self
+          BRANCH: gh-pages
+          FOLDER: ${{ env.WEB }}/site
+          MESSAGE: "{sha} {msg}"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
