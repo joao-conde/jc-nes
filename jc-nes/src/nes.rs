@@ -5,11 +5,15 @@ use crate::cpu::Cpu;
 use crate::gamepad::{Button, Gamepad};
 use crate::ppu::dma::OamDma;
 use crate::ppu::palette::Palette;
-use crate::ppu::{Ppu, HEIGHT, WIDTH};
+use crate::ppu::Ppu;
 use crate::ram::Ram;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+#[cfg(feature = "web")]
+use wasm_bindgen::prelude::*;
+
+#[cfg_attr(feature = "web", wasm_bindgen)]
 pub struct Nes {
     cpu: Cpu,
     ppu: SharedMut<Ppu>,
@@ -19,7 +23,9 @@ pub struct Nes {
     cycles: usize,
 }
 
+#[cfg_attr(feature = "web", wasm_bindgen)]
 impl Nes {
+    #[cfg_attr(feature = "web", wasm_bindgen(constructor))]
     pub fn new() -> Nes {
         // build PPU bus
         let mut ppu_bus = Bus::default();
@@ -113,10 +119,23 @@ impl Nes {
         self.ppu.borrow_mut().reset();
     }
 
-    pub fn get_frame(&mut self) -> Option<[u8; WIDTH as usize * HEIGHT as usize * 3]> {
+    #[cfg(not(feature = "web"))]
+    pub fn get_frame(
+        &mut self,
+    ) -> Option<[u8; crate::ppu::WIDTH as usize * crate::ppu::HEIGHT as usize * 3]> {
         if self.ppu.borrow().frame_complete {
             self.ppu.borrow_mut().frame_complete = false;
             Some(self.ppu.borrow().screen)
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "web")]
+    pub fn get_frame(&mut self) -> Option<Vec<u8>> {
+        if self.ppu.borrow().frame_complete {
+            self.ppu.borrow_mut().frame_complete = false;
+            Some(self.ppu.borrow().screen.to_vec())
         } else {
             None
         }

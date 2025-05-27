@@ -10,3 +10,9 @@ keywords = ["Nintendo Entertainment System", "NES", "emulator", "rust"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[features]
+web = ["wasm-bindgen"]
+
+[dependencies]
+wasm-bindgen = { version = "0.2", optional = true }
