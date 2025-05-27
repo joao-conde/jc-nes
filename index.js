@@ -4,8 +4,8 @@ import { listROMs } from "./roms.js";
 import { listKeys } from "./keys.js";
 import { play, clock, render, onKeyDown, onKeyUp } from "./handlers.js";
 
-const FPS = 10_000;
-const CLOCK_HZ = 10_000;
+const FPS = 60;
+const CLOCK_HZ = 10_000_000;
 
 (async () => {
     // init wasm module
