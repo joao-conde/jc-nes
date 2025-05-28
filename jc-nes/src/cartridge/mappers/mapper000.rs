@@ -1,11 +1,13 @@
 use crate::bus::Device;
 use crate::cartridge::Cartridge;
 
+#[derive(Clone)]
 pub struct PrgMapper {
     prg_banks: usize,
     prg_mem: Vec<u8>,
 }
 
+#[derive(Clone)]
 pub struct ChrMapper {
     chr_mem: Vec<u8>,
 }

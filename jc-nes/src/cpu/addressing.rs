@@ -1,4 +1,4 @@
-use crate::{bus::Device, cpu::Cpu};
+use crate::cpu::Cpu;
 
 /// Addressing Modes
 impl Cpu {

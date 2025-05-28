@@ -1,7 +1,4 @@
-use crate::{
-    bus::Device,
-    cpu::{Cpu, Status},
-};
+use crate::cpu::{Cpu, Status};
 
 /// Instructions
 impl Cpu {
@@ -30,7 +27,7 @@ impl Cpu {
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn asl_acc(&mut self, _acc: ()) {
+    pub(in crate::cpu) fn asl_acc(&mut self, __acc: ()) {
         self.status.carry = self.is_negative(self.a);
         self.a <<= 1;
         self.status.zero = self.a == 0;
@@ -101,22 +98,22 @@ impl Cpu {
         self.relative_jump(self.status.overflow, opcode as i8);
     }
 
-    pub(in crate::cpu) fn clc(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn clc(&mut self, __imp: ()) {
         self.status.carry = false;
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn cld(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn cld(&mut self, __imp: ()) {
         self.status.decimal = false;
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn cli(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn cli(&mut self, __imp: ()) {
         self.status.interrupt = false;
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn clv(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn clv(&mut self, __imp: ()) {
         self.status.overflow = false;
         self.pc += 1;
     }
@@ -153,14 +150,14 @@ impl Cpu {
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn dex(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn dex(&mut self, __imp: ()) {
         self.x = self.x.wrapping_sub(1);
         self.status.zero = self.x == 0;
         self.status.negative = (self.x & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn dey(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn dey(&mut self, __imp: ()) {
         self.y = self.y.wrapping_sub(1);
         self.status.zero = self.y == 0;
         self.status.negative = (self.y & 0x80) >> 7 == 1;
@@ -184,14 +181,14 @@ impl Cpu {
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn inx(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn inx(&mut self, __imp: ()) {
         self.x = self.x.wrapping_add(1);
         self.status.zero = self.x == 0;
         self.status.negative = (self.x & 0x80) >> 7 == 1;
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn iny(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn iny(&mut self, __imp: ()) {
         self.y = self.y.wrapping_add(1);
         self.status.zero = self.y == 0;
         self.status.negative = (self.y & 0x80) >> 7 == 1;
@@ -234,7 +231,7 @@ impl Cpu {
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn lsr_acc(&mut self, _acc: ()) {
+    pub(in crate::cpu) fn lsr_acc(&mut self, __acc: ()) {
         self.status.carry = self.a & 0x01 == 1;
         self.a >>= 1;
         self.status.negative = self.is_negative(self.a);
@@ -252,7 +249,7 @@ impl Cpu {
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn nop(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn nop(&mut self, __imp: ()) {
         self.pc += 1;
     }
 
@@ -286,7 +283,7 @@ impl Cpu {
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn rol_acc(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn rol_acc(&mut self, __imp: ()) {
         let bit0 = self.status.carry as u8;
         self.status.carry = self.is_negative(self.a);
         self.a <<= 1;
@@ -308,7 +305,7 @@ impl Cpu {
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn ror_acc(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn ror_acc(&mut self, __imp: ()) {
         let bit7 = self.status.carry as u8;
         self.status.carry = self.a & 0x01 == 1;
         self.a >>= 1;
@@ -363,17 +360,17 @@ impl Cpu {
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn sec(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn sec(&mut self, __imp: ()) {
         self.status.carry = true;
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn sed(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn sed(&mut self, __imp: ()) {
         self.status.decimal = true;
         self.pc += 1;
     }
 
-    pub(in crate::cpu) fn sei(&mut self, _imp: ()) {
+    pub(in crate::cpu) fn sei(&mut self, __imp: ()) {
         self.status.interrupt = true;
         self.pc += 1;
     }

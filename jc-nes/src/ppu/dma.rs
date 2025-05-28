@@ -1,12 +1,12 @@
-use crate::bus::{Bus, Device};
+use crate::{bus::Device, cpu::bus::Bus};
 
 #[derive(Default)]
 pub struct OamDma {
     pub(crate) dma_in_progress: bool,
-    synched: bool,
-    buffer: u8,
-    page: u8,
-    transfered: u8,
+    pub synched: bool,
+    pub buffer: u8,
+    pub page: u8,
+    pub transfered: u8,
 }
 
 impl OamDma {
@@ -33,7 +33,7 @@ impl OamDma {
         }
     }
 
-    fn start(&mut self, page: u8) {
+    pub fn start(&mut self, page: u8) {
         self.dma_in_progress = true;
         self.synched = false;
         self.buffer = 0x00;
@@ -41,7 +41,7 @@ impl OamDma {
         self.page = page;
     }
 
-    fn stop(&mut self) {
+    pub fn stop(&mut self) {
         self.dma_in_progress = false;
         self.synched = false;
         self.buffer = 0x00;

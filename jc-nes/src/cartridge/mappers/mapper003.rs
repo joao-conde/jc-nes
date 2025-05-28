@@ -1,15 +1,17 @@
-use crate::bus::{Device, SharedMut};
+use crate::bus::Device;
 use crate::cartridge::Cartridge;
 use std::{cell::RefCell, rc::Rc};
 
+#[derive(Clone)]
 pub struct PrgMapper {
-    cur_bank: SharedMut<usize>,
+    cur_bank: Rc<RefCell<usize>>,
     prg_mem: Vec<u8>,
     prg_banks: usize,
 }
 
+#[derive(Clone)]
 pub struct ChrMapper {
-    cur_bank: SharedMut<usize>,
+    cur_bank: Rc<RefCell<usize>>,
     chr_mem: Vec<u8>,
 }
 

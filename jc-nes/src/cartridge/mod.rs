@@ -1,5 +1,6 @@
 pub mod mappers;
 
+#[derive(Clone)]
 pub struct Cartridge {
     pub(crate) prg_rom: Vec<u8>,
     pub(crate) chr_rom: Vec<u8>,

@@ -1,14 +1,18 @@
 mod addressing;
+pub mod bus;
 mod instructions;
 mod status;
 
-use crate::bus::{Bus, Device};
-use crate::cpu::status::Status;
+use std::{cell::RefCell, rc::Rc};
+
+use crate::{cpu::status::Status, ppu::Ppu};
+use bus::Bus;
 
 const STACK_BASE: u16 = 0x0100;
 
-#[derive(Default)]
 pub struct Cpu {
+    pub bus: bus::Bus,
+
     /// CPU registers
     a: u8,
     x: u8,
@@ -20,20 +24,27 @@ pub struct Cpu {
     /// Implementation specific
     cycle: u8,
     extra_cycles: bool,
-    pub(crate) bus: Bus,
 }
 
 impl Cpu {
-    pub fn new(bus: Bus) -> Cpu {
+    pub fn new(ppu: Rc<RefCell<Ppu>>) -> Self {
         Cpu {
-            bus,
-            ..Default::default()
+            bus: Bus::new(ppu),
+            a: 0,
+            x: 0,
+            y: 0,
+            pc: 0,
+            sp: 0,
+            status: Status::from(0),
+            cycle: 0,
+            extra_cycles: false,
         }
     }
 
     pub fn clock(&mut self) {
         if self.cycle == 0 {
             let opcode = self.bus.read(self.pc);
+            println!("processing opcode: 0x{opcode:04x}");
             self.process_opcode(opcode);
         }
         self.cycle -= 1;

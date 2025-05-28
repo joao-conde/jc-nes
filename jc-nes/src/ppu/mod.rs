@@ -1,3 +1,4 @@
+pub mod bus;
 pub mod dma;
 pub mod palette;
 
@@ -7,25 +8,24 @@ mod oam;
 mod status;
 mod vram_address;
 
+use crate::cartridge::MirrorMode;
+use crate::ppu::bus::Bus;
 use crate::ppu::control::Control;
 use crate::ppu::mask::Mask;
 use crate::ppu::oam::{Oam, Sprite};
 use crate::ppu::palette::PALETTE;
 use crate::ppu::status::Status;
 use crate::ppu::vram_address::VRAMAddress;
-use crate::{
-    bus::{Bus, Device},
-    cartridge::MirrorMode,
-};
 
 pub const WIDTH: u16 = 256;
 pub const HEIGHT: u16 = 240;
 
 pub struct Ppu {
+    pub bus: Bus,
+
     pub(crate) frame_complete: bool,
     pub(crate) screen: [u8; WIDTH as usize * HEIGHT as usize * 3],
     pub(crate) raise_nmi: bool,
-    pub(crate) bus: Bus,
     pub(crate) oam: Oam,
     pub(crate) mirror_mode: MirrorMode,
 
@@ -59,7 +59,7 @@ pub struct Ppu {
     bg_shifter_attrib_lo: u16,
     bg_shifter_attrib_hi: u16,
 
-    //foreground rendering
+    // foreground rendering
     scanline_sprites: Vec<Sprite>,
     sprite_shifter_pattern_lo: [u8; 8],
     sprite_shifter_pattern_hi: [u8; 8],
@@ -67,9 +67,9 @@ pub struct Ppu {
 }
 
 impl Ppu {
-    pub fn new(bus: Bus) -> Ppu {
+    pub fn new() -> Ppu {
         Ppu {
-            bus,
+            bus: Bus::new(),
             cycle: 0,
             scanline: 0,
             frame_complete: false,
@@ -411,6 +411,110 @@ impl Ppu {
         self.sprite_shifter_pattern_hi = [0u8; 8];
         self.sprite_zero_selected = false;
     }
+
+    pub fn read(&mut self, address: u16) -> u8 {
+        match address {
+            0x0000 => 0x00,
+            0x0001 => 0x00,
+            0x0002 => {
+                let data = u8::from(self.status) & 0xE0 | (self.buffer & 0x1F);
+                self.status.vertical_blank = false;
+                self.write_flip_flop = true;
+                data
+            }
+            0x0003 => 0x00,
+            0x0004 => self.oam.mem[self.oam.addr as usize],
+            0x0005 => 0x00,
+            0x0006 => 0x00,
+            0x0007 => {
+                let mut data = self.buffer;
+                self.buffer = self.bus.read(u16::from(self.vram_address));
+
+                if u16::from(self.vram_address) >= 0x3F00 {
+                    data = self.buffer;
+                    self.buffer = self.bus.read(u16::from(self.vram_address) - 0x1000);
+                };
+
+                let increment = if self.control.increment_mode { 32 } else { 1 };
+                self.vram_address = (u16::from(self.vram_address) + increment).into();
+                data
+            }
+            _ => panic!("unknown PPU read address {:04x}", address),
+        }
+    }
+
+    pub fn write(&mut self, address: u16, data: u8) {
+        match address {
+            0x0000 => {
+                self.control = Control::from(data);
+                self.tram_address.nametable_x = self.control.nametable_x as u8;
+                self.tram_address.nametable_y = self.control.nametable_y as u8;
+            }
+            0x0001 => {
+                self.mask = Mask::from(data);
+            }
+            0x0002 => (),
+            0x0003 => self.oam.addr = data,
+            0x0004 => {
+                self.oam.mem[self.oam.addr as usize] = data;
+                self.oam.addr = self.oam.addr.wrapping_add(1);
+            }
+            0x0005 => {
+                if self.write_flip_flop {
+                    self.fine_x = data & 0x07;
+                    self.tram_address.coarse_x = data >> 3;
+                    self.write_flip_flop = false;
+                } else {
+                    self.tram_address.fine_y = data & 0x07;
+                    self.tram_address.coarse_y = data >> 3;
+                    self.write_flip_flop = true;
+                }
+            }
+            0x0006 => {
+                if self.write_flip_flop {
+                    let addr: u16 =
+                        (u16::from(self.tram_address) & 0x00FF) | (u16::from(data) << 8);
+                    self.tram_address = addr.into();
+                    self.write_flip_flop = false;
+                } else {
+                    let addr: u16 = (u16::from(self.tram_address) & 0xFF00) | u16::from(data);
+                    self.tram_address = addr.into();
+                    self.vram_address = self.tram_address;
+                    self.write_flip_flop = true;
+                }
+            }
+            0x0007 => {
+                let vram_address = u16::from(self.vram_address);
+                self.bus.write(vram_address, data);
+
+                if vram_address < 0x3F00 {
+                    let nametable_i = ((vram_address - 0x2000) / 0x400) % 4;
+                    match self.mirror_mode {
+                        // nametables: [A, A, B, B]
+                        MirrorMode::Horizontal => {
+                            if nametable_i == 0 || nametable_i == 2 {
+                                self.bus.write(vram_address + 0x400, data);
+                            } else if nametable_i == 1 || nametable_i == 3 {
+                                self.bus.write(vram_address - 0x400, data);
+                            };
+                        }
+                        // nametables: [A, B, A, B]
+                        MirrorMode::Vertical => {
+                            if nametable_i == 0 || nametable_i == 1 {
+                                self.bus.write(vram_address + 0x800, data);
+                            } else if nametable_i == 2 || nametable_i == 3 {
+                                self.bus.write(vram_address - 0x800, data);
+                            };
+                        }
+                    }
+                }
+
+                let increment = if self.control.increment_mode { 32 } else { 1 } as u16;
+                self.vram_address = (u16::from(self.vram_address) + increment).into();
+            }
+            _ => panic!("unknown PPU write address {:04x}", address),
+        }
+    }
 }
 
 impl Ppu {
@@ -495,111 +599,5 @@ impl Ppu {
             } else {
                 0x00
             };
-    }
-}
-
-impl Device for Ppu {
-    fn read(&mut self, address: u16) -> u8 {
-        match address {
-            0x0000 => 0x00,
-            0x0001 => 0x00,
-            0x0002 => {
-                let data = u8::from(self.status) & 0xE0 | (self.buffer & 0x1F);
-                self.status.vertical_blank = false;
-                self.write_flip_flop = true;
-                data
-            }
-            0x0003 => 0x00,
-            0x0004 => self.oam.mem[self.oam.addr as usize],
-            0x0005 => 0x00,
-            0x0006 => 0x00,
-            0x0007 => {
-                let mut data = self.buffer;
-                self.buffer = self.bus.read(u16::from(self.vram_address));
-
-                if u16::from(self.vram_address) >= 0x3F00 {
-                    data = self.buffer;
-                    self.buffer = self.bus.read(u16::from(self.vram_address) - 0x1000);
-                };
-
-                let increment = if self.control.increment_mode { 32 } else { 1 };
-                self.vram_address = (u16::from(self.vram_address) + increment).into();
-                data
-            }
-            _ => 0x00,
-        }
-    }
-
-    fn write(&mut self, address: u16, data: u8) {
-        match address {
-            0x0000 => {
-                self.control = Control::from(data);
-                self.tram_address.nametable_x = self.control.nametable_x as u8;
-                self.tram_address.nametable_y = self.control.nametable_y as u8;
-            }
-            0x0001 => {
-                self.mask = Mask::from(data);
-            }
-            0x0002 => (),
-            0x0003 => self.oam.addr = data,
-            0x0004 => {
-                self.oam.mem[self.oam.addr as usize] = data;
-                self.oam.addr = self.oam.addr.wrapping_add(1);
-            }
-            0x0005 => {
-                if self.write_flip_flop {
-                    self.fine_x = data & 0x07;
-                    self.tram_address.coarse_x = data >> 3;
-                    self.write_flip_flop = false;
-                } else {
-                    self.tram_address.fine_y = data & 0x07;
-                    self.tram_address.coarse_y = data >> 3;
-                    self.write_flip_flop = true;
-                }
-            }
-            0x0006 => {
-                if self.write_flip_flop {
-                    let addr: u16 =
-                        (u16::from(self.tram_address) & 0x00FF) | (u16::from(data) << 8);
-                    self.tram_address = addr.into();
-                    self.write_flip_flop = false;
-                } else {
-                    let addr: u16 = (u16::from(self.tram_address) & 0xFF00) | u16::from(data);
-                    self.tram_address = addr.into();
-                    self.vram_address = self.tram_address;
-                    self.write_flip_flop = true;
-                }
-            }
-            0x0007 => {
-                let vram_address = u16::from(self.vram_address);
-                self.bus.write(vram_address, data);
-
-                if vram_address < 0x3F00 {
-                    let nametable_i = ((vram_address - 0x2000) / 0x400) % 4;
-                    match self.mirror_mode {
-                        //nametables: [A, A, B, B]
-                        MirrorMode::Horizontal => {
-                            if nametable_i == 0 || nametable_i == 2 {
-                                self.bus.write(vram_address + 0x400, data);
-                            } else if nametable_i == 1 || nametable_i == 3 {
-                                self.bus.write(vram_address - 0x400, data);
-                            };
-                        }
-                        //nametables: [A, B, A, B]
-                        MirrorMode::Vertical => {
-                            if nametable_i == 0 || nametable_i == 1 {
-                                self.bus.write(vram_address + 0x800, data);
-                            } else if nametable_i == 2 || nametable_i == 3 {
-                                self.bus.write(vram_address - 0x800, data);
-                            };
-                        }
-                    }
-                }
-
-                let increment = if self.control.increment_mode { 32 } else { 1 } as u16;
-                self.vram_address = (u16::from(self.vram_address) + increment).into();
-            }
-            _ => (),
-        }
     }
 }
