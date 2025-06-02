@@ -1,7 +1,7 @@
 use crate::bus::Device;
 
 pub struct Ram {
-    mem: Vec<u8>,
+    pub mem: Vec<u8>,
 }
 
 impl Ram {

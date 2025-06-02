@@ -4,7 +4,6 @@ use crate::ram::Ram;
 pub struct Bus {
     ram: Ram,
     pub prg_mapper: Option<Box<dyn Device>>,
-    pub chr_mapper: Option<Box<dyn Device>>,
     pub ppu_state: [u8; 8],
     pub ppu_diff: Option<PpuDiff>,
 }
@@ -19,10 +18,13 @@ impl Bus {
         Bus {
             ram: Ram::new(vec![0u8; 2 * 1024]),
             prg_mapper: None,
-            chr_mapper: None,
             ppu_state: [0u8; 8],
             ppu_diff: None,
         }
+    }
+
+    pub fn connect_prg_mapper(&mut self, mapper: impl Device + 'static) {
+        self.prg_mapper = Some(Box::new(mapper));
     }
 
     pub fn read(&mut self, address: u16) -> u8 {
@@ -62,7 +64,7 @@ impl Bus {
 
             0x2008..0x4000 => self.write(address % 0x8, data),
 
-            0x8000..=0xFFFF => todo!("PROGRAM MAPPER"),
+            0x8000..=0xFFFF => todo!("CPU WRITE TO PROGRAM MAPPER"),
 
             _ => panic!("out of bounds 0x{:08x}", address),
         };

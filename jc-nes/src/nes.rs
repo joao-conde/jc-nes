@@ -67,6 +67,7 @@ impl Nes {
                     }
                     None => (),
                 }
+                self.cpu.bus.ppu_diff = None;
             }
         }
 
@@ -127,15 +128,8 @@ impl Nes {
     ) {
         // self.bus.connect(0x8000..=0xFFFF, prg_mapper);
         // self.bus.connect(0x0000..=0x1FFF, chr_mapper);
-
-        let prg_mapper = Box::new(prg_mapper);
-        let chr_mapper = Box::new(chr_mapper);
-
-        self.cpu.bus.prg_mapper = Some(prg_mapper.clone());
-        self.cpu.bus.chr_mapper = Some(chr_mapper.clone());
-
-        self.ppu.bus.prg_mapper = Some(prg_mapper);
-        self.ppu.bus.chr_mapper = Some(chr_mapper);
+        self.cpu.bus.connect_prg_mapper(prg_mapper);
+        self.ppu.bus.connect_chr_mapper(chr_mapper);
     }
 }
 

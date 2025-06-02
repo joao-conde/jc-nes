@@ -85,6 +85,7 @@ impl Cpu {
 /// Opcode processing and execution and utility functions
 impl Cpu {
     fn process_opcode(&mut self, opcode: u8) {
+        println!("opcode: 0x{opcode:04x}");
         match opcode {
             // Official Opcodes
             0x00 => self.execute(Cpu::imp, Cpu::brk, 7, false),

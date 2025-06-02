@@ -10,7 +10,6 @@ pub struct Bus {
     nametbl3: Ram,
     nametbl4: Ram,
     palette: Palette,
-    pub prg_mapper: Option<Box<dyn Device>>,
     pub chr_mapper: Option<Box<dyn Device>>,
 }
 
@@ -24,15 +23,30 @@ impl Bus {
             nametbl3: Ram::new(vec![0u8; 1024]),
             nametbl4: Ram::new(vec![0u8; 1024]),
             palette: Palette::new(),
-            prg_mapper: None,
             chr_mapper: None,
         }
     }
 
+    pub fn connect_chr_mapper(&mut self, mapper: impl Device + 'static) {
+        self.chr_mapper = Some(Box::new(mapper));
+    }
+
     pub fn read(&mut self, address: u16) -> u8 {
         match address {
-            0x0000..0x1000 => self.patterntbl1.read(address),
-            0x1000..0x2000 => self.patterntbl2.read(address - 0x1000),
+            0x0000..0x1000 => {
+                if let Some(ref mut mapper) = self.chr_mapper {
+                    mapper.read(address)
+                } else {
+                    self.patterntbl1.read(address)
+                }
+            }
+            0x1000..0x2000 => {
+                if let Some(ref mut mapper) = self.chr_mapper {
+                    mapper.read(address)
+                } else {
+                    self.patterntbl2.read(address)
+                }
+            }
             0x2000..0x2400 => self.nametbl1.read(address - 0x2000),
             0x2400..0x2800 => self.nametbl2.read(address - 0x2400),
             0x2800..0x2C00 => self.nametbl3.read(address - 0x2800),
@@ -46,8 +60,20 @@ impl Bus {
 
     pub fn write(&mut self, address: u16, data: u8) {
         match address {
-            0x0000..0x1000 => self.patterntbl1.write(address, data),
-            0x1000..0x2000 => self.patterntbl2.write(address, data),
+            0x0000..0x1000 => {
+                if let Some(ref mut mapper) = self.chr_mapper {
+                    mapper.write(address, data)
+                } else {
+                    self.patterntbl1.write(address, data)
+                }
+            }
+            0x1000..0x2000 => {
+                if let Some(ref mut mapper) = self.chr_mapper {
+                    mapper.write(address, data)
+                } else {
+                    self.patterntbl2.write(address, data)
+                }
+            }
             0x2000..0x2400 => self.nametbl1.write(address, data),
             0x2400..0x2800 => self.nametbl2.write(address, data),
             0x2800..0x2C00 => self.nametbl3.write(address, data),
