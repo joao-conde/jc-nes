@@ -1,11 +1,11 @@
 use crate::bus::Device;
 use crate::cartridge::mappers;
 use crate::cartridge::Cartridge;
+use crate::cpu::bus::PpuDiff;
 use crate::cpu::Cpu;
 use crate::gamepad::{Button, Gamepad};
+use crate::ppu::dma::OamDma;
 use crate::ppu::Ppu;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 #[cfg(feature = "web")]
 use wasm_bindgen::prelude::*;
@@ -13,7 +13,8 @@ use wasm_bindgen::prelude::*;
 #[cfg_attr(feature = "web", wasm_bindgen)]
 pub struct Nes {
     cpu: Cpu,
-    ppu: Rc<RefCell<Ppu>>,
+    ppu: Ppu,
+    dma_controller: OamDma,
     gamepad1: Gamepad,
     gamepad2: Gamepad,
     cycles: usize,
@@ -23,13 +24,15 @@ pub struct Nes {
 impl Nes {
     #[cfg_attr(feature = "web", wasm_bindgen(constructor))]
     pub fn new() -> Nes {
-        let ppu = Rc::new(RefCell::new(Ppu::new()));
-        let cpu = Cpu::new(ppu.clone());
+        let ppu = Ppu::new();
+        let cpu = Cpu::new();
+        let dma_controller = OamDma::default();
         let gamepad1 = Gamepad::default();
         let gamepad2 = Gamepad::default();
         Nes {
             cpu,
             ppu,
+            dma_controller,
             gamepad1,
             gamepad2,
             cycles: 0,
@@ -38,7 +41,7 @@ impl Nes {
 
     pub fn load_rom(&mut self, rom: &[u8]) {
         let cartridge = Cartridge::new(rom);
-        self.ppu.borrow_mut().mirror_mode = cartridge.mirror;
+        self.ppu.mirror_mode = cartridge.mirror;
         match cartridge.mapper_id {
             0 => self.connect_mapper(mappers::mapper000::new_mapper(cartridge)),
             3 => self.connect_mapper(mappers::mapper003::new_mapper(cartridge)),
@@ -47,19 +50,28 @@ impl Nes {
     }
 
     pub fn clock(&mut self) {
-        self.ppu.borrow_mut().clock();
+        self.ppu.clock();
 
         if self.cycles % 3 == 0 {
             if self.dma_controller.dma_in_progress {
                 self.dma_controller.transfer(self.cycles, &mut self.cpu.bus);
             } else {
                 self.cpu.clock();
+
+                match self.cpu.bus.ppu_diff {
+                    Some(PpuDiff::Read { address }) => {
+                        self.ppu.read(address - 0x2000);
+                    }
+                    Some(PpuDiff::Write { address, data }) => {
+                        self.ppu.write(address - 0x2000, data);
+                    }
+                    None => (),
+                }
             }
         }
 
-        let mut ppu = self.ppu.borrow_mut();
-        if ppu.raise_nmi {
-            ppu.raise_nmi = false;
+        if self.ppu.raise_nmi {
+            self.ppu.raise_nmi = false;
             self.cpu.nmi();
         }
 
@@ -68,18 +80,16 @@ impl Nes {
 
     pub fn reset(&mut self) {
         self.cpu.reset();
-        self.ppu.borrow_mut().reset();
+        self.ppu.reset();
     }
 
     #[cfg(not(feature = "web"))]
     pub fn get_frame(
         &mut self,
     ) -> Option<[u8; crate::ppu::WIDTH as usize * crate::ppu::HEIGHT as usize * 3]> {
-        let mut ppu = self.ppu.borrow_mut();
-
-        if ppu.frame_complete {
-            ppu.frame_complete = false;
-            Some(ppu.screen)
+        if self.ppu.frame_complete {
+            self.ppu.frame_complete = false;
+            Some(self.ppu.screen)
         } else {
             None
         }
@@ -124,9 +134,8 @@ impl Nes {
         self.cpu.bus.prg_mapper = Some(prg_mapper.clone());
         self.cpu.bus.chr_mapper = Some(chr_mapper.clone());
 
-        let mut ppu = self.ppu.borrow_mut();
-        ppu.bus.prg_mapper = Some(prg_mapper);
-        ppu.bus.chr_mapper = Some(chr_mapper);
+        self.ppu.bus.prg_mapper = Some(prg_mapper);
+        self.ppu.bus.chr_mapper = Some(chr_mapper);
     }
 }
 

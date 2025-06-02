@@ -3,9 +3,7 @@ pub mod bus;
 mod instructions;
 mod status;
 
-use std::{cell::RefCell, rc::Rc};
-
-use crate::{cpu::status::Status, ppu::Ppu};
+use crate::cpu::status::Status;
 use bus::Bus;
 
 const STACK_BASE: u16 = 0x0100;
@@ -27,9 +25,9 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(ppu: Rc<RefCell<Ppu>>) -> Self {
+    pub fn new() -> Self {
         Cpu {
-            bus: Bus::new(ppu),
+            bus: Bus::new(),
             a: 0,
             x: 0,
             y: 0,
@@ -44,7 +42,6 @@ impl Cpu {
     pub fn clock(&mut self) {
         if self.cycle == 0 {
             let opcode = self.bus.read(self.pc);
-            println!("processing opcode: 0x{opcode:04x}");
             self.process_opcode(opcode);
         }
         self.cycle -= 1;

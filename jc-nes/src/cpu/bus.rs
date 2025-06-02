@@ -1,24 +1,27 @@
 use crate::bus::Device;
-use crate::ppu::Ppu;
 use crate::ram::Ram;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 pub struct Bus {
     ram: Ram,
-    ppu_regs: Rc<RefCell<Ppu>>,
-
     pub prg_mapper: Option<Box<dyn Device>>,
     pub chr_mapper: Option<Box<dyn Device>>,
+    pub ppu_state: [u8; 8],
+    pub ppu_diff: Option<PpuDiff>,
+}
+
+pub enum PpuDiff {
+    Read { address: u16 },
+    Write { address: u16, data: u8 },
 }
 
 impl Bus {
-    pub fn new(ppu_regs: Rc<RefCell<Ppu>>) -> Self {
+    pub fn new() -> Self {
         Bus {
             ram: Ram::new(vec![0u8; 2 * 1024]),
-            ppu_regs,
             prg_mapper: None,
             chr_mapper: None,
+            ppu_state: [0u8; 8],
+            ppu_diff: None,
         }
     }
 
@@ -29,7 +32,10 @@ impl Bus {
             0x0800..0x2000 => self.read(address % 0x0800),
 
             // PPU and mirror
-            0x2000..0x2008 => self.ppu_regs.borrow_mut().read(address - 0x2000),
+            0x2000..0x2008 => {
+                self.ppu_diff = Some(PpuDiff::Read { address });
+                self.ppu_state[address as usize - 0x2000]
+            }
             0x2008..0x4000 => self.read(address % 0x8),
 
             0x8000..=0xFFFF => self
@@ -49,7 +55,10 @@ impl Bus {
             0x0800..0x2000 => self.write(address % 0x0800, data),
 
             // PPU and mirror
-            0x2000..0x2008 => self.ppu_regs.borrow_mut().write(address - 0x2000, data),
+            0x2000..0x2008 => {
+                self.ppu_diff = Some(PpuDiff::Write { address, data });
+                self.ppu_state[address as usize - 0x2000] = data
+            }
 
             0x2008..0x4000 => self.write(address % 0x8, data),
 

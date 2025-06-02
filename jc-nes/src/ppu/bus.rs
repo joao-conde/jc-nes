@@ -45,7 +45,6 @@ impl Bus {
     }
 
     pub fn write(&mut self, address: u16, data: u8) {
-        let address = address - 0x2000;
         match address {
             0x0000..0x1000 => self.patterntbl1.write(address, data),
             0x1000..0x2000 => self.patterntbl2.write(address, data),
@@ -56,7 +55,7 @@ impl Bus {
             0x3000..0x3F00 => self.write(address, data),
             0x3F00..0x3F20 => self.palette.write(address, data),
             0x3F20..0x4000 => self.palette.write(address % 0x20, data),
-            _ => panic!("out of bounds ppu write"),
+            _ => panic!("out of bounds ppu write 0x{:04x}", address),
         };
     }
 }
