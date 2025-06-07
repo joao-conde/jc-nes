@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::UnsafeCell;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
@@ -12,8 +12,6 @@ pub trait Device {
     fn read(&mut self, address: u16) -> u8;
     fn write(&mut self, address: u16, data: u8);
 }
-
-pub type SharedMut<T> = Rc<RefCell<T>>;
 
 impl Bus {
     pub fn connect(
@@ -61,12 +59,24 @@ impl Device for Bus {
     }
 }
 
+pub type SharedMut<T> = Rc<UnsafeCell<T>>;
+
+pub trait UnsafeDerefMut<T> {
+    fn inner(&self) -> &mut T;
+}
+
+impl<T> UnsafeDerefMut<T> for SharedMut<T> {
+    fn inner(&self) -> &mut T {
+        unsafe { &mut *self.get() }
+    }
+}
+
 impl<T: Device> Device for SharedMut<T> {
     fn read(&mut self, address: u16) -> u8 {
-        self.borrow_mut().read(address)
+        unsafe { (*self.get()).read(address) }
     }
 
     fn write(&mut self, address: u16, data: u8) {
-        self.borrow_mut().write(address, data);
+        unsafe { (*self.get()).write(address, data) }
     }
 }
