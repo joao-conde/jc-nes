@@ -73,10 +73,10 @@ impl<T> UnsafeDerefMut<T> for SharedMut<T> {
 
 impl<T: Device> Device for SharedMut<T> {
     fn read(&mut self, address: u16) -> u8 {
-        unsafe { (*self.get()).read(address) }
+        self.inner().read(address)
     }
 
     fn write(&mut self, address: u16, data: u8) {
-        unsafe { (*self.get()).write(address, data) }
+        self.inner().write(address, data);
     }
 }
