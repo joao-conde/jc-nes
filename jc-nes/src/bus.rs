@@ -62,6 +62,7 @@ impl Device for Bus {
 pub type SharedMut<T> = Rc<UnsafeCell<T>>;
 
 pub trait UnsafeDerefMut<T> {
+    #[allow(clippy::mut_from_ref)]
     fn inner(&self) -> &mut T;
 }
 
