@@ -1,6 +1,6 @@
-use crate::bus::{Device, SharedMut};
+use crate::bus::{Device, SharedMut, UnsafeDerefMut};
 use crate::cartridge::Cartridge;
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::UnsafeCell, rc::Rc};
 
 pub struct PrgMapper {
     cur_bank: SharedMut<usize>,
@@ -14,7 +14,7 @@ pub struct ChrMapper {
 }
 
 pub fn new_mapper(cartridge: Cartridge) -> (PrgMapper, ChrMapper) {
-    let cur_bank = Rc::new(RefCell::new(0));
+    let cur_bank = Rc::new(UnsafeCell::new(0));
 
     let prg_mapper = PrgMapper {
         cur_bank: cur_bank.clone(),
@@ -49,13 +49,13 @@ impl Device for PrgMapper {
     }
 
     fn write(&mut self, _address: u16, data: u8) {
-        self.cur_bank.replace((data & 0x03) as usize);
+        *self.cur_bank.inner() = (data & 0x03) as usize;
     }
 }
 
 impl Device for ChrMapper {
     fn read(&mut self, address: u16) -> u8 {
-        let address = *self.cur_bank.borrow() * 0x2000 + address as usize;
+        let address = *self.cur_bank.inner() * 0x2000 + address as usize;
         self.chr_mem[address]
     }
 
