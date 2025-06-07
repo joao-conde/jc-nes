@@ -1,4 +1,4 @@
-use crate::bus::{Bus, Device, SharedMut};
+use crate::bus::{Bus, Device, SharedMut, UnsafeDerefMut};
 use crate::cartridge::mappers;
 use crate::cartridge::Cartridge;
 use crate::cpu::Cpu;
@@ -7,7 +7,7 @@ use crate::ppu::dma::OamDma;
 use crate::ppu::palette::Palette;
 use crate::ppu::Ppu;
 use crate::ram::Ram;
-use std::cell::RefCell;
+use std::cell::UnsafeCell;
 use std::rc::Rc;
 
 #[cfg(feature = "web")]
@@ -45,14 +45,14 @@ impl Nes {
         ppu_bus.add_mirror(0x3F20..=0x3FFF, 0x3F1F);
         ppu_bus.add_mirror(0x4000..=0xFFFF, 0x3FFF);
 
-        let ppu = Rc::new(RefCell::new(Ppu::new(ppu_bus)));
+        let ppu = Rc::new(UnsafeCell::new(Ppu::new(ppu_bus)));
 
         // build CPU bus
         let mut cpu_bus = Bus::default();
         let ram = Ram::new(vec![0u8; 2 * 1024]);
-        let gamepad1 = Rc::new(RefCell::new(Gamepad::default()));
-        let gamepad2 = Rc::new(RefCell::new(Gamepad::default()));
-        let dma_controller = Rc::new(RefCell::new(OamDma::default()));
+        let gamepad1 = Rc::new(UnsafeCell::new(Gamepad::default()));
+        let gamepad2 = Rc::new(UnsafeCell::new(Gamepad::default()));
+        let dma_controller = Rc::new(UnsafeCell::new(OamDma::default()));
 
         // connect (and mirror) devices to CPU bus
         cpu_bus.connect(0x0000..=0x1FFF, ram);
@@ -85,7 +85,7 @@ impl Nes {
 
     pub fn load_rom(&mut self, rom: &[u8]) {
         let cartridge = Cartridge::new(rom);
-        self.ppu.borrow_mut().mirror_mode = cartridge.mirror;
+        self.ppu.inner().mirror_mode = cartridge.mirror;
         match cartridge.mapper_id {
             0 => self.connect_mapper(mappers::mapper000::new_mapper(cartridge)),
             3 => self.connect_mapper(mappers::mapper003::new_mapper(cartridge)),
@@ -94,20 +94,20 @@ impl Nes {
     }
 
     pub fn clock(&mut self) {
-        self.ppu.borrow_mut().clock();
+        self.ppu.inner().clock();
 
         if self.cycles % 3 == 0 {
-            if self.dma_controller.borrow().dma_in_progress {
+            if self.dma_controller.inner().dma_in_progress {
                 self.dma_controller
-                    .borrow_mut()
+                    .inner()
                     .transfer(self.cycles, &mut self.cpu.bus);
             } else {
                 self.cpu.clock();
             }
         }
 
-        if self.ppu.borrow().raise_nmi {
-            self.ppu.borrow_mut().raise_nmi = false;
+        if self.ppu.inner().raise_nmi {
+            self.ppu.inner().raise_nmi = false;
             self.cpu.nmi();
         }
 
@@ -116,16 +116,16 @@ impl Nes {
 
     pub fn reset(&mut self) {
         self.cpu.reset();
-        self.ppu.borrow_mut().reset();
+        self.ppu.inner().reset();
     }
 
     #[cfg(not(feature = "web"))]
     pub fn get_frame(
         &mut self,
     ) -> Option<[u8; crate::ppu::WIDTH as usize * crate::ppu::HEIGHT as usize * 3]> {
-        if self.ppu.borrow().frame_complete {
-            self.ppu.borrow_mut().frame_complete = false;
-            Some(self.ppu.borrow().screen)
+        if self.ppu.inner().frame_complete {
+            self.ppu.inner().frame_complete = false;
+            Some(self.ppu.inner().screen)
         } else {
             None
         }
@@ -133,9 +133,9 @@ impl Nes {
 
     #[cfg(feature = "web")]
     pub fn get_frame(&mut self) -> Option<Vec<u8>> {
-        if self.ppu.borrow().frame_complete {
-            self.ppu.borrow_mut().frame_complete = false;
-            Some(self.ppu.borrow().screen.to_vec())
+        if self.ppu.inner().frame_complete {
+            self.ppu.inner().frame_complete = false;
+            Some(self.ppu.inner().screen.to_vec())
         } else {
             None
         }
@@ -143,16 +143,16 @@ impl Nes {
 
     pub fn btn_down(&mut self, controller: u8, btn: Button) {
         match controller {
-            1 => self.gamepad1.borrow_mut().btn_down(btn),
-            2 => self.gamepad2.borrow_mut().btn_down(btn),
+            1 => self.gamepad1.inner().btn_down(btn),
+            2 => self.gamepad2.inner().btn_down(btn),
             _ => eprintln!("expected either controller 1 or 2"),
         }
     }
 
     pub fn btn_up(&mut self, controller: u8, btn: Button) {
         match controller {
-            1 => self.gamepad1.borrow_mut().btn_up(btn),
-            2 => self.gamepad2.borrow_mut().btn_up(btn),
+            1 => self.gamepad1.inner().btn_up(btn),
+            2 => self.gamepad2.inner().btn_up(btn),
             _ => panic!("expected either controller '1' or '2'"),
         }
     }
@@ -162,10 +162,7 @@ impl Nes {
         (prg_mapper, chr_mapper): (impl Device + 'static, impl Device + 'static),
     ) {
         self.cpu.bus.connect(0x8000..=0xFFFF, prg_mapper);
-        self.ppu
-            .borrow_mut()
-            .bus
-            .connect(0x0000..=0x1FFF, chr_mapper);
+        self.ppu.inner().bus.connect(0x0000..=0x1FFF, chr_mapper);
     }
 }
 
