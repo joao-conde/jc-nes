@@ -272,7 +272,7 @@ impl Cpu {
             0x97 => self.execute(Cpu::zpy, Cpu::sax, 4, false),
             0xA3 => self.execute(Cpu::indx, Cpu::lax, 6, false),
             0xA7 => self.execute(Cpu::zp, Cpu::lax, 3, false),
-            0xAB => self.execute(Cpu::imm, Cpu::lax, 2, false),
+            0xAB => self.execute(Cpu::imm, Cpu::lxa, 2, false),
             0xAF => self.execute(Cpu::abs, Cpu::lax, 4, false),
             0xB3 => self.execute(Cpu::indy, Cpu::lax, 5, true),
             0xB7 => self.execute(Cpu::zpy, Cpu::lax, 4, false),

@@ -344,10 +344,11 @@ impl Cpu {
     }
 
     pub(in crate::cpu) fn rti(&mut self, _imp: ()) {
-        self.status = Status::from(self.pop_stack());
+        // Like PLP, RTI ignores bit 4 of the pulled byte and forces bit 5:
+        // neither is real storage in the status register.
+        self.status = Status::from((self.pop_stack() & 0xEF) | 0x20);
         let pcl = self.pop_stack();
         let pch = self.pop_stack();
-        self.status.b2 = true;
         self.pc = ((pch as u16) << 8) | pcl as u16;
     }
 
@@ -465,6 +466,20 @@ impl Cpu {
         self.lda(address);
         self.pc = self.pc.wrapping_sub(1);
         self.ldx(address);
+    }
+
+    /// LXA ($AB), the immediate form of LAX.
+    ///
+    /// Unstable on real silicon: A and X both take `(A | magic) & imm` rather
+    /// than the immediate alone. `0xEE` is the only constant in `0..=0xFF`
+    /// consistent with all 10,000 nes6502 corpus cases for this opcode.
+    pub(in crate::cpu) fn lxa(&mut self, address: u16) {
+        let operand = self.bus.read(address);
+        self.a = (self.a | 0xEE) & operand;
+        self.x = self.a;
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
+        self.pc = self.pc.wrapping_add(1);
     }
 
     pub(in crate::cpu) fn nop_unoff(&mut self, _: u16) {
