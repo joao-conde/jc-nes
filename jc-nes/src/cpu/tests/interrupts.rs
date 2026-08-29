@@ -29,14 +29,20 @@ fn reset_disables_interrupts() {
 }
 
 #[test]
-fn reset_leaves_bit_five_set() {
+fn a_status_byte_pushed_after_reset_has_bit_five_and_i_set() {
+    // Bit 5 is not readable state on hardware: it has no CPU effect and is
+    // simply always pushed as 1. So assert what is actually observable - the
+    // byte PHP pushes - rather than the emulator's internal representation.
     let mut cpu = cpu();
     cpu.reset();
-    assert_eq!(
-        u8::from(cpu.status) & U,
-        U,
-        "bit 5 of the status register is always set"
-    );
+
+    let pc = cpu.pc;
+    poke(&mut cpu, pc, &[0x08]); // PHP
+    step(&mut cpu);
+
+    let pushed = peek(&mut cpu, 0x01FD);
+    assert_eq!(pushed & U, U, "bit 5 is always pushed as 1");
+    assert_eq!(pushed & I, I, "reset must leave the I flag set");
 }
 
 #[test]

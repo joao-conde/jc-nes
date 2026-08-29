@@ -51,7 +51,10 @@ impl Cpu {
         self.x = 0;
         self.y = 0;
         self.sp = 0xFD;
-        self.status = Status::from(0x24); // I set, bit 5 always set
+        // Reset sets the I flag. Bit 5 is not storage on the 6502 - it has no CPU
+        // effect and is simply always pushed as 1 - so it is held set here only
+        // so that pushed status bytes come out right.
+        self.status = Status::from(0x24);
 
         self.cycle = 8;
     }
