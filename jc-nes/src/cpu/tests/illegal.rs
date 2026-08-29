@@ -193,8 +193,12 @@ fn unofficial_nops_consume_their_operands_without_side_effects() {
         assert_eq!(actual, cycles, "opcode {opcode:#04X} cycle count");
         assert_eq!(cpu.a, 0x11, "opcode {opcode:#04X} must not touch A");
         assert_eq!(cpu.y, 0x33, "opcode {opcode:#04X} must not touch Y");
-        assert!(cpu.status.carry, "opcode {opcode:#04X} must not touch C");
-        assert!(cpu.status.overflow, "opcode {opcode:#04X} must not touch V");
+        assert!(cpu.status.carry, "opcode {:#04X} must not touch C", opcode);
+        assert!(
+            cpu.status.overflow,
+            "opcode {:#04X} must not touch V",
+            opcode
+        );
     }
 }
 
