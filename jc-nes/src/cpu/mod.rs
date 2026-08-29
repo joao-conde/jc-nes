@@ -2,6 +2,9 @@ mod addressing;
 mod instructions;
 mod status;
 
+#[cfg(test)]
+mod tests;
+
 use crate::bus::{Bus, Device};
 use crate::cpu::status::Status;
 
