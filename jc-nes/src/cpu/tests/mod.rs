@@ -1,15 +1,3 @@
-//! Unit tests for the 6502 core.
-//!
-//! These live inside the crate because `Cpu`, `Bus`, `Device` and `Ram` are all
-//! crate-private; a child module of `crate::cpu` can reach `Cpu`'s private
-//! fields and `process_opcode` directly, which is what makes single-instruction
-//! testing possible without widening any public API.
-//!
-//! Every test asserts *documented 6502/2A03 behaviour*, not current jc-nes
-//! behaviour. A failure here is a claim that the emulator is wrong, not that the
-//! test is stale. See `timing.rs` for the machine-checked opcode coverage and
-//! cycle tables.
-
 #![allow(dead_code)]
 
 mod addressing;
@@ -33,11 +21,17 @@ pub(super) const PROG: u16 = 0x8000;
 /// Stack pointer the hardware settles on after reset.
 pub(super) const SP_RESET: u8 = 0xFD;
 
+// Status bit masks, in hardware bit order.
+pub(super) const C: u8 = 0x01;
+pub(super) const Z: u8 = 0x02;
+pub(super) const I: u8 = 0x04;
+pub(super) const D: u8 = 0x08;
+pub(super) const B: u8 = 0x10;
+pub(super) const U: u8 = 0x20;
+pub(super) const V: u8 = 0x40;
+pub(super) const N: u8 = 0x80;
+
 /// A CPU wired to a flat, uniquely-mapped 64 KB RAM.
-///
-/// This deliberately does not model the NES memory map: an instruction-level
-/// test wants every address to be plain readable/writable storage so that the
-/// only thing under test is the CPU.
 pub(super) fn cpu() -> Cpu {
     let mut bus = Bus::default();
     bus.connect(0x0000..=0xFFFF, Ram::new(vec![0u8; 0x1_0000]));
@@ -61,13 +55,6 @@ pub(super) fn peek(cpu: &mut Cpu, addr: u16) -> u8 {
 }
 
 /// Execute exactly one instruction at `cpu.pc` and return the cycles it claimed.
-///
-/// `Cpu::clock` interleaves fetch, execute and a decrement; calling
-/// `process_opcode` directly runs the whole instruction and leaves `cycle`
-/// holding its total cost (base plus any page-cross or branch penalty), which is
-/// precisely the number of `clock()` calls the instruction would consume.
-///
-/// A return of 0 means the opcode hit the catch-all arm, i.e. is unimplemented.
 pub(super) fn step(cpu: &mut Cpu) -> u8 {
     cpu.cycle = 0;
     let opcode = cpu.bus.read(cpu.pc);
@@ -123,49 +110,34 @@ pub(super) fn set_status(cpu: &mut Cpu, bits: u8) {
     cpu.status = Status::from(status_byte(bits));
 }
 
-// Status bit masks, in hardware bit order.
-pub(super) const C: u8 = 0x01;
-pub(super) const Z: u8 = 0x02;
-pub(super) const I: u8 = 0x04;
-pub(super) const D: u8 = 0x08;
-pub(super) const B: u8 = 0x10;
-pub(super) const U: u8 = 0x20;
-pub(super) const V: u8 = 0x40;
-pub(super) const N: u8 = 0x80;
-
-#[cfg(test)]
-mod harness_sanity {
-    use super::*;
-
-    #[test]
-    fn flat_ram_is_readable_and_writable_everywhere() {
-        let mut cpu = cpu();
-        for addr in [0x0000u16, 0x00FF, 0x0100, 0x1FFF, 0x8000, 0xFFFC, 0xFFFF] {
-            poke(&mut cpu, addr, &[0xA5]);
-            assert_eq!(peek(&mut cpu, addr), 0xA5, "address {addr:#06X}");
-        }
+#[test]
+fn flat_ram_is_readable_and_writable_everywhere() {
+    let mut cpu = cpu();
+    for addr in [0x0000u16, 0x00FF, 0x0100, 0x1FFF, 0x8000, 0xFFFC, 0xFFFF] {
+        poke(&mut cpu, addr, &[0xA5]);
+        assert_eq!(peek(&mut cpu, addr), 0xA5, "address {addr:#06X}");
     }
+}
 
-    #[test]
-    fn step_reports_the_instructions_cycle_count() {
-        // NOP is 2 cycles and touches nothing but PC.
-        let (cpu, cycles) = exec_bare(&[0xEA]);
-        assert_eq!(cycles, 2);
-        assert_eq!(cpu.pc, PROG + 1);
-    }
+#[test]
+fn step_reports_the_instructions_cycle_count() {
+    // NOP is 2 cycles and touches nothing but PC.
+    let (cpu, cycles) = exec_bare(&[0xEA]);
+    assert_eq!(cycles, 2);
+    assert_eq!(cpu.pc, PROG + 1);
+}
 
-    #[test]
-    fn step_reports_zero_for_an_unimplemented_opcode() {
-        // 0x02 is JAM/KIL: not in the opcode table, so it must fall through to
-        // the catch-all arm without claiming any cycles.
-        let (_, cycles) = exec_bare(&[0x02]);
-        assert_eq!(cycles, 0);
-    }
+#[test]
+fn step_reports_zero_for_an_unimplemented_opcode() {
+    // 0x02 is JAM/KIL: not in the opcode table, so it must fall through to
+    // the catch-all arm without claiming any cycles.
+    let (_, cycles) = exec_bare(&[0x02]);
+    assert_eq!(cycles, 0);
+}
 
-    #[test]
-    fn status_round_trips_through_a_byte() {
-        let bits = status_byte(N | V | D | C);
-        let status = Status::from(bits);
-        assert_eq!(u8::from(status), bits);
-    }
+#[test]
+fn status_round_trips_through_a_byte() {
+    let bits = status_byte(N | V | D | C);
+    let status = Status::from(bits);
+    assert_eq!(u8::from(status), bits);
 }
