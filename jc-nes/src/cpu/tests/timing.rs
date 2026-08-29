@@ -110,11 +110,10 @@ const PAGE_CROSS: [(u8, &str, char); 27] = [
 /// delete it from here. A *shorter* actual list than this one fails the test just
 /// as loudly as a longer one, so the table cannot drift out of date silently.
 #[rustfmt::skip]
-const KNOWN_UNIMPLEMENTED: [u8; 28] = [
+const KNOWN_UNIMPLEMENTED: [u8; 24] = [
     0x02, 0x0B, 0x12, 0x22, 0x2B, 0x32, 0x42, 0x4B,
-    0x52, 0x62, 0x6B, 0x72, 0x82, 0x89, 0x8B, 0x92,
-    0x93, 0x9B, 0x9C, 0x9E, 0x9F, 0xB2, 0xBB, 0xC2,
-    0xCB, 0xD2, 0xE2, 0xF2,
+    0x52, 0x62, 0x6B, 0x72, 0x8B, 0x92, 0x93, 0x9B,
+    0x9C, 0x9E, 0x9F, 0xB2, 0xBB, 0xCB, 0xD2, 0xF2,
 ];
 
 /// Stack pointer used for the table scans.
@@ -275,8 +274,8 @@ fn opcode_decode_coverage_matches_the_known_gaps() {
 
     assert_eq!(
         undecoded.len(),
-        28,
-        "28 of 256 opcodes are undecoded; each one hangs the CPU if a ROM reaches it"
+        24,
+        "24 of 256 opcodes are undecoded; each one hangs the CPU if a ROM reaches it"
     );
 }
 
