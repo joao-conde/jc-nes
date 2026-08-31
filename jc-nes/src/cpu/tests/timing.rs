@@ -280,13 +280,54 @@ fn opcode_decode_coverage_matches_the_known_gaps() {
 }
 
 #[test]
-fn an_undecoded_opcode_does_not_advance_the_program_counter() {
-    // This is why the gap matters: the CPU cannot make progress past a byte it
-    // does not recognise, so execution locks up rather than skipping it.
-    let (cpu, cycles) = exec_bare(&[0x02]);
-    assert_eq!(cycles, 0);
-    assert_eq!(
-        cpu.pc, PROG,
-        "an unrecognised opcode leaves PC parked on itself"
-    );
+fn an_undecoded_opcode_jams_the_cpu() {
+    // An undecoded opcode claims no cycles and cannot advance PC, so the only
+    // safe response is to stop. A real 6502 does exactly this on JAM/KIL.
+    let mut cpu = cpu();
+    poke(&mut cpu, PROG, &[0x02]);
+
+    cpu.clock();
+    assert_eq!(cpu.pc, PROG, "PC stays on the offending byte");
+
+    // Clocking a jammed CPU must be a safe no-op: before this was modelled, the
+    // cycle counter went past zero here, panicking in debug and wrapping to 255
+    // in release so the CPU span on the same byte forever.
+    for _ in 0..1000 {
+        cpu.clock();
+    }
+    assert_eq!(cpu.pc, PROG, "a jammed CPU makes no further progress");
+}
+
+#[test]
+fn reset_clears_a_jam() {
+    let mut cpu = cpu();
+    poke(&mut cpu, PROG, &[0x02]);
+    cpu.clock();
+
+    poke(&mut cpu, 0xFFFC, &[0x00, 0x90]);
+    cpu.reset();
+    poke(&mut cpu, 0x9000, &[0xE8]); // INX
+
+    // Reset itself costs cycles, so drain those before the first fetch lands.
+    for _ in 0..16 {
+        cpu.clock();
+    }
+
+    assert_eq!(cpu.x, 1, "the CPU runs again after a reset");
+}
+
+#[test]
+fn a_decoded_opcode_never_jams() {
+    // Every implemented opcode must leave the CPU running; only the catch-all
+    // arm may jam it.
+    for opcode in 0x00u8..=0xFF {
+        if KNOWN_UNIMPLEMENTED.contains(&opcode) {
+            continue;
+        }
+        let mut cpu = cpu();
+        cpu.sp = SP_MIDPAGE;
+        poke(&mut cpu, PROG, &[opcode, 0x10, 0x20]);
+        cpu.clock();
+        assert!(!cpu.jammed, "opcode {:#04X} jammed the CPU", opcode);
+    }
 }

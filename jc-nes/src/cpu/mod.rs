@@ -24,6 +24,14 @@ pub struct Cpu {
     cycle: u8,
     extra_cycles: bool,
     pub(crate) bus: Bus,
+
+    /// Set when the CPU decodes an opcode it cannot execute.
+    ///
+    /// A real 6502 halts permanently on the JAM/KIL opcodes, and stops fetching
+    /// entirely. Modelling that is also the safe response to an opcode this
+    /// emulator has simply not implemented: the alternative is to leave the
+    /// program counter parked on the offending byte and spin on it forever.
+    jammed: bool,
 }
 
 impl Cpu {
@@ -35,10 +43,21 @@ impl Cpu {
     }
 
     pub fn clock(&mut self) {
+        if self.jammed {
+            return;
+        }
+
         if self.cycle == 0 {
             let opcode = self.bus.read(self.pc);
             self.process_opcode(opcode);
+
+            // A jam claims no cycles, so bail out before the decrement below
+            // would take the counter past zero.
+            if self.jammed {
+                return;
+            }
         }
+
         self.cycle -= 1;
     }
 
@@ -56,6 +75,7 @@ impl Cpu {
         // so that pushed status bytes come out right.
         self.status = Status::from(0x24);
 
+        self.jammed = false;
         self.cycle = 8;
     }
 
@@ -305,8 +325,12 @@ impl Cpu {
             }
             0x80 | 0x82 | 0x89 | 0xC2 | 0xE2 => self.execute(Cpu::imm, Cpu::nop_unoff, 2, false),
 
-            // Unknown Opcode
-            _ => eprintln!("Unknown opcode 0x{:0X} at 0x{:0X}", opcode, self.pc),
+            // Unimplemented opcode: halt rather than spin on it. Logged once,
+            // because `clock` stops calling us the moment `jammed` is set.
+            _ => {
+                eprintln!("jammed on opcode 0x{:02X} at 0x{:04X}", opcode, self.pc);
+                self.jammed = true;
+            }
         };
     }
 
