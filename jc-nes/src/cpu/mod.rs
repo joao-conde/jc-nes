@@ -2,6 +2,9 @@ mod addressing;
 mod instructions;
 mod status;
 
+#[cfg(test)]
+mod tests;
+
 use crate::bus::{Bus, Device};
 use crate::cpu::status::Status;
 
@@ -21,6 +24,14 @@ pub struct Cpu {
     cycle: u8,
     extra_cycles: bool,
     pub(crate) bus: Bus,
+
+    /// Set by the JAM/KIL opcodes, which stop a real 6502 fetching entirely.
+    ///
+    /// There is no such thing as an unknown opcode on this processor: all 256
+    /// values decode to something, and `process_opcode` matches all 256 with no
+    /// wildcard, so the compiler enforces that. This flag models a halt, not a
+    /// gap in the emulator.
+    jammed: bool,
 }
 
 impl Cpu {
@@ -32,10 +43,21 @@ impl Cpu {
     }
 
     pub fn clock(&mut self) {
+        if self.jammed {
+            return;
+        }
+
         if self.cycle == 0 {
             let opcode = self.bus.read(self.pc);
             self.process_opcode(opcode);
+
+            // A jam claims no cycles, so bail out before the decrement below
+            // would take the counter past zero.
+            if self.jammed {
+                return;
+            }
         }
+
         self.cycle -= 1;
     }
 
@@ -48,8 +70,12 @@ impl Cpu {
         self.x = 0;
         self.y = 0;
         self.sp = 0xFD;
-        self.status = Status::from(0x00);
+        // Reset sets the I flag. Bit 5 is not storage on the 6502 - it has no CPU
+        // effect and is simply always pushed as 1 - so it is held set here only
+        // so that pushed status bytes come out right.
+        self.status = Status::from(0x24);
 
+        self.jammed = false;
         self.cycle = 8;
     }
 
@@ -70,7 +96,7 @@ impl Cpu {
         let pch = self.bus.read(0xFFFB);
         self.pc = ((pch as u16) << 8) | pcl as u16;
 
-        self.cycle = 8;
+        self.cycle = 7;
     }
 }
 
@@ -89,12 +115,12 @@ impl Cpu {
             0x0D => self.execute(Cpu::abs, Cpu::ora, 4, false),
             0x0E => self.execute(Cpu::abs, Cpu::asl_mem, 6, false),
             0x10 => self.execute(Cpu::relative, Cpu::bpl, 2, true),
-            0x11 => self.execute(Cpu::indy, Cpu::ora, 5, false),
+            0x11 => self.execute(Cpu::indy, Cpu::ora, 5, true),
             0x15 => self.execute(Cpu::zpx, Cpu::ora, 4, false),
             0x16 => self.execute(Cpu::zpx, Cpu::asl_mem, 6, false),
             0x18 => self.execute(Cpu::imp, Cpu::clc, 2, false),
-            0x19 => self.execute(Cpu::absy, Cpu::ora, 4, false),
-            0x1D => self.execute(Cpu::absx, Cpu::ora, 4, false),
+            0x19 => self.execute(Cpu::absy, Cpu::ora, 4, true),
+            0x1D => self.execute(Cpu::absx, Cpu::ora, 4, true),
             0x1E => self.execute(Cpu::absx, Cpu::asl_mem, 7, false),
             0x20 => self.execute(Cpu::abs, Cpu::jsr, 6, false),
             0x21 => self.execute(Cpu::indx, Cpu::and, 6, false),
@@ -108,12 +134,12 @@ impl Cpu {
             0x2D => self.execute(Cpu::abs, Cpu::and, 4, false),
             0x2E => self.execute(Cpu::abs, Cpu::rol_mem, 6, false),
             0x30 => self.execute(Cpu::relative, Cpu::bmi, 2, true),
-            0x31 => self.execute(Cpu::indy, Cpu::and, 5, false),
+            0x31 => self.execute(Cpu::indy, Cpu::and, 5, true),
             0x35 => self.execute(Cpu::zpx, Cpu::and, 4, false),
             0x36 => self.execute(Cpu::zpx, Cpu::rol_mem, 6, false),
             0x38 => self.execute(Cpu::imp, Cpu::sec, 2, false),
-            0x39 => self.execute(Cpu::absy, Cpu::and, 4, false),
-            0x3D => self.execute(Cpu::absx, Cpu::and, 4, false),
+            0x39 => self.execute(Cpu::absy, Cpu::and, 4, true),
+            0x3D => self.execute(Cpu::absx, Cpu::and, 4, true),
             0x3E => self.execute(Cpu::absx, Cpu::rol_mem, 7, false),
             0x40 => self.execute(Cpu::imp, Cpu::rti, 6, false),
             0x41 => self.execute(Cpu::indx, Cpu::eor, 6, false),
@@ -126,12 +152,12 @@ impl Cpu {
             0x4D => self.execute(Cpu::abs, Cpu::eor, 4, false),
             0x4E => self.execute(Cpu::abs, Cpu::lsr_mem, 6, false),
             0x50 => self.execute(Cpu::relative, Cpu::bvc, 2, true),
-            0x51 => self.execute(Cpu::indy, Cpu::eor, 5, false),
+            0x51 => self.execute(Cpu::indy, Cpu::eor, 5, true),
             0x55 => self.execute(Cpu::zpx, Cpu::eor, 4, false),
             0x56 => self.execute(Cpu::zpx, Cpu::lsr_mem, 6, false),
             0x58 => self.execute(Cpu::imp, Cpu::cli, 2, false),
-            0x59 => self.execute(Cpu::absy, Cpu::eor, 4, false),
-            0x5D => self.execute(Cpu::absx, Cpu::eor, 4, false),
+            0x59 => self.execute(Cpu::absy, Cpu::eor, 4, true),
+            0x5D => self.execute(Cpu::absx, Cpu::eor, 4, true),
             0x5E => self.execute(Cpu::absx, Cpu::lsr_mem, 7, false),
             0x60 => self.execute(Cpu::imp, Cpu::rts, 6, false),
             0x61 => self.execute(Cpu::indx, Cpu::adc, 6, false),
@@ -204,12 +230,12 @@ impl Cpu {
             0xCD => self.execute(Cpu::abs, Cpu::cmp, 4, false),
             0xCE => self.execute(Cpu::abs, Cpu::dec, 6, false),
             0xD0 => self.execute(Cpu::relative, Cpu::bne, 2, true),
-            0xD1 => self.execute(Cpu::indy, Cpu::cmp, 5, false),
+            0xD1 => self.execute(Cpu::indy, Cpu::cmp, 5, true),
             0xD5 => self.execute(Cpu::zpx, Cpu::cmp, 4, false),
             0xD6 => self.execute(Cpu::zpx, Cpu::dec, 6, false),
             0xD8 => self.execute(Cpu::imp, Cpu::cld, 2, false),
-            0xD9 => self.execute(Cpu::absy, Cpu::cmp, 4, false),
-            0xDD => self.execute(Cpu::absx, Cpu::cmp, 4, false),
+            0xD9 => self.execute(Cpu::absy, Cpu::cmp, 4, true),
+            0xDD => self.execute(Cpu::absx, Cpu::cmp, 4, true),
             0xDE => self.execute(Cpu::absx, Cpu::dec, 7, false),
             0xE0 => self.execute(Cpu::imm, Cpu::cpx, 2, false),
             0xE1 => self.execute(Cpu::indx, Cpu::sbc, 6, false),
@@ -223,12 +249,12 @@ impl Cpu {
             0xED => self.execute(Cpu::abs, Cpu::sbc, 4, false),
             0xEE => self.execute(Cpu::abs, Cpu::inc, 6, false),
             0xF0 => self.execute(Cpu::relative, Cpu::beq, 2, true),
-            0xF1 => self.execute(Cpu::indy, Cpu::sbc, 5, false),
+            0xF1 => self.execute(Cpu::indy, Cpu::sbc, 5, true),
             0xF5 => self.execute(Cpu::zpx, Cpu::sbc, 4, false),
             0xF6 => self.execute(Cpu::zpx, Cpu::inc, 6, false),
             0xF8 => self.execute(Cpu::imp, Cpu::sed, 2, false),
-            0xF9 => self.execute(Cpu::absy, Cpu::sbc, 4, false),
-            0xFD => self.execute(Cpu::absx, Cpu::sbc, 4, false),
+            0xF9 => self.execute(Cpu::absy, Cpu::sbc, 4, true),
+            0xFD => self.execute(Cpu::absx, Cpu::sbc, 4, true),
             0xFE => self.execute(Cpu::absx, Cpu::inc, 7, false),
 
             // Unofficial Opcodes (used by some ROMs)
@@ -266,7 +292,7 @@ impl Cpu {
             0x97 => self.execute(Cpu::zpy, Cpu::sax, 4, false),
             0xA3 => self.execute(Cpu::indx, Cpu::lax, 6, false),
             0xA7 => self.execute(Cpu::zp, Cpu::lax, 3, false),
-            0xAB => self.execute(Cpu::imm, Cpu::lax, 2, false),
+            0xAB => self.execute(Cpu::imm, Cpu::lxa, 2, false),
             0xAF => self.execute(Cpu::abs, Cpu::lax, 4, false),
             0xB3 => self.execute(Cpu::indy, Cpu::lax, 5, true),
             0xB7 => self.execute(Cpu::zpy, Cpu::lax, 4, false),
@@ -297,10 +323,27 @@ impl Cpu {
             0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => {
                 self.execute(Cpu::absx, Cpu::nop_unoff, 4, true)
             }
-            0x80 => self.execute(Cpu::imm, Cpu::nop_unoff, 2, false),
+            0x80 | 0x82 | 0x89 | 0xC2 | 0xE2 => self.execute(Cpu::imm, Cpu::nop_unoff, 2, false),
 
-            // Unknown Opcode
-            _ => eprintln!("Unknown opcode 0x{:0X} at 0x{:0X}", opcode, self.pc),
+            // Combination and unstable opcodes
+            0x0B | 0x2B => self.execute(Cpu::imm, Cpu::anc, 2, false),
+            0x4B => self.execute(Cpu::imm, Cpu::alr, 2, false),
+            0x6B => self.execute(Cpu::imm, Cpu::arr, 2, false),
+            0x8B => self.execute(Cpu::imm, Cpu::xaa, 2, false),
+            0xCB => self.execute(Cpu::imm, Cpu::sbx, 2, false),
+            0xBB => self.execute(Cpu::absy, Cpu::las, 4, true),
+            0x93 => self.execute(Cpu::indy_base, Cpu::sha, 6, false),
+            0x9B => self.execute(Cpu::abs, Cpu::tas, 5, false),
+            0x9C => self.execute(Cpu::abs, Cpu::shy, 5, false),
+            0x9E => self.execute(Cpu::abs, Cpu::shx, 5, false),
+            0x9F => self.execute(Cpu::abs, Cpu::sha, 5, false),
+
+            // JAM/KIL: the processor stops fetching and never resumes. Logged
+            // once, because `clock` stops calling us the moment it is set.
+            0x02 | 0x12 | 0x22 | 0x32 | 0x42 | 0x52 | 0x62 | 0x72 | 0x92 | 0xB2 | 0xD2 | 0xF2 => {
+                eprintln!("jammed on opcode 0x{:02X} at 0x{:04X}", opcode, self.pc);
+                self.jammed = true;
+            }
         };
     }
 
@@ -319,27 +362,46 @@ impl Cpu {
 
     fn push_stack(&mut self, val: u8) {
         self.bus.write(STACK_BASE + self.sp as u16, val);
-        self.sp -= 1;
+        self.sp = self.sp.wrapping_sub(1);
     }
 
     fn pop_stack(&mut self) -> u8 {
-        self.sp += 1;
+        self.sp = self.sp.wrapping_add(1);
         self.bus.read(STACK_BASE + self.sp as u16)
     }
 
     fn relative_jump(&mut self, jump: bool, operand: i8) {
         if jump {
             self.cycle += 1;
-            let next = (self.pc as i32 + operand as i32) as u16 + 1;
-            self.cycle += self.page_crossed(self.pc + 1, next) as u8;
+            let next = ((self.pc as i32 + operand as i32) as u16).wrapping_add(1);
+            self.cycle += self.page_crossed(self.pc.wrapping_add(1), next) as u8;
             self.pc = next;
         } else {
-            self.pc += 1
+            self.pc = self.pc.wrapping_add(1)
         }
     }
 
     fn page_crossed(&self, addr1: u16, addr2: u16) -> bool {
         (addr1 & 0xFF00) != (addr2 & 0xFF00)
+    }
+
+    /// The mask SHA/SHX/SHY/TAS AND into the byte they store: the high byte of
+    /// the un-indexed target address, plus one.
+    fn unstable_mask(base: u16) -> u8 {
+        ((base >> 8) as u8).wrapping_add(1)
+    }
+
+    /// Where SHA/SHX/SHY/TAS actually write.
+    ///
+    /// When indexing crosses a page the target's high byte is replaced by the
+    /// value being stored, so the write lands in a different page than the
+    /// address arithmetic implies.
+    fn unstable_target(base: u16, index: u8, value: u8) -> u16 {
+        if (base & 0x00FF) + index as u16 > 0xFF {
+            ((value as u16) << 8) | (base as u8).wrapping_add(index) as u16
+        } else {
+            base.wrapping_add(index as u16)
+        }
     }
 
     fn is_negative(&self, operand: u8) -> bool {

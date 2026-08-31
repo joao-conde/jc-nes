@@ -96,7 +96,7 @@ impl Nes {
     pub fn clock(&mut self) {
         self.ppu.borrow_mut().clock();
 
-        if self.cycles % 3 == 0 {
+        if self.cycles.is_multiple_of(3) {
             if self.dma_controller.borrow().dma_in_progress {
                 self.dma_controller
                     .borrow_mut()

@@ -12,7 +12,7 @@ pub struct OamDma {
 impl OamDma {
     pub fn transfer(&mut self, cur_cyc: usize, cpu_bus: &mut Bus) {
         if self.synched {
-            if cur_cyc % 2 == 0 {
+            if cur_cyc.is_multiple_of(2) {
                 // read byte from mem based on page
                 let address = (self.page as u16) << 8 | self.transfered as u16;
                 self.buffer = cpu_bus.read(address);

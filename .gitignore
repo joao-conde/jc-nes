@@ -1,3 +1,6 @@
 target
 
 Cargo.lock
+
+# Reference test data, fetched by scripts/fetch-conformance-tests.sh
+.conformance

@@ -3,9 +3,9 @@ use crate::{bus::Device, cpu::Cpu};
 /// Addressing Modes
 impl Cpu {
     pub(in crate::cpu) fn abs(&mut self) -> u16 {
-        self.pc += 1;
+        self.pc = self.pc.wrapping_add(1);
         let lo = self.bus.read(self.pc);
-        self.pc += 1;
+        self.pc = self.pc.wrapping_add(1);
         let hi = self.bus.read(self.pc);
         ((hi as u16) << 8) | lo as u16
     }
@@ -29,16 +29,16 @@ impl Cpu {
     pub(in crate::cpu) fn acc(&mut self) {}
 
     pub(in crate::cpu) fn imm(&mut self) -> u16 {
-        self.pc += 1;
+        self.pc = self.pc.wrapping_add(1);
         self.pc
     }
 
     pub(in crate::cpu) fn imp(&mut self) {}
 
     pub(in crate::cpu) fn ind(&mut self) -> u16 {
-        self.pc += 1;
+        self.pc = self.pc.wrapping_add(1);
         let lo = self.bus.read(self.pc);
-        self.pc += 1;
+        self.pc = self.pc.wrapping_add(1);
         let hi = self.bus.read(self.pc);
         let address = ((hi as u16) << 8) | lo as u16;
 
@@ -53,7 +53,7 @@ impl Cpu {
     }
 
     pub(in crate::cpu) fn indx(&mut self) -> u16 {
-        self.pc += 1;
+        self.pc = self.pc.wrapping_add(1);
         let address = self.bus.read(self.pc) as u16;
         let lo = self.bus.read((address + self.x as u16) & 0x00FF);
         let hi = self.bus.read((address + 1 + self.x as u16) & 0x00FF);
@@ -61,7 +61,7 @@ impl Cpu {
     }
 
     pub(in crate::cpu) fn indy(&mut self) -> u16 {
-        self.pc += 1;
+        self.pc = self.pc.wrapping_add(1);
         let address = self.bus.read(self.pc) as u16;
         let lo = self.bus.read(address & 0x00FF) as u16;
         let hi = self.bus.read((address + 1) & 0x00FF);
@@ -71,13 +71,26 @@ impl Cpu {
         address
     }
 
+    /// The `(zp),Y` pointer target *before* Y is added.
+    ///
+    /// SHA needs the un-indexed base, both to derive its stored value from the
+    /// high byte and to model the page-cross address corruption itself. It has a
+    /// fixed cost, so unlike [`Cpu::indy`] this adds no page-cross cycle.
+    pub(in crate::cpu) fn indy_base(&mut self) -> u16 {
+        self.pc = self.pc.wrapping_add(1);
+        let pointer = self.bus.read(self.pc) as u16;
+        let lo = self.bus.read(pointer & 0x00FF) as u16;
+        let hi = self.bus.read((pointer + 1) & 0x00FF) as u16;
+        (hi << 8) | lo
+    }
+
     pub(in crate::cpu) fn relative(&mut self) -> u16 {
-        self.pc += 1;
+        self.pc = self.pc.wrapping_add(1);
         self.pc
     }
 
     pub(in crate::cpu) fn zp(&mut self) -> u16 {
-        self.pc += 1;
+        self.pc = self.pc.wrapping_add(1);
         self.bus.read(self.pc) as u16
     }
 
