@@ -53,6 +53,20 @@ struct State {
     ram: Vec<(u16, u8)>,
 }
 
+/// JAM/KIL opcodes, excluded from the comparison.
+///
+/// A jammed 6502 stops fetching and never resumes, so there is no post-
+/// instruction state to compare against. The corpus records PC+1 and 11 cycles
+/// for these, which is its capture rig giving up rather than behaviour the
+/// processor exhibits: a real chip is still jammed on cycle 12, and on cycle
+/// 12,000. Matching those numbers would mean silently running on past a byte
+/// that freezes hardware, so jc-nes halts instead and these are skipped.
+///
+/// `timing.rs` covers the halt itself.
+const JAM: [u8; 12] = [
+    0x02, 0x12, 0x22, 0x32, 0x42, 0x52, 0x62, 0x72, 0x92, 0xB2, 0xD2, 0xF2,
+];
+
 /// Location of the corpus, overridable with `JC_NES_HARTE_DIR`.
 fn corpus_dir() -> Option<PathBuf> {
     let dir = match std::env::var("JC_NES_HARTE_DIR") {
@@ -184,7 +198,9 @@ fn check_nibble(high: u8) {
     let previous_hook = panic::take_hook();
     panic::set_hook(Box::new(|_| {}));
     let reports: Vec<Report> = (0..=0x0F)
-        .filter_map(|low| check_opcode(&dir, (high << 4) | low))
+        .map(|low| (high << 4) | low)
+        .filter(|opcode| !JAM.contains(opcode))
+        .filter_map(|opcode| check_opcode(&dir, opcode))
         .collect();
     panic::set_hook(previous_hook);
 

@@ -65,7 +65,7 @@ const OFFICIAL: [(u8, &str, u8); 143] = [
 
 /// Undocumented opcodes jc-nes decodes, with their hardware cycle counts.
 #[rustfmt::skip]
-const ILLEGAL: [(u8, &str, u8); 54] = [
+const ILLEGAL: [(u8, &str, u8); 66] = [
     (0x03, "SLO (zp,X)",  8), (0x07, "SLO zp",      5), (0x0F, "SLO abs",     6),
     (0x13, "SLO (zp),Y",  8), (0x17, "SLO zp,X",    6), (0x1B, "SLO abs,Y",   7),
     (0x1F, "SLO abs,X",   7), (0x23, "RLA (zp,X)",  8), (0x27, "RLA zp",      5),
@@ -84,6 +84,10 @@ const ILLEGAL: [(u8, &str, u8); 54] = [
     (0xDF, "DCP abs,X",   7), (0xE3, "ISC (zp,X)",  8), (0xE7, "ISC zp",      5),
     (0xEB, "USBC #",      2), (0xEF, "ISC abs",     6), (0xF3, "ISC (zp),Y",  8),
     (0xF7, "ISC zp,X",    6), (0xFB, "ISC abs,Y",   7), (0xFF, "ISC abs,X",   7),
+    (0x0B, "ANC #",       2), (0x2B, "ANC #",       2), (0x4B, "ALR #",       2),
+    (0x6B, "ARR #",       2), (0x8B, "ANE #",       2), (0xCB, "SBX #",       2),
+    (0xBB, "LAS abs,Y",   4), (0x93, "SHA (zp),Y",  6), (0x9B, "TAS abs,Y",   5),
+    (0x9C, "SHY abs,X",   5), (0x9E, "SHX abs,Y",   5), (0x9F, "SHA abs,Y",   5),
 ];
 
 /// Read instructions that gain one cycle when indexing crosses a page.
@@ -91,7 +95,7 @@ const ILLEGAL: [(u8, &str, u8); 54] = [
 /// `(opcode, mnemonic, mode)` where mode is `X` for abs,X, `Y` for abs,Y and
 /// `I` for (zp),Y.
 #[rustfmt::skip]
-const PAGE_CROSS: [(u8, &str, char); 27] = [
+const PAGE_CROSS: [(u8, &str, char); 28] = [
     (0x1D, "ORA abs,X",  'X'), (0x19, "ORA abs,Y",  'Y'), (0x11, "ORA (zp),Y", 'I'),
     (0x3D, "AND abs,X",  'X'), (0x39, "AND abs,Y",  'Y'), (0x31, "AND (zp),Y", 'I'),
     (0x5D, "EOR abs,X",  'X'), (0x59, "EOR abs,Y",  'Y'), (0x51, "EOR (zp),Y", 'I'),
@@ -102,18 +106,18 @@ const PAGE_CROSS: [(u8, &str, char); 27] = [
     (0xBC, "LDY abs,X",  'X'), (0xBE, "LDX abs,Y",  'Y'),
     (0xBF, "LAX abs,Y",  'Y'), (0xB3, "LAX (zp),Y", 'I'),
     (0x1C, "NOP abs,X",  'X'), (0x3C, "NOP abs,X",  'X'),
+    (0xBB, "LAS abs,Y",  'Y'),
 ];
 
-/// Opcodes the CPU does not decode today.
+/// The JAM/KIL opcodes, which halt a real 6502 permanently.
 ///
-/// This list is a snapshot, not an aspiration: when one of these is implemented,
-/// delete it from here. A *shorter* actual list than this one fails the test just
-/// as loudly as a longer one, so the table cannot drift out of date silently.
+/// These are the only opcodes that may stop the CPU. Every other value decodes
+/// to a working instruction, which `process_opcode` enforces at compile time by
+/// matching all 256 with no wildcard arm.
 #[rustfmt::skip]
-const KNOWN_UNIMPLEMENTED: [u8; 24] = [
-    0x02, 0x0B, 0x12, 0x22, 0x2B, 0x32, 0x42, 0x4B,
-    0x52, 0x62, 0x6B, 0x72, 0x8B, 0x92, 0x93, 0x9B,
-    0x9C, 0x9E, 0x9F, 0xB2, 0xBB, 0xCB, 0xD2, 0xF2,
+const JAM: [u8; 12] = [
+    0x02, 0x12, 0x22, 0x32, 0x42, 0x52,
+    0x62, 0x72, 0x92, 0xB2, 0xD2, 0xF2,
 ];
 
 /// Stack pointer used for the table scans.
@@ -242,47 +246,9 @@ fn stores_and_read_modify_writes_never_take_a_page_cross_penalty() {
 }
 
 #[test]
-fn opcode_decode_coverage_matches_the_known_gaps() {
-    // An opcode that falls through to the catch-all arm claims zero cycles, and
-    // on a real ROM would spin forever: `Cpu::clock` decrements an already-zero
-    // counter and the program counter never advances past the bad byte.
-    let undecoded: Vec<u8> = (0x00u8..=0xFF)
-        .filter(|&opcode| {
-            let mut cpu = cpu();
-            cpu.sp = SP_MIDPAGE;
-            poke(&mut cpu, PROG, &[opcode, 0x10, 0x20]);
-            step(&mut cpu) == 0
-        })
-        .collect();
-
-    let expected = KNOWN_UNIMPLEMENTED.to_vec();
-    if undecoded != expected {
-        let fmt = |v: &[u8]| {
-            v.iter()
-                .map(|b| format!("{b:#04X}"))
-                .collect::<Vec<_>>()
-                .join(", ")
-        };
-        panic!(
-            "opcode coverage changed.\n  expected undecoded ({}): {}\n  actual undecoded ({}): {}",
-            expected.len(),
-            fmt(&expected),
-            undecoded.len(),
-            fmt(&undecoded)
-        );
-    }
-
-    assert_eq!(
-        undecoded.len(),
-        24,
-        "24 of 256 opcodes are undecoded; each one hangs the CPU if a ROM reaches it"
-    );
-}
-
-#[test]
-fn an_undecoded_opcode_jams_the_cpu() {
-    // An undecoded opcode claims no cycles and cannot advance PC, so the only
-    // safe response is to stop. A real 6502 does exactly this on JAM/KIL.
+fn a_jam_opcode_halts_the_cpu() {
+    // JAM stops the processor fetching. It claims no cycles and cannot advance
+    // PC, so the only faithful response is to stop.
     let mut cpu = cpu();
     poke(&mut cpu, PROG, &[0x02]);
 
@@ -317,11 +283,10 @@ fn reset_clears_a_jam() {
 }
 
 #[test]
-fn a_decoded_opcode_never_jams() {
-    // Every implemented opcode must leave the CPU running; only the catch-all
-    // arm may jam it.
+fn only_jam_opcodes_halt_the_cpu() {
+    // Every other opcode must leave the CPU running.
     for opcode in 0x00u8..=0xFF {
-        if KNOWN_UNIMPLEMENTED.contains(&opcode) {
+        if JAM.contains(&opcode) {
             continue;
         }
         let mut cpu = cpu();

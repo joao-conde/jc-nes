@@ -25,12 +25,12 @@ pub struct Cpu {
     extra_cycles: bool,
     pub(crate) bus: Bus,
 
-    /// Set when the CPU decodes an opcode it cannot execute.
+    /// Set by the JAM/KIL opcodes, which stop a real 6502 fetching entirely.
     ///
-    /// A real 6502 halts permanently on the JAM/KIL opcodes, and stops fetching
-    /// entirely. Modelling that is also the safe response to an opcode this
-    /// emulator has simply not implemented: the alternative is to leave the
-    /// program counter parked on the offending byte and spin on it forever.
+    /// There is no such thing as an unknown opcode on this processor: all 256
+    /// values decode to something, and `process_opcode` matches all 256 with no
+    /// wildcard, so the compiler enforces that. This flag models a halt, not a
+    /// gap in the emulator.
     jammed: bool,
 }
 
@@ -325,9 +325,22 @@ impl Cpu {
             }
             0x80 | 0x82 | 0x89 | 0xC2 | 0xE2 => self.execute(Cpu::imm, Cpu::nop_unoff, 2, false),
 
-            // Unimplemented opcode: halt rather than spin on it. Logged once,
-            // because `clock` stops calling us the moment `jammed` is set.
-            _ => {
+            // Combination and unstable opcodes
+            0x0B | 0x2B => self.execute(Cpu::imm, Cpu::anc, 2, false),
+            0x4B => self.execute(Cpu::imm, Cpu::alr, 2, false),
+            0x6B => self.execute(Cpu::imm, Cpu::arr, 2, false),
+            0x8B => self.execute(Cpu::imm, Cpu::xaa, 2, false),
+            0xCB => self.execute(Cpu::imm, Cpu::sbx, 2, false),
+            0xBB => self.execute(Cpu::absy, Cpu::las, 4, true),
+            0x93 => self.execute(Cpu::indy_base, Cpu::sha, 6, false),
+            0x9B => self.execute(Cpu::abs, Cpu::tas, 5, false),
+            0x9C => self.execute(Cpu::abs, Cpu::shy, 5, false),
+            0x9E => self.execute(Cpu::abs, Cpu::shx, 5, false),
+            0x9F => self.execute(Cpu::abs, Cpu::sha, 5, false),
+
+            // JAM/KIL: the processor stops fetching and never resumes. Logged
+            // once, because `clock` stops calling us the moment it is set.
+            0x02 | 0x12 | 0x22 | 0x32 | 0x42 | 0x52 | 0x62 | 0x72 | 0x92 | 0xB2 | 0xD2 | 0xF2 => {
                 eprintln!("jammed on opcode 0x{:02X} at 0x{:04X}", opcode, self.pc);
                 self.jammed = true;
             }
@@ -370,6 +383,25 @@ impl Cpu {
 
     fn page_crossed(&self, addr1: u16, addr2: u16) -> bool {
         (addr1 & 0xFF00) != (addr2 & 0xFF00)
+    }
+
+    /// The mask SHA/SHX/SHY/TAS AND into the byte they store: the high byte of
+    /// the un-indexed target address, plus one.
+    fn unstable_mask(base: u16) -> u8 {
+        ((base >> 8) as u8).wrapping_add(1)
+    }
+
+    /// Where SHA/SHX/SHY/TAS actually write.
+    ///
+    /// When indexing crosses a page the target's high byte is replaced by the
+    /// value being stored, so the write lands in a different page than the
+    /// address arithmetic implies.
+    fn unstable_target(base: u16, index: u8, value: u8) -> u16 {
+        if (base & 0x00FF) + index as u16 > 0xFF {
+            ((value as u16) << 8) | (base as u8).wrapping_add(index) as u16
+        } else {
+            base.wrapping_add(index as u16)
+        }
     }
 
     fn is_negative(&self, operand: u8) -> bool {

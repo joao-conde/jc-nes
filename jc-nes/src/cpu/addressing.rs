@@ -71,6 +71,19 @@ impl Cpu {
         address
     }
 
+    /// The `(zp),Y` pointer target *before* Y is added.
+    ///
+    /// SHA needs the un-indexed base, both to derive its stored value from the
+    /// high byte and to model the page-cross address corruption itself. It has a
+    /// fixed cost, so unlike [`Cpu::indy`] this adds no page-cross cycle.
+    pub(in crate::cpu) fn indy_base(&mut self) -> u16 {
+        self.pc = self.pc.wrapping_add(1);
+        let pointer = self.bus.read(self.pc) as u16;
+        let lo = self.bus.read(pointer & 0x00FF) as u16;
+        let hi = self.bus.read((pointer + 1) & 0x00FF) as u16;
+        (hi << 8) | lo
+    }
+
     pub(in crate::cpu) fn relative(&mut self) -> u16 {
         self.pc = self.pc.wrapping_add(1);
         self.pc

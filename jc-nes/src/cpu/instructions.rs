@@ -514,4 +514,100 @@ impl Cpu {
         self.pc = self.pc.wrapping_sub(1);
         self.eor(address);
     }
+
+    /// ANC ($0B, $2B): AND immediate, then copy bit 7 of the result into carry.
+    pub(in crate::cpu) fn anc(&mut self, address: u16) {
+        let operand = self.bus.read(address);
+        self.a &= operand;
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
+        self.status.carry = self.status.negative;
+        self.pc = self.pc.wrapping_add(1);
+    }
+
+    /// ALR ($4B): AND immediate, then LSR the accumulator.
+    pub(in crate::cpu) fn alr(&mut self, address: u16) {
+        let operand = self.bus.read(address) & self.a;
+        self.status.carry = operand & 0x01 == 1;
+        self.a = operand >> 1;
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
+        self.pc = self.pc.wrapping_add(1);
+    }
+
+    /// ARR ($6B): AND immediate, then ROR, with carry and overflow taken from
+    /// the rotated result rather than from the shifted-out bit.
+    pub(in crate::cpu) fn arr(&mut self, address: u16) {
+        let operand = self.bus.read(address) & self.a;
+        self.a = (operand >> 1) | ((self.status.carry as u8) << 7);
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
+        self.status.carry = self.a & 0x40 != 0;
+        self.status.overflow = ((self.a >> 6) ^ (self.a >> 5)) & 0x01 == 1;
+        self.pc = self.pc.wrapping_add(1);
+    }
+
+    /// ANE/XAA ($8B), unstable: shares LXA's `0xEE` magic constant.
+    pub(in crate::cpu) fn xaa(&mut self, address: u16) {
+        let operand = self.bus.read(address);
+        self.a = (self.a | 0xEE) & self.x & operand;
+        self.status.zero = self.a == 0;
+        self.status.negative = self.is_negative(self.a);
+        self.pc = self.pc.wrapping_add(1);
+    }
+
+    /// SBX/AXS ($CB): X = (A & X) - immediate, with carry set like a compare.
+    pub(in crate::cpu) fn sbx(&mut self, address: u16) {
+        let operand = self.bus.read(address);
+        let masked = self.a & self.x;
+        self.x = masked.wrapping_sub(operand);
+        self.status.carry = masked >= operand;
+        self.status.zero = self.x == 0;
+        self.status.negative = self.is_negative(self.x);
+        self.pc = self.pc.wrapping_add(1);
+    }
+
+    /// LAS ($BB): A, X and S all take memory ANDed with the stack pointer.
+    pub(in crate::cpu) fn las(&mut self, address: u16) {
+        let result = self.bus.read(address) & self.sp;
+        self.a = result;
+        self.x = result;
+        self.sp = result;
+        self.status.zero = result == 0;
+        self.status.negative = self.is_negative(result);
+        self.pc = self.pc.wrapping_add(1);
+    }
+
+    /// SHY ($9C): store Y ANDed with the target's high byte plus one.
+    pub(in crate::cpu) fn shy(&mut self, base: u16) {
+        let value = self.y & Cpu::unstable_mask(base);
+        let target = Cpu::unstable_target(base, self.x, value);
+        self.bus.write(target, value);
+        self.pc = self.pc.wrapping_add(1);
+    }
+
+    /// SHX ($9E): store X ANDed with the target's high byte plus one.
+    pub(in crate::cpu) fn shx(&mut self, base: u16) {
+        let value = self.x & Cpu::unstable_mask(base);
+        let target = Cpu::unstable_target(base, self.y, value);
+        self.bus.write(target, value);
+        self.pc = self.pc.wrapping_add(1);
+    }
+
+    /// SHA ($93, $9F): store A & X ANDed with the target's high byte plus one.
+    pub(in crate::cpu) fn sha(&mut self, base: u16) {
+        let value = self.a & self.x & Cpu::unstable_mask(base);
+        let target = Cpu::unstable_target(base, self.y, value);
+        self.bus.write(target, value);
+        self.pc = self.pc.wrapping_add(1);
+    }
+
+    /// TAS ($9B): S takes A & X, then that is stored the way SHA stores.
+    pub(in crate::cpu) fn tas(&mut self, base: u16) {
+        self.sp = self.a & self.x;
+        let value = self.sp & Cpu::unstable_mask(base);
+        let target = Cpu::unstable_target(base, self.y, value);
+        self.bus.write(target, value);
+        self.pc = self.pc.wrapping_add(1);
+    }
 }

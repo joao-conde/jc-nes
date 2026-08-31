@@ -129,9 +129,9 @@ fn step_reports_the_instructions_cycle_count() {
 }
 
 #[test]
-fn step_reports_zero_for_an_unimplemented_opcode() {
-    // 0x02 is JAM/KIL: not in the opcode table, so it must fall through to
-    // the catch-all arm without claiming any cycles.
+fn step_reports_zero_for_a_jam_opcode() {
+    // 0x02 is JAM/KIL: it halts the processor rather than executing, so it
+    // claims no cycles.
     let (_, cycles) = exec_bare(&[0x02]);
     assert_eq!(cycles, 0);
 }
