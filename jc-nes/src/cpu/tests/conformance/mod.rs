@@ -263,7 +263,12 @@ fn vendored_sample() {
         if !diffs.is_empty() {
             failed += 1;
             if samples.len() < 20 {
-                samples.push(format!("  {:#04X}: {}", case.opcode, diffs.join(", ")));
+                samples.push(format!(
+                    "  ${:02X} {:<16} {}",
+                    case.opcode,
+                    case.asm,
+                    diffs.join(", ")
+                ));
             }
         }
 
