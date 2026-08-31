@@ -41,6 +41,8 @@
 //! compare. The address/value/direction of each individual bus access therefore
 //! goes unverified; only the totals do.
 
+mod vectors;
+
 use super::*;
 use serde::de::IgnoredAny;
 use serde::Deserialize;
@@ -200,15 +202,101 @@ fn check_opcode(dir: &Path, opcode: u8) -> Option<Report> {
     Some(report)
 }
 
+/// Check the vendored sample. Always runs: no network, no setup, no skipping.
+#[test]
+fn vendored_sample() {
+    let mut cpu = cpu();
+    let mut failed = 0usize;
+    let mut samples = Vec::new();
+
+    for case in vectors::CASES {
+        if JAM.contains(&case.opcode) {
+            continue;
+        }
+
+        cpu.pc = case.initial.pc;
+        cpu.sp = case.initial.s;
+        cpu.a = case.initial.a;
+        cpu.x = case.initial.x;
+        cpu.y = case.initial.y;
+        cpu.status = Status::from(case.initial.p);
+        for &(address, value) in case.ram {
+            poke(&mut cpu, address, &[value]);
+        }
+
+        let cycles = step(&mut cpu);
+        let mut diffs = Vec::new();
+        let mut cmp = |what: &str, got: u16, want: u16| {
+            if got != want {
+                diffs.push(format!("{what}={got:#06X} want {want:#06X}"));
+            }
+        };
+        cmp("PC", cpu.pc, case.expected.pc);
+        cmp("S", cpu.sp as u16, case.expected.s as u16);
+        cmp("A", cpu.a as u16, case.expected.a as u16);
+        cmp("X", cpu.x as u16, case.expected.x as u16);
+        cmp("Y", cpu.y as u16, case.expected.y as u16);
+        cmp("P", u8::from(cpu.status) as u16, case.expected.p as u16);
+
+        // Seeded memory must be unchanged except where `writes` says otherwise.
+        for &(address, seeded) in case.ram {
+            let want = case
+                .writes
+                .iter()
+                .find(|(a, _)| *a == address)
+                .map_or(seeded, |(_, v)| *v);
+            let got = peek(&mut cpu, address);
+            if got != want {
+                diffs.push(format!("[{address:#06X}]={got:#04X} want {want:#04X}"));
+            }
+        }
+        for &(address, want) in case.writes {
+            let got = peek(&mut cpu, address);
+            if got != want {
+                diffs.push(format!("[{address:#06X}]={got:#04X} want {want:#04X}"));
+            }
+        }
+        if cycles != case.cycles {
+            diffs.push(format!("cycles={} want {}", cycles, case.cycles));
+        }
+
+        if !diffs.is_empty() {
+            failed += 1;
+            if samples.len() < 20 {
+                samples.push(format!("  {:#04X}: {}", case.opcode, diffs.join(", ")));
+            }
+        }
+
+        // Leave no residue for the next case.
+        for &(address, _) in case.ram {
+            poke(&mut cpu, address, &[0]);
+        }
+        for &(address, _) in case.writes {
+            poke(&mut cpu, address, &[0]);
+        }
+    }
+
+    assert!(
+        failed == 0,
+        "{} of {} vendored cases failed; first {} shown:
+{}",
+        failed,
+        vectors::CASES.len(),
+        samples.len(),
+        samples.join(
+            "
+"
+        )
+    );
+}
+
 /// Run every opcode whose high nibble is `high`.
 fn check_nibble(high: u8) {
-    let Some(dir) = test_data_dir() else {
-        eprintln!(
-            "SKIPPED: nes6502 reference test data not found. Run scripts/fetch-conformance-tests.sh, \
-             or set JC_NES_CONFORMANCE_DIR."
-        );
-        return;
-    };
+    let dir = test_data_dir().unwrap_or_else(|| {
+        panic!(
+            "reference test data not found. Run scripts/fetch-conformance-tests.sh,              or set JC_NES_CONFORMANCE_DIR. These are #[ignore]d precisely so that              they can never pass by silently skipping."
+        )
+    });
 
     // Unimplemented opcodes panic or stall on every case; keep the noise down.
     let previous_hook = panic::take_hook();
@@ -248,6 +336,7 @@ macro_rules! nibble_tests {
     ($($name:ident => $high:literal),* $(,)?) => {
         $(
             #[test]
+            #[ignore = "needs the full reference data; run with --ignored"]
             fn $name() {
                 check_nibble($high);
             }
