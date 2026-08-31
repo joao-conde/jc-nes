@@ -2,5 +2,5 @@ target
 
 Cargo.lock
 
-# SingleStepTests nes6502 corpus, fetched by scripts/fetch-harte.sh
-.harte
+# Reference test data, fetched by scripts/fetch-conformance-tests.sh
+.conformance

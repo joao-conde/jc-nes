@@ -1,4 +1,5 @@
-//! Verification against the SingleStepTests `nes6502` corpus.
+//! Conformance tests: every instruction checked against an external
+//! reference implementation.
 //!
 //! Source: <https://github.com/SingleStepTests/65x02>, directory `nes6502/v1`,
 //! by Thomas Harte et al. 10,000 randomly generated cases per opcode, 2,560,000
@@ -24,13 +25,13 @@
 //! chips. The `0xEE` magic constant ANE and LXA use here is the value consistent
 //! with this data and with common documentation, not a universal constant.
 //!
-//! Fetch the corpus with `scripts/fetch-harte.sh`. It is gitignored (1.1 GB), and
+//! Fetch the data with `scripts/fetch-conformance-tests.sh`. It is gitignored (1.1 GB), and
 //! these tests report themselves as skipped when it is absent.
 //!
 //! # What is checked
 //!
 //! The complete post-instruction state - `PC`, `S`, `A`, `X`, `Y`, `P`, and every
-//! memory address the case names - plus the total cycle count, which the corpus
+//! memory address the case names - plus the total cycle count, which the data
 //! gives as `cycles.len()`.
 //!
 //! # What is not checked
@@ -71,7 +72,7 @@ struct State {
 /// JAM/KIL opcodes, excluded from the comparison.
 ///
 /// A jammed 6502 stops fetching and never resumes, so there is no post-
-/// instruction state to compare against. The corpus records PC+1 and 11 cycles
+/// instruction state to compare against. The data records PC+1 and 11 cycles
 /// for these, which is its capture rig giving up rather than behaviour the
 /// processor exhibits: a real chip is still jammed on cycle 12, and on cycle
 /// 12,000. Matching those numbers would mean silently running on past a byte
@@ -82,11 +83,11 @@ const JAM: [u8; 12] = [
     0x02, 0x12, 0x22, 0x32, 0x42, 0x52, 0x62, 0x72, 0x92, 0xB2, 0xD2, 0xF2,
 ];
 
-/// Location of the corpus, overridable with `JC_NES_HARTE_DIR`.
-fn corpus_dir() -> Option<PathBuf> {
-    let dir = match std::env::var("JC_NES_HARTE_DIR") {
+/// Location of the reference test data, overridable with `JC_NES_CONFORMANCE_DIR`.
+fn test_data_dir() -> Option<PathBuf> {
+    let dir = match std::env::var("JC_NES_CONFORMANCE_DIR") {
         Ok(path) => PathBuf::from(path),
-        Err(_) => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".harte/v1"),
+        Err(_) => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".conformance/v1"),
     };
     if dir.is_dir() {
         Some(dir)
@@ -148,7 +149,7 @@ fn run_case(cpu: &mut Cpu, case: &Case) -> Option<String> {
 
 /// Zero every address a case touched, so one CPU can be reused across cases.
 ///
-/// The corpus names every location an instruction reads or writes across
+/// The data names every location an instruction reads or writes across
 /// `initial.ram`, `final.ram` and `cycles`, so clearing all three leaves no
 /// residue for the next case.
 fn clear_case(cpu: &mut Cpu, case: &Case) {
@@ -174,7 +175,7 @@ fn check_opcode(dir: &Path, opcode: u8) -> Option<Report> {
     let path = dir.join(format!("{opcode:02x}.json"));
     let raw = std::fs::read_to_string(&path).ok()?;
     let cases: Vec<Case> = serde_json::from_str(&raw)
-        .unwrap_or_else(|e| panic!("{} is not valid corpus JSON: {e}", path.display()));
+        .unwrap_or_else(|e| panic!("{} is not valid reference-test JSON: {e}", path.display()));
 
     let mut cpu = cpu();
     let mut report = Report {
@@ -201,10 +202,10 @@ fn check_opcode(dir: &Path, opcode: u8) -> Option<Report> {
 
 /// Run every opcode whose high nibble is `high`.
 fn check_nibble(high: u8) {
-    let Some(dir) = corpus_dir() else {
+    let Some(dir) = test_data_dir() else {
         eprintln!(
-            "SKIPPED: nes6502 corpus not found. Run scripts/fetch-harte.sh, \
-             or set JC_NES_HARTE_DIR."
+            "SKIPPED: nes6502 reference test data not found. Run scripts/fetch-conformance-tests.sh, \
+             or set JC_NES_CONFORMANCE_DIR."
         );
         return;
     };
@@ -228,7 +229,7 @@ fn check_nibble(high: u8) {
     let total_failed: usize = failing.iter().map(|r| r.failed).sum();
     let total_cases: usize = reports.iter().map(|r| r.total).sum();
     out.push_str(&format!(
-        "{total_failed} of {total_cases} corpus cases failed across {} opcode(s):\n",
+        "{total_failed} of {total_cases} reference cases failed across {} opcode(s):\n",
         failing.len()
     ));
     for report in failing {
@@ -255,20 +256,20 @@ macro_rules! nibble_tests {
 }
 
 nibble_tests! {
-    corpus_opcodes_0x => 0x0,
-    corpus_opcodes_1x => 0x1,
-    corpus_opcodes_2x => 0x2,
-    corpus_opcodes_3x => 0x3,
-    corpus_opcodes_4x => 0x4,
-    corpus_opcodes_5x => 0x5,
-    corpus_opcodes_6x => 0x6,
-    corpus_opcodes_7x => 0x7,
-    corpus_opcodes_8x => 0x8,
-    corpus_opcodes_9x => 0x9,
-    corpus_opcodes_ax => 0xA,
-    corpus_opcodes_bx => 0xB,
-    corpus_opcodes_cx => 0xC,
-    corpus_opcodes_dx => 0xD,
-    corpus_opcodes_ex => 0xE,
-    corpus_opcodes_fx => 0xF,
+    opcodes_0x => 0x0,
+    opcodes_1x => 0x1,
+    opcodes_2x => 0x2,
+    opcodes_3x => 0x3,
+    opcodes_4x => 0x4,
+    opcodes_5x => 0x5,
+    opcodes_6x => 0x6,
+    opcodes_7x => 0x7,
+    opcodes_8x => 0x8,
+    opcodes_9x => 0x9,
+    opcodes_ax => 0xA,
+    opcodes_bx => 0xB,
+    opcodes_cx => 0xC,
+    opcodes_dx => 0xD,
+    opcodes_ex => 0xE,
+    opcodes_fx => 0xF,
 }

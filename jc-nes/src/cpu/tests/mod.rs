@@ -3,7 +3,7 @@
 mod addressing;
 mod arithmetic;
 mod branch_jump;
-mod harte;
+mod conformance;
 mod illegal;
 mod interrupts;
 mod load_store;

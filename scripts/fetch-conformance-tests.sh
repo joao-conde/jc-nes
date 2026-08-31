@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fetch the SingleStepTests nes6502 corpus used by src/cpu/tests/harte.rs.
+# Fetch the reference test data used by src/cpu/tests/conformance.rs.
 #
 #   https://github.com/SingleStepTests/65x02  (nes6502/v1)
 #
@@ -7,7 +7,7 @@
 set -euo pipefail
 
 BASE="https://raw.githubusercontent.com/SingleStepTests/65x02/main/nes6502/v1"
-DEST="$(dirname "$0")/../jc-nes/.harte/v1"
+DEST="$(dirname "$0")/../jc-nes/.conformance/v1"
 
 mkdir -p "$DEST"
 printf '%02x\n' $(seq 0 255) \

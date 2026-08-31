@@ -472,7 +472,7 @@ impl Cpu {
     ///
     /// Unstable on real silicon: A and X both take `(A | magic) & imm` rather
     /// than the immediate alone. `0xEE` is the only constant in `0..=0xFF`
-    /// consistent with all 10,000 nes6502 corpus cases for this opcode.
+    /// consistent with all 10,000 reference cases for this opcode.
     pub(in crate::cpu) fn lxa(&mut self, address: u16) {
         let operand = self.bus.read(address);
         self.a = (self.a | 0xEE) & operand;
